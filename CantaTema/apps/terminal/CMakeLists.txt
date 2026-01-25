@@ -1,0 +1,18 @@
+include(library_install_infra)
+
+create_infra_library(
+    TARGET
+    "terminal"
+    SRCS
+    src/terminal_cli.cpp
+    src/terminal_session.cpp
+    # src/terminal_test.cpp
+    INC_PUBLIC
+    INC_PRIVATE
+    cli::cli
+    CORE::CONFIGURATION
+    CORE::PRIMITIVES
+    BUSINESS::SESSION
+    INFRASTRUCTURE::DATABASE
+    INFRASTRUCTURE::FILE_HANDLER
+)

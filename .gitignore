@@ -1,0 +1,43 @@
+# Build artifacts
+*.o
+*.so
+*.dll
+*.dylib
+*.a
+*.lib
+*.exp
+*.ilk
+*.pch
+*.pdb
+*.obj
+*.lo
+*.la
+*.lai
+*.d
+
+# Executables
+*.exe
+*.out
+*.app
+*.elf
+
+# Editor-specific files
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+
+# C++ specific
+# Precompiled headers
+*.gch
+*.pch
+
+# Doxygen artifacts
+html/
+latex/
+man/
+
+# Local folders and files
+build/
+logs/
