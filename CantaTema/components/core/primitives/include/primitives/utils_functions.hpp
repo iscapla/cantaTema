@@ -4,7 +4,6 @@
 #include <sstream>
 #include <iomanip>
 #include <math.h>
-#include <SDL3/SDL.h>
 
 #include "definitions.hpp"
 
@@ -67,26 +66,6 @@ inline std::string parse_time_t_to_string(time_t time, const char *format) noexc
 
     oss << std::put_time(tminfo, format);
     return oss.str();
-}
-
-/**
- * @brief Get the platform specific path for application data using SDL.
- * The directory is created if it does not exist.
- * 
- * @param org_name Organization name
- * @param app_name Application name
- * @return std::string Path with trailing separator
- */
-inline std::string get_filesystem_path(const std::string &org_name, const std::string &app_name) noexcept
-{
-    char *base_path = SDL_GetPrefPath(org_name.c_str(), app_name.c_str());
-    if (base_path)
-    {
-        std::string path(base_path);
-        SDL_free(base_path);
-        return path;
-    }
-    return "";
 }
 
 #endif //__UTILS_FUNCTIONS_HPP

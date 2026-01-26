@@ -4,6 +4,7 @@
 #include <mutex>
 #include <cstring>
 
+#include "primitives/tool_paths.hpp"
 #include "primitives/utils_logger.hpp"
 #include "configuration/Configuration_System.hpp"
 
@@ -13,8 +14,7 @@ Configuration_System& Configuration_System::getInstance() {
 }
 
 Configuration_System::Configuration_System() : IConfigurationBase() {
-    const std::string data_folder = "data"; //TODO set proper file location
-    std::filesystem::path db_path = std::filesystem::path(data_folder) / config_file_name;
+    std::filesystem::path db_path = ToolPath::get_path_for_system_config() / config_file_name;
     set_file_path(db_path);
     parse();
 
@@ -25,11 +25,17 @@ Configuration_System::Configuration_System() : IConfigurationBase() {
 Configuration_System::~Configuration_System() {
 }
 
-int Configuration_System::get_text_files_extensions_allowed(char patterns[MAX_EXTENSIONS_COUNT][MAX_EXTENSIONS_LENGTH]) {
+/**
+ * @brief Retrieves the allowed text file extensions from the configuration.
+ * 
+ * @param patterns Array of character pointers to be populated with extension strings.
+ * @return int The number of extensions actually retrieved and stored in patterns.
+ */
+int Configuration_System::get_text_files_extensions_allowed(char patterns[MAX_EXTENSIONS_COUNT][MAX_EXTENSIONS_LENGTH]) const {
     const std::string section = "TEXT_FILES";
     const std::string key = "extensions_allowed";
 
-    std::string value = get(section, key);
+    std::string value = const_cast<Configuration_System*>(this)->get(section, key);
 
     if(patterns == nullptr){
         logger->error("Destination variable cannot be null.");

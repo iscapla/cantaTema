@@ -1,5 +1,8 @@
 
 #include "session/Session.hpp"
+
+#include "configuration/Configuration_System.hpp"
+
 #include "operations/Operation_User_Logic.hpp"
 #include "operations/Operation_Category_Logic.hpp"
 #include "operations/Operation_Subject_Logic.hpp"
@@ -10,8 +13,7 @@ Session::Session(std::shared_ptr<IOperation_User> &&_user_op, std::shared_ptr<IO
     {
         throw std::runtime_error("Operation session received wrong operation instances.");
     }
-
-    session_user = nullptr;
+    initialize();
 }
 
 Session::Session(void)
@@ -25,13 +27,20 @@ Session::Session(void)
     {
         throw std::runtime_error("Operation session received wrong operation instances. (2)");
     }
-
-    session_user = nullptr;
+    initialize();
 }
 
 Session::~Session(void)
 {
     session_user = nullptr;
+}
+
+rst_code_e Session::initialize(void){
+
+    Configuration_System &config = Configuration_System::getInstance();
+
+    session_user = nullptr;
+    return RST_OK;
 }
 
 rst_code_e Session::user_add(const std::string &name, const std::string &password)

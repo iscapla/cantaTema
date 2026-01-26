@@ -8,6 +8,7 @@ create_infra_library(
     INC_PUBLIC
     BUSINESS::OPERATIONS
     CORE::PRIMITIVES
+    CORE::CONFIGURATION
     INC_PRIVATE
 )
 

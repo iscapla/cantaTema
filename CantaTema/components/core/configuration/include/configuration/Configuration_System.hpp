@@ -24,7 +24,7 @@ public:
      * @param max_extension_size The maximum size of each extension string.
      * @return int The number of extensions actually retrieved and stored in patterns.
      */
-    int get_text_files_extensions_allowed(char patterns[MAX_EXTENSIONS_COUNT][MAX_EXTENSIONS_LENGTH]);
+    int get_text_files_extensions_allowed(char patterns[MAX_EXTENSIONS_COUNT][MAX_EXTENSIONS_LENGTH]) const;
 
 private:
     Configuration_System();

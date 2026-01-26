@@ -1,6 +1,7 @@
 
 #include <string>
 
+#include "primitives/tool_paths.hpp"
 #include "file_handler/text_handler.hpp"
 #include "operations/Operation_Subject_Logic.hpp"
 
@@ -46,8 +47,7 @@ rst_code_e Operation_Subject::subject_add(const std::string source_file, Subject
     }
 
     std::filesystem::path p(source_file);
-    // TODO write the correct path
-    std::string dst_file = (std::filesystem::path("files") / std::to_string(subject.get_user_id()) / std::to_string(subject.get_id()) / p.filename()).string();
+    std::string dst_file = (ToolPath::get_path_for_files() / std::to_string(subject.get_user_id()) / std::to_string(subject.get_id()) / p.filename()).string();
 
     TextFileHandler text_handler(source_file);
     rst = text_handler.upload_file(dst_file);

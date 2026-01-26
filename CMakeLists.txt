@@ -28,6 +28,8 @@ project(
 
 set(CMAKE_MAIN_PROJECT_NAME ${PROJECT_NAME})
 
+add_compile_definitions(MAIN_PROJECT_NAME=${PROJECT_NAME})
+
 #####################################################################################################
 # PROJECT CONFIGURATION
 #####################################################################################################

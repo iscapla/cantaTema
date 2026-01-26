@@ -15,6 +15,8 @@ public:
     Session(void);
     ~Session(void);
 
+    rst_code_e initialize(void);
+
     //-------------------------------------------------------------------------------------
 
     rst_code_e user_add(const std::string &name, const std::string &password);

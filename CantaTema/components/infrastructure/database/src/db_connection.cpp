@@ -2,6 +2,7 @@
 #include <cstring>
 #include <filesystem>
 
+#include "primitives/tool_paths.hpp"
 #include "primitives/utils_logger.hpp"
 #include "database/db_connection.hpp"
 
@@ -11,18 +12,9 @@ DB_Connection* DB_Connection::instance = nullptr;
 
 DB_Connection::DB_Connection() {
 
-    // Create the "data" folder if it doesn't exist
-    const std::string data_folder = "data";
-    if (!std::filesystem::exists(data_folder)) {
-        if (!std::filesystem::create_directory(data_folder)) {
-            logger->error("Error creating data directory: {}", data_folder);
-            //TODO close app with an error
-        }
-    }
-
     // Construct the full path to the database file
-    std::filesystem::path db_path = std::filesystem::path(data_folder) / "canta_tema.db";
-
+    std::filesystem::path db_path = ToolPath::get_path_for_database() / "data.db";
+    logger->debug("Database path: {}", db_path.string());
 
     // Open the database connection.
     // The filename is hardcoded here, but could be moved to a config file.

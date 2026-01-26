@@ -9,10 +9,11 @@ create_infra_library(
     src/user.cpp
     src/subject.cpp
     src/category.cpp
+    src/tool_paths.cpp
     INC_PUBLIC
     spdlog
-    SDL3::SDL3
     INC_PRIVATE
+    SDL3::SDL3
 )
 
 add_subdirectory(test)

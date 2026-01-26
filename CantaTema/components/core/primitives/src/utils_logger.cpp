@@ -5,6 +5,7 @@
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
 
+#include "primitives/tool_paths.hpp"
 #include "primitives/utils_logger.hpp"
 
 spdlog::logger *logger{nullptr};
@@ -16,7 +17,8 @@ void util_logger_init(void)
     console_sink->set_level(spdlog::level::debug);
     console_sink->set_pattern("[%d/%m/%C %T.%e] [%^%8!l%$] [%t] %v");
 
-    auto file_sink = std::make_shared<spdlog::sinks::daily_file_sink_mt>("logs/daily.txt", 0, 0);
+    std::filesystem::path logs_path = ToolPath::get_path_for_logs() / "daily.txt";
+    auto file_sink = std::make_shared<spdlog::sinks::daily_file_sink_mt>(logs_path.string(), 0, 0);
     file_sink->set_level(spdlog::level::debug);
     file_sink->set_pattern("[%d/%m/%C %T.%e] [%l] [%t] %v");
 

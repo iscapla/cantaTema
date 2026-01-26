@@ -6,6 +6,7 @@
 #include "database/db_subject.hpp"
 #include "database/db_category.hpp"
 #include "file_handler/file_handler.hpp"
+#include "primitives/tool_paths.hpp"
 
 Operation_User::Operation_User() : local_user(nullptr)
 {
@@ -160,8 +161,7 @@ rst_code_e Operation_User::user_remove(void)
         }
 
         FileHandler file_handler;
-        //TODO add proper folder
-        std::string user_folder = (std::filesystem::path("files") / std::to_string(user_id)).string();
+        std::string user_folder = (ToolPath::get_path_for_files() / std::to_string(user_id)).string();
         rst = file_handler.remove_folder(user_folder);
         if(rst){
             logger->warn("Error when deleting user folder: {}", get_rst_txt(rst));
