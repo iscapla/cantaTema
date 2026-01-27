@@ -4,7 +4,6 @@ string(TOUPPER ${DIR_NAME} COMPONENT_PROJECT_NAME)
 
 # Create child targets
 add_subdirectory(terminal)
-# add_library(INFRASTRUCTURE::TERMINAL ALIAS terminal)
 
 
 project(
@@ -22,11 +21,9 @@ add_executable(${PROJECT_NAME} main_terminal.cpp)
 # link
 target_link_libraries(${PROJECT_NAME} PRIVATE
     CORE::PRIMITIVES
-    # ${CMAKE_MAIN_PROJECT_NAME}::terminal
     CORE::CONFIGURATION
     CORE::PRIMITIVES
     APPS::TERMINAL
-    # miniaudio
 )
 
 # install information

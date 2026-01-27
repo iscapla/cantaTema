@@ -4,3 +4,4 @@ string(TOUPPER ${DIR_NAME} COMPONENT_PROJECT_NAME)
 
 add_subdirectory(database)
 add_subdirectory(file_handler)
+add_subdirectory(sound_system)
