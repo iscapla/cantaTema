@@ -10,7 +10,17 @@ FetchContent_GetProperties(tinyfiledialogs)
 if(NOT tinyfiledialogs_POPULATED)
     FetchContent_Populate(tinyfiledialogs)
     FetchContent_MakeAvailable(tinyfiledialogs)
+
     add_library(tinyfiledialogs ${tinyfiledialogs_SOURCE_DIR}/tinyfiledialogs.c)
+
+    # REQUIRED to allow linking into shared libraries
+    set_target_properties(tinyfiledialogs PROPERTIES
+        POSITION_INDEPENDENT_CODE ON
+        ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
+        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
+    )
+
     target_include_directories(tinyfiledialogs
         PUBLIC
         $<BUILD_INTERFACE:${tinyfiledialogs_SOURCE_DIR}>
@@ -22,9 +32,9 @@ if(NOT tinyfiledialogs_POPULATED)
 
     install(TARGETS tinyfiledialogs
             EXPORT tinyfiledialogsTargets
-            LIBRARY DESTINATION ${INSTALL_LIB_DIR}
-            RUNTIME DESTINATION ${INSTALL_BIN_DIR}
-            ARCHIVE DESTINATION ${INSTALL_LIB_DIR}
+            ARCHIVE DESTINATION ${CMAKE_BINARY_DIR}/lib
+            LIBRARY DESTINATION ${CMAKE_BINARY_DIR}/lib
+            RUNTIME DESTINATION ${CMAKE_BINARY_DIR}/bin
             INCLUDES DESTINATION ${INSTALL_INCLUDE_DIR}
     )
 

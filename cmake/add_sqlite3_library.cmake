@@ -72,13 +72,16 @@ endif()
 # Build SQLite library (cipher-enabled, PIC-safe)
 # ----------------------------------------------------------------------------
 
-add_library(sqlite3 STATIC
+add_library(sqlite3
     "${SQLITE3_AMALGAMATION_C}"
 )
 
 # REQUIRED to allow linking into shared libraries
 set_target_properties(sqlite3 PROPERTIES
     POSITION_INDEPENDENT_CODE ON
+    ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
+    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
 )
 
 target_include_directories(sqlite3
@@ -115,11 +118,11 @@ endif()
 
 install(TARGETS sqlite3
     EXPORT databaseTargets
-    ARCHIVE DESTINATION lib
-    LIBRARY DESTINATION lib
-    RUNTIME DESTINATION bin
+    ARCHIVE DESTINATION ${CMAKE_BINARY_DIR}/lib
+    LIBRARY DESTINATION ${CMAKE_BINARY_DIR}/lib
+    RUNTIME DESTINATION ${CMAKE_BINARY_DIR}/bin
 )
-install(FILES "${SQLITE3_AMALGAMATION_H}" DESTINATION include)
+install(FILES "${SQLITE3_AMALGAMATION_H}" DESTINATION ${CMAKE_BINARY_DIR}/include)
 
 message(STATUS "SQLite3 Multiple Ciphers ${SQLITE_MC_VER} configured")
 message(STATUS "Target provided: sqlite3 (PIC enabled)")

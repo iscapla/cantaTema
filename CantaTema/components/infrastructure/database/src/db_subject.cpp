@@ -52,8 +52,8 @@ rst_code_e DB_Subject::add_new_subject(Subject &subject) const
         sqlite3_bind_null(stmt, 2);
     }
 
-    sqlite3_bind_text(stmt, 3, subject.get_name().c_str(), -1, SQLITE_STATIC);
-    sqlite3_bind_text(stmt, 4, subject.get_filepath().c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 3, subject.get_name().c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 4, subject.get_filepath().c_str(), -1, SQLITE_TRANSIENT);
 
     if (sqlite3_step(stmt) != SQLITE_DONE)
     {
@@ -90,8 +90,8 @@ rst_code_e DB_Subject::update_subject(const Subject &subject) const
         sqlite3_bind_null(stmt, 2);
     }
 
-    sqlite3_bind_text(stmt, 3, subject.get_name().c_str(), -1, SQLITE_STATIC);
-    sqlite3_bind_text(stmt, 4, subject.get_filepath().c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 3, subject.get_name().c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 4, subject.get_filepath().c_str(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_int(stmt, 5, subject.get_id());
 
     if (sqlite3_step(stmt) != SQLITE_DONE)

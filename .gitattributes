@@ -2,9 +2,10 @@
 * text=auto
 
 # Explicitly declare text files you want to always be normalized
-*.cpp text eol=crlf
-*.hpp text eol=crlf
-*.c   text eol=crlf
-*.h   text eol=crlf
-*.txt text eol=crlf
-*.md  text eol=crlf
+*.cpp       text eol=crlf
+*.hpp       text eol=crlf
+*.c         text eol=crlf
+*.h         text eol=crlf
+*.txt       text eol=crlf
+*.md        text eol=crlf
+*.cmake     text eol=crlf

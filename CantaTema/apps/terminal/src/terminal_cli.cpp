@@ -7,7 +7,8 @@
 #include <complex>
 
 #include <cli/standaloneasioscheduler.h>
-#include <cli/standaloneasioremotecli.h>
+// #include <cli/standaloneasioremotecli.h>
+#include <cli/clifilesession.h>
 #include <cli/cli.h>
 #include <cli/clilocalsession.h>
 #include <cli/filehistorystorage.h>
@@ -18,7 +19,7 @@
 #include "file_handler/file_handler.hpp"
 
 using MainScheduler = cli::StandaloneAsioScheduler;
-using CliTelnetServer = cli::StandaloneAsioCliTelnetServer;
+// using CliTelnetServer = cli::StandaloneAsioCliTelnetServer;
 
 static std::unique_ptr<TerminalSession> terminal_session;
 

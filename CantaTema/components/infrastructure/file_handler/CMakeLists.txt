@@ -12,3 +12,5 @@ create_infra_library(
     CORE::PRIMITIVES
     CORE::CONFIGURATION
 )
+
+add_subdirectory(test)

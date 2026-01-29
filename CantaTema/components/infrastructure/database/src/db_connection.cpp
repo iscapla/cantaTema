@@ -77,8 +77,7 @@ void DB_Connection::reset_connection() {
         instance = nullptr;
 
         // Construct the full path to the database file
-        const std::string data_folder = "data";
-        std::filesystem::path db_path = std::filesystem::path(data_folder) / "canta_tema.db";
+        std::filesystem::path db_path = ToolPath::get_path_for_database() / "data.db";
 
         // Delete the database file
         if (std::filesystem::exists(db_path)) {

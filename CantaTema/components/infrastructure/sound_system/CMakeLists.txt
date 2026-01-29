@@ -10,3 +10,5 @@ create_infra_library(
     INC_PRIVATE
     CORE::PRIMITIVES
 )
+
+add_subdirectory(test)

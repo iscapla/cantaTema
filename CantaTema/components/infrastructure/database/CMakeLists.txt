@@ -14,3 +14,5 @@ create_infra_library(
     sqlite3
     CORE::PRIMITIVES
 )
+
+add_subdirectory(test)

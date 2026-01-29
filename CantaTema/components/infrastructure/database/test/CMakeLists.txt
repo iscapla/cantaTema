@@ -1,0 +1,16 @@
+include(library_install_test)
+
+create_test_exec(
+    TARGET
+        "t_database"
+    SRCS
+        t_database_main.cxx
+        t_db_user.cxx
+        t_db_category.cxx
+        t_db_subject.cxx
+    INC_PRIVATE
+        sqlite3
+        CORE::PRIMITIVES
+        CORE::MOCK_TOOL_PATHS
+        INFRASTRUCTURE::DATABASE
+)

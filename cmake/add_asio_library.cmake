@@ -11,6 +11,14 @@ CPMAddPackage("gh:chriskohlhoff/asio#asio-1-36-0@1.36.0")
 
 add_library(asio INTERFACE)
 
+# REQUIRED to allow linking into shared libraries
+set_target_properties(asio PROPERTIES
+    POSITION_INDEPENDENT_CODE ON
+    ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
+    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
+)
+
 target_include_directories(asio SYSTEM INTERFACE  
     $<BUILD_INTERFACE:${asio_SOURCE_DIR}/asio/include>  
     $<INSTALL_INTERFACE:asio/include>
@@ -22,9 +30,9 @@ target_link_libraries(asio INTERFACE Threads::Threads)
 # install target
 install(TARGETS asio
         EXPORT asioTargets
-        LIBRARY DESTINATION ${INSTALL_LIB_DIR}
-        RUNTIME DESTINATION ${INSTALL_BIN_DIR}
-        ARCHIVE DESTINATION ${INSTALL_LIB_DIR}
+        ARCHIVE DESTINATION ${CMAKE_BINARY_DIR}/lib
+        LIBRARY DESTINATION ${CMAKE_BINARY_DIR}/lib
+        RUNTIME DESTINATION ${CMAKE_BINARY_DIR}/bin
         INCLUDES DESTINATION ${INSTALL_INCLUDE_DIR}
 )
 

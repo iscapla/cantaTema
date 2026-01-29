@@ -38,10 +38,23 @@ rst_code_e DB_Category::is_category_already_present(unsigned int user_id, const 
     }
 
     sqlite3_bind_int(stmt, 1, user_id);
-    sqlite3_bind_text(stmt, 2, name.c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 2, name.c_str(), -1, SQLITE_TRANSIENT);
 
     int rc = sqlite3_step(stmt);
-    exists = (rc == SQLITE_ROW);
+    if (rc == SQLITE_ROW)
+    {
+        exists = true;
+    }
+    else if (rc == SQLITE_DONE)
+    {
+        exists = false;
+    }
+    else
+    {
+        logger->error("Failed to execute statement: {}", sqlite3_errmsg(db.get()));
+        sqlite3_finalize(stmt);
+        return rst_code_e::DB_FAIL;
+    }
 
     sqlite3_finalize(stmt);
     return rst_code_e::RST_OK;
@@ -60,7 +73,7 @@ rst_code_e DB_Category::add_new_category(Category &category) const
     }
 
     sqlite3_bind_int(stmt, 1, category.get_user_id());
-    sqlite3_bind_text(stmt, 2, category.get_name().c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 2, category.get_name().c_str(), -1, SQLITE_TRANSIENT);
 
     if (sqlite3_step(stmt) != SQLITE_DONE)
     {
@@ -86,7 +99,7 @@ rst_code_e DB_Category::update_category(const Category &category) const
         return rst_code_e::DB_FAIL;
     }
 
-    sqlite3_bind_text(stmt, 1, category.get_name().c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 1, category.get_name().c_str(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_int(stmt, 2, category.get_user_id());
     sqlite3_bind_int(stmt, 3, category.get_id());
 

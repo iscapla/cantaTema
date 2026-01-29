@@ -2,18 +2,39 @@ include(library_install_infra)
 
 create_infra_library(
     TARGET
-    "primitives"
+    "tool_paths"
+    SRCS
+    src/tool_paths.cpp
+    INC_PUBLIC
+    INC_PRIVATE
+    SDL3::SDL3
+    CORE::LOGGER
+)
+
+create_infra_library(
+    TARGET
+    "logger"
     SRCS
     src/utils_logger.cpp
+    INC_PUBLIC
+    spdlog
+    INC_PRIVATE
+    CORE::TOOL_PATHS
+)
+
+create_infra_library(
+    TARGET
+    "primitives"
+    SRCS
     src/utils_thread_pool.cpp
     src/user.cpp
     src/subject.cpp
     src/category.cpp
-    src/tool_paths.cpp
     INC_PUBLIC
-    spdlog
+    CORE::LOGGER
     INC_PRIVATE
-    SDL3::SDL3
+    CORE::TOOL_PATHS
 )
 
+add_subdirectory(mocks)
 add_subdirectory(test)
