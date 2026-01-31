@@ -6,13 +6,14 @@
 
 class ISoundSystem {
 public:
-    struct Config {
+    // TODO: Load the values from the config file
+    struct SoundSystemConfig {
         int sampleRate = 48000;
         int channels = 1;
         int frameSize = 960; // 20ms at 48kHz
     };
 
-    struct DeviceInfo {
+    struct SoundSystemDeviceInfo {
         int index;
         std::string name;
         bool isDefault;
@@ -20,7 +21,7 @@ public:
 
     virtual ~ISoundSystem() = default;
 
-    virtual std::vector<DeviceInfo> getCaptureDevices() = 0;
+    virtual std::vector<SoundSystemDeviceInfo> getCaptureDevices() = 0;
     virtual bool startRecording(const std::string& filePath, int deviceIndex = -1) = 0;
     virtual void stopRecording() = 0;
     virtual bool isRecording() const = 0;

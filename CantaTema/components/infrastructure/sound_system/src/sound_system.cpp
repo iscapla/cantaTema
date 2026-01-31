@@ -4,7 +4,7 @@
 #include "sound_system/sound_system.hpp"
 
 
-SoundSystem::SoundSystem(const Config& config) 
+SoundSystem::SoundSystem(const SoundSystemConfig& config) 
     : m_config(config),
       m_contextInitialized(false), 
       m_isRecording(false), 
@@ -33,8 +33,8 @@ SoundSystem::~SoundSystem() {
     }
 }
 
-std::vector<SoundSystem::DeviceInfo> SoundSystem::getCaptureDevices() {
-    std::vector<DeviceInfo> devices;
+std::vector<SoundSystem::SoundSystemDeviceInfo> SoundSystem::getCaptureDevices() {
+    std::vector<SoundSystemDeviceInfo> devices;
     if (!m_contextInitialized) return devices;
 
     ma_device_info* pCaptureInfos;
@@ -78,7 +78,7 @@ bool SoundSystem::startRecording(const std::string& filePath, int deviceIndex) {
     if (!m_contextInitialized) return false;
     if (m_isRecording) stopRecording();
 
-    // 1. Configure Encoder (Opus)
+    // 1. SoundSystemConfigure Encoder (Opus)
     int error;
     m_opusEncoder = opus_encoder_create(m_config.sampleRate, m_config.channels, OPUS_APPLICATION_AUDIO, &error);
     if (error != OPUS_OK) {
@@ -108,16 +108,16 @@ bool SoundSystem::startRecording(const std::string& filePath, int deviceIndex) {
         }
     }
 
-    // 3. Configure Capture Device
-    ma_device_config deviceConfig = ma_device_config_init(ma_device_type_capture);
-    deviceConfig.capture.pDeviceID = pDeviceID;
-    deviceConfig.capture.format    = ma_format_f32;
-    deviceConfig.capture.channels  = m_config.channels;
-    deviceConfig.sampleRate        = m_config.sampleRate;
-    deviceConfig.dataCallback      = data_callback_record;
-    deviceConfig.pUserData         = this;
+    // 3. SoundSystemConfigure Capture Device
+    ma_device_config deviceSoundSystemConfig = ma_device_config_init(ma_device_type_capture);
+    deviceSoundSystemConfig.capture.pDeviceID = pDeviceID;
+    deviceSoundSystemConfig.capture.format    = ma_format_f32;
+    deviceSoundSystemConfig.capture.channels  = m_config.channels;
+    deviceSoundSystemConfig.sampleRate        = m_config.sampleRate;
+    deviceSoundSystemConfig.dataCallback      = data_callback_record;
+    deviceSoundSystemConfig.pUserData         = this;
 
-    if (ma_device_init(&m_context, &deviceConfig, &m_captureDevice) != MA_SUCCESS) {
+    if (ma_device_init(&m_context, &deviceSoundSystemConfig, &m_captureDevice) != MA_SUCCESS) {
         logger->error("[SoundSystem] Failed to initialize capture device.");
         opus_encoder_destroy(m_opusEncoder);
         m_opusEncoder = nullptr;
@@ -221,14 +221,14 @@ bool SoundSystem::play(const std::string& filePath) {
     m_opusDecoder = opus_decoder_create(m_config.sampleRate, m_config.channels, &error);
     m_playBuffer.clear();
 
-    ma_device_config deviceConfig = ma_device_config_init(ma_device_type_playback);
-    deviceConfig.playback.format   = ma_format_f32;
-    deviceConfig.playback.channels = m_config.channels;
-    deviceConfig.sampleRate        = m_config.sampleRate;
-    deviceConfig.dataCallback      = data_callback_play;
-    deviceConfig.pUserData         = this;
+    ma_device_config deviceSoundSystemConfig = ma_device_config_init(ma_device_type_playback);
+    deviceSoundSystemConfig.playback.format   = ma_format_f32;
+    deviceSoundSystemConfig.playback.channels = m_config.channels;
+    deviceSoundSystemConfig.sampleRate        = m_config.sampleRate;
+    deviceSoundSystemConfig.dataCallback      = data_callback_play;
+    deviceSoundSystemConfig.pUserData         = this;
 
-    if (ma_device_init(&m_context, &deviceConfig, &m_playbackDevice) != MA_SUCCESS) {
+    if (ma_device_init(&m_context, &deviceSoundSystemConfig, &m_playbackDevice) != MA_SUCCESS) {
         logger->error("[SoundSystem] Failed to open playback device.");
         opus_decoder_destroy(m_opusDecoder);
         m_opusDecoder = nullptr;

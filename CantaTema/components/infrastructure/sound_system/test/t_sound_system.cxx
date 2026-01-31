@@ -72,13 +72,13 @@ protected:
 
 TEST_F(SoundSystemTest, ConstructAndDestruct) {
     EXPECT_NO_THROW({
-        SoundSystem ss(ISoundSystem::Config{});
+        SoundSystem ss(ISoundSystem::SoundSystemConfig{});
     });
 }
 
 TEST_F(SoundSystemTest, GetCaptureDevices) {
-    SoundSystem ss(ISoundSystem::Config{});
-    std::vector<SoundSystem::DeviceInfo> devices;
+    SoundSystem ss(ISoundSystem::SoundSystemConfig{});
+    std::vector<SoundSystem::SoundSystemDeviceInfo> devices;
     EXPECT_NO_THROW({
         devices = ss.getCaptureDevices();
     });
@@ -89,7 +89,7 @@ TEST_F(SoundSystemTest, GetCaptureDevices) {
 }
 
 TEST_F(SoundSystemTest, PlaybackStateManagement) {
-    SoundSystem ss(ISoundSystem::Config{});
+    SoundSystem ss(ISoundSystem::SoundSystemConfig{});
     
     EXPECT_FALSE(ss.isPlaying());
     EXPECT_EQ(ss.get_playing_timestamp(), 0);
@@ -98,14 +98,14 @@ TEST_F(SoundSystemTest, PlaybackStateManagement) {
 }
 
 TEST_F(SoundSystemTest, PlayInvalidFile) {
-    SoundSystem ss(ISoundSystem::Config{});
+    SoundSystem ss(ISoundSystem::SoundSystemConfig{});
     bool result = ss.play("non_existent_random_file_12345.wav");
     EXPECT_FALSE(result);
     EXPECT_FALSE(ss.isPlaying());
 }
 
 TEST_F(SoundSystemTest, PlayValidFile) {
-    SoundSystem ss(ISoundSystem::Config{});
+    SoundSystem ss(ISoundSystem::SoundSystemConfig{});
     
     // Attempt to play the dummy file
     bool started = ss.play(kTestWavFile);
@@ -129,7 +129,7 @@ TEST_F(SoundSystemTest, PlayValidFile) {
 }
 
 TEST_F(SoundSystemTest, RecordingStateManagement) {
-    SoundSystem ss(ISoundSystem::Config{});
+    SoundSystem ss(ISoundSystem::SoundSystemConfig{});
     
     EXPECT_FALSE(ss.isRecording());
     EXPECT_EQ(ss.get_recording_timestamp(), 0);
@@ -138,7 +138,7 @@ TEST_F(SoundSystemTest, RecordingStateManagement) {
 }
 
 TEST_F(SoundSystemTest, RecordingFlow) {
-    SoundSystem ss(ISoundSystem::Config{});
+    SoundSystem ss(ISoundSystem::SoundSystemConfig{});
     
     auto devices = ss.getCaptureDevices();
     if (devices.empty()) {

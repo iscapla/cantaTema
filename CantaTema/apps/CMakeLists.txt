@@ -24,7 +24,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     CORE::CONFIGURATION
     CORE::PRIMITIVES
     APPS::TERMINAL
-    INFRASTRUCTURE::SOUND_SYSTEM
 )
 
 # install information

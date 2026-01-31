@@ -11,11 +11,12 @@
 
 class SoundSystem : public ISoundSystem {
 public:
+    // TODO: add encryption and its usage
     /**
      * @brief Constructor. Initializes the miniaudio context with the given configuration.
      * @param config The configuration settings for audio capture and playback.
      */
-    SoundSystem(const Config& config);
+    SoundSystem(const SoundSystemConfig& config);
 
     /**
      * @brief Destructor. Uninitializes devices and context.
@@ -25,9 +26,9 @@ public:
     /**
      * @brief Retrieves a list of available audio capture devices (microphones).
      * 
-     * @return std::vector<DeviceInfo> A vector containing information about each capture device.
+     * @return std::vector<SoundSystemDeviceInfo> A vector containing information about each capture device.
      */
-    std::vector<DeviceInfo> getCaptureDevices() override;
+    std::vector<SoundSystemDeviceInfo> getCaptureDevices() override;
 
     // Recording
     /**
@@ -87,7 +88,7 @@ public:
     unsigned long long get_playing_timestamp() override;
 
 private:
-    Config m_config;
+    SoundSystemConfig m_config;
     ma_context m_context;
     bool m_contextInitialized;
 

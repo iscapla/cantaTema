@@ -28,7 +28,7 @@ DB_Connection::DB_Connection() {
     }
 
     // Set the encryption key for the database
-    const char *encryption_key = "MySecretPassword";
+    const char *encryption_key = "MySecretPassword"; //TODO: Is there a way to hide this secret?
     rc = sqlite3_key(db, encryption_key, std::strlen(encryption_key));
     if (rc != SQLITE_OK) {
         logger->error("Error setting encryption key: {}", sqlite3_errmsg(db));
