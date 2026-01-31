@@ -4,9 +4,9 @@ create_infra_library(
     TARGET
     "operations"
     SRCS
-    src/Operation_User_Logic.cpp
-    src/Operation_Category_Logic.cpp
-    src/Operation_Subject_Logic.cpp
+    src/operation_user.cpp
+    src/operation_category.cpp
+    src/operation_subject.cpp
     INC_PUBLIC
     INC_PRIVATE
     CORE::PRIMITIVES

@@ -12,6 +12,8 @@ protected:
     const std::string kTestWavFile = "test_audio_sample.wav";
     const std::string kTestRecFile = "test_rec_output.wav";
 
+
+    
     void SetUp() override {
         // Create a minimal valid WAV file for playback testing
         create_dummy_wav(kTestWavFile);
@@ -70,12 +72,12 @@ protected:
 
 TEST_F(SoundSystemTest, ConstructAndDestruct) {
     EXPECT_NO_THROW({
-        SoundSystem ss;
+        SoundSystem ss(ISoundSystem::Config{});
     });
 }
 
 TEST_F(SoundSystemTest, GetCaptureDevices) {
-    SoundSystem ss;
+    SoundSystem ss(ISoundSystem::Config{});
     std::vector<SoundSystem::DeviceInfo> devices;
     EXPECT_NO_THROW({
         devices = ss.getCaptureDevices();
@@ -87,7 +89,7 @@ TEST_F(SoundSystemTest, GetCaptureDevices) {
 }
 
 TEST_F(SoundSystemTest, PlaybackStateManagement) {
-    SoundSystem ss;
+    SoundSystem ss(ISoundSystem::Config{});
     
     EXPECT_FALSE(ss.isPlaying());
     EXPECT_EQ(ss.get_playing_timestamp(), 0);
@@ -96,14 +98,14 @@ TEST_F(SoundSystemTest, PlaybackStateManagement) {
 }
 
 TEST_F(SoundSystemTest, PlayInvalidFile) {
-    SoundSystem ss;
+    SoundSystem ss(ISoundSystem::Config{});
     bool result = ss.play("non_existent_random_file_12345.wav");
     EXPECT_FALSE(result);
     EXPECT_FALSE(ss.isPlaying());
 }
 
 TEST_F(SoundSystemTest, PlayValidFile) {
-    SoundSystem ss;
+    SoundSystem ss(ISoundSystem::Config{});
     
     // Attempt to play the dummy file
     bool started = ss.play(kTestWavFile);
@@ -127,7 +129,7 @@ TEST_F(SoundSystemTest, PlayValidFile) {
 }
 
 TEST_F(SoundSystemTest, RecordingStateManagement) {
-    SoundSystem ss;
+    SoundSystem ss(ISoundSystem::Config{});
     
     EXPECT_FALSE(ss.isRecording());
     EXPECT_EQ(ss.get_recording_timestamp(), 0);
@@ -136,7 +138,7 @@ TEST_F(SoundSystemTest, RecordingStateManagement) {
 }
 
 TEST_F(SoundSystemTest, RecordingFlow) {
-    SoundSystem ss;
+    SoundSystem ss(ISoundSystem::Config{});
     
     auto devices = ss.getCaptureDevices();
     if (devices.empty()) {

@@ -2,16 +2,16 @@
 #ifndef __SESSION_HPP
 #define __SESSION_HPP
 
-#include "operations/IOperation_User.hpp"
-#include "operations/IOperation_Category.hpp"
-#include "operations/IOperation_Subject.hpp"
+#include "operations/i_operation_user.hpp"
+#include "operations/i_operation_category.hpp"
+#include "operations/i_operation_subject.hpp"
 
 
-class Session : public IOperation_User
+class Session : public IOperationUser
 {
 
 public:
-    Session(std::shared_ptr<IOperation_User> &&_user_op, std::shared_ptr<IOperation_Category> &&_category_op, std::shared_ptr<IOperation_Subject> &&_subject_op);
+    Session(std::shared_ptr<IOperationUser> &&_user_op, std::shared_ptr<IOperationCategory> &&_category_op, std::shared_ptr<IOperationSubject> &&_subject_op);
     Session(void);
     ~Session(void);
 
@@ -47,9 +47,9 @@ public:
     
 
 private:
-    std::shared_ptr<IOperation_User> user_op{nullptr};
-    std::shared_ptr<IOperation_Category> category_op{nullptr};
-    std::shared_ptr<IOperation_Subject> subject_op{nullptr};
+    std::shared_ptr<IOperationUser> user_op{nullptr};
+    std::shared_ptr<IOperationCategory> category_op{nullptr};
+    std::shared_ptr<IOperationSubject> subject_op{nullptr};
 
     //-------------------------------------------------------------------------------------
 

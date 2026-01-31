@@ -1,0 +1,34 @@
+#ifndef ISOUND_SYSTEM_HPP
+#define ISOUND_SYSTEM_HPP
+
+#include <string>
+#include <vector>
+
+class ISoundSystem {
+public:
+    struct Config {
+        int sampleRate = 48000;
+        int channels = 1;
+        int frameSize = 960; // 20ms at 48kHz
+    };
+
+    struct DeviceInfo {
+        int index;
+        std::string name;
+        bool isDefault;
+    };
+
+    virtual ~ISoundSystem() = default;
+
+    virtual std::vector<DeviceInfo> getCaptureDevices() = 0;
+    virtual bool startRecording(const std::string& filePath, int deviceIndex = -1) = 0;
+    virtual void stopRecording() = 0;
+    virtual bool isRecording() const = 0;
+    virtual unsigned long long get_recording_timestamp() = 0;
+    virtual bool play(const std::string& filePath) = 0;
+    virtual void stopPlaying() = 0;
+    virtual bool isPlaying() const = 0;
+    virtual unsigned long long get_playing_timestamp() = 0;
+};
+
+#endif // ISOUND_SYSTEM_HPP

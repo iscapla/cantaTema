@@ -4,17 +4,17 @@
 
 #include <string>
 
-#include "configuration/IConfigurationBase.hpp"
+#include "configuration/i_configuration_base.hpp"
 
-class Configuration_System : public IConfigurationBase {
+class ConfigurationSystem : public IConfigurationBase {
 public:
-    static Configuration_System& getInstance();
+    static ConfigurationSystem& getInstance();
 
     static const unsigned int MAX_EXTENSIONS_LENGTH = 20;
     static const unsigned int MAX_EXTENSIONS_COUNT = 5;
 
-    Configuration_System(const Configuration_System&) = delete;
-    Configuration_System& operator=(const Configuration_System&) = delete;
+    ConfigurationSystem(const ConfigurationSystem&) = delete;
+    ConfigurationSystem& operator=(const ConfigurationSystem&) = delete;
 
     /**
      * @brief Retrieves the allowed text file extensions from the configuration.
@@ -27,8 +27,8 @@ public:
     int get_text_files_extensions_allowed(char patterns[MAX_EXTENSIONS_COUNT][MAX_EXTENSIONS_LENGTH]) const;
 
 private:
-    Configuration_System();
-    ~Configuration_System();
+    ConfigurationSystem();
+    ~ConfigurationSystem();
 
     inline static const std::string config_file_name = "system.ini";
 

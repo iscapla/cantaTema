@@ -7,6 +7,7 @@ create_infra_library(
     src/sound_system.cpp
     INC_PUBLIC
     miniaudio
+    opus
     INC_PRIVATE
     CORE::PRIMITIVES
 )

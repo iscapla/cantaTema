@@ -4,8 +4,8 @@ create_infra_library(
     TARGET
     "configuration"
     SRCS
-    src/IConfigurationBase.cpp
-    src/Configuration_System.cpp
+    src/i_configuration_base.cpp
+    src/configuration_system.cpp
     INC_PUBLIC
     simpleini
     INC_PRIVATE

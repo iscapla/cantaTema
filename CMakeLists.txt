@@ -191,6 +191,21 @@ target_link_libraries(cli INTERFACE asio)
 include(add_sqlite3_library)
 
 ################################
+# opus
+################################
+
+FetchContent_Declare(
+    libopus
+    GIT_REPOSITORY https://github.com/xiph/opus.git
+    GIT_TAG        v1.5.2  # Use a specific version tag for stability
+)
+set(OPUS_BUILD_TESTING OFF CACHE BOOL "" FORCE)
+set(OPUS_BUILD_PROGRAMS OFF CACHE BOOL "" FORCE)
+set(OPUS_BUILD_SHARED_LIBRARY OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(libopus)
+
+
+################################
 # miniaudio
 ################################
 

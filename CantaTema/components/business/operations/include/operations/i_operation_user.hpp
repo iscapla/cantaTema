@@ -10,7 +10,7 @@
 #include "primitives/definitions.hpp"
 #include "primitives/user.hpp"
 
-class IOperation_User
+class IOperationUser
 {
 
 public:

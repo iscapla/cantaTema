@@ -1,18 +1,18 @@
-#include "operations/Operation_Category_Logic.hpp"
+#include "operations/operation_category.hpp"
 
 #include "database/db_main.hpp"
 #include "database/db_category.hpp"
 
-Operation_Category::Operation_Category()
+OperationCategory::OperationCategory()
 {
     DB_Main *db_main = DB_Main::getInstance();
 }
 
-Operation_Category::~Operation_Category()
+OperationCategory::~OperationCategory()
 {
 }
 
-rst_code_e Operation_Category::category_add(Category &category)
+rst_code_e OperationCategory::category_add(Category &category)
 {
     DB_Category db_category;
     rst_code_e rst;
@@ -42,7 +42,7 @@ rst_code_e Operation_Category::category_add(Category &category)
     return RST_OK;
 }
 
-rst_code_e Operation_Category::category_update(const Category &category)
+rst_code_e OperationCategory::category_update(const Category &category)
 {
     DB_Category db_category;
 
@@ -70,7 +70,7 @@ rst_code_e Operation_Category::category_update(const Category &category)
     return RST_OK;
 }
 
-rst_code_e Operation_Category::category_remove(unsigned int id)
+rst_code_e OperationCategory::category_remove(unsigned int id)
 {
     DB_Category db_category;
 
@@ -85,7 +85,7 @@ rst_code_e Operation_Category::category_remove(unsigned int id)
     return RST_OK;
 }
 
-rst_code_e Operation_Category::category_get_by_id(unsigned int id, std::shared_ptr<Category> &category)
+rst_code_e OperationCategory::category_get_by_id(unsigned int id, std::shared_ptr<Category> &category)
 {
     DB_Category db_category;
 
@@ -99,7 +99,7 @@ rst_code_e Operation_Category::category_get_by_id(unsigned int id, std::shared_p
     return RST_OK;
 }
 
-rst_code_e Operation_Category::category_get_all_by_user(unsigned int user_id, std::vector<std::shared_ptr<Category>> &categories)
+rst_code_e OperationCategory::category_get_all_by_user(unsigned int user_id, std::vector<std::shared_ptr<Category>> &categories)
 {
     DB_Category db_category;
 

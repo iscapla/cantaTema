@@ -1,4 +1,4 @@
-#include "configuration/IConfigurationBase.hpp"
+#include "configuration/i_configuration_base.hpp"
 #include <fstream>
 #include "primitives/utils_logger.hpp"
 

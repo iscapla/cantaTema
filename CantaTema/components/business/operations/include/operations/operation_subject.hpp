@@ -1,13 +1,13 @@
 #ifndef __OPERATION_SUBJECT_LOGIC_HPP
 #define __OPERATION_SUBJECT_LOGIC_HPP
 
-#include "operations/IOperation_Subject.hpp"
+#include "operations/i_operation_subject.hpp"
 
-class Operation_Subject : public IOperation_Subject
+class OperationSubject : public IOperationSubject
 {
 public:
-    Operation_Subject();
-    ~Operation_Subject();
+    OperationSubject();
+    ~OperationSubject();
 
     rst_code_e subject_add(const std::string source_file, Subject &subject) override;
 

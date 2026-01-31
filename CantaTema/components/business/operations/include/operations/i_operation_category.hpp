@@ -7,10 +7,10 @@
 #include "primitives/definitions.hpp"
 #include "primitives/category.hpp"
 
-class IOperation_Category
+class IOperationCategory
 {
 public:
-    virtual ~IOperation_Category() = default;
+    virtual ~IOperationCategory() = default;
 
     virtual rst_code_e category_add(Category &category) = 0;
 

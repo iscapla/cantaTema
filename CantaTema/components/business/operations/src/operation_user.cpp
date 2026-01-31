@@ -1,5 +1,5 @@
 
-#include "operations/Operation_User_Logic.hpp"
+#include "operations/operation_user.hpp"
 
 #include "database/db_main.hpp"
 #include "database/db_user.hpp"
@@ -8,16 +8,16 @@
 #include "file_handler/file_handler.hpp"
 #include "primitives/tool_paths.hpp"
 
-Operation_User::Operation_User() : local_user(nullptr)
+OperationUser::OperationUser() : local_user(nullptr)
 {
     DB_Main *db_main = DB_Main::getInstance();
 }
 
-Operation_User::~Operation_User()
+OperationUser::~OperationUser()
 {
 }
 
-rst_code_e Operation_User::user_add(const std::string &name, const std::string &password)
+rst_code_e OperationUser::user_add(const std::string &name, const std::string &password)
 {
 
     DB_User dbuser;
@@ -52,7 +52,7 @@ rst_code_e Operation_User::user_add(const std::string &name, const std::string &
     return RST_OK;
 }
 
-rst_code_e Operation_User::user_identify(const std::string &name, const std::string &password)
+rst_code_e OperationUser::user_identify(const std::string &name, const std::string &password)
 {
     rst_code_e rst;
 
@@ -77,7 +77,7 @@ rst_code_e Operation_User::user_identify(const std::string &name, const std::str
     }
 }
 
-rst_code_e Operation_User::user_get(std::shared_ptr<const User> &user)
+rst_code_e OperationUser::user_get(std::shared_ptr<const User> &user)
 {
     if (local_user)
     {
@@ -90,7 +90,7 @@ rst_code_e Operation_User::user_get(std::shared_ptr<const User> &user)
     }
 }
 
-rst_code_e Operation_User::user_get_by_name(std::string user_name, std::shared_ptr<const User> &user)
+rst_code_e OperationUser::user_get_by_name(std::string user_name, std::shared_ptr<const User> &user)
 {
 
     DB_User dbuser;
@@ -108,7 +108,7 @@ rst_code_e Operation_User::user_get_by_name(std::string user_name, std::shared_p
     return RST_OK;
 }
 
-rst_code_e Operation_User::user_update(std::shared_ptr<const User> &user)
+rst_code_e OperationUser::user_update(std::shared_ptr<const User> &user)
 {
     DB_User dbuser;
 
@@ -124,7 +124,7 @@ rst_code_e Operation_User::user_update(std::shared_ptr<const User> &user)
     return RST_OK;
 }
 
-bool Operation_User::user_is_authenticated(void)
+bool OperationUser::user_is_authenticated(void)
 {
 
     if (local_user)
@@ -135,7 +135,7 @@ bool Operation_User::user_is_authenticated(void)
     return false;
 }
 
-rst_code_e Operation_User::user_remove(void)
+rst_code_e OperationUser::user_remove(void)
 {
     DB_User dbuser;
     rst_code_e rst;

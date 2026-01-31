@@ -1,13 +1,13 @@
 
 #include "session/Session.hpp"
 
-#include "configuration/Configuration_System.hpp"
+#include "configuration/configuration_system.hpp"
 
-#include "operations/Operation_User_Logic.hpp"
-#include "operations/Operation_Category_Logic.hpp"
-#include "operations/Operation_Subject_Logic.hpp"
+#include "operations/operation_user.hpp"
+#include "operations/operation_category.hpp"
+#include "operations/operation_subject.hpp"
 
-Session::Session(std::shared_ptr<IOperation_User> &&_user_op, std::shared_ptr<IOperation_Category> &&_category_op, std::shared_ptr<IOperation_Subject> &&_subject_op) : user_op(std::move(_user_op)), category_op(std::move(_category_op)), subject_op(std::move(_subject_op))
+Session::Session(std::shared_ptr<IOperationUser> &&_user_op, std::shared_ptr<IOperationCategory> &&_category_op, std::shared_ptr<IOperationSubject> &&_subject_op) : user_op(std::move(_user_op)), category_op(std::move(_category_op)), subject_op(std::move(_subject_op))
 {
     if (user_op == nullptr || category_op == nullptr || subject_op == nullptr)
     {
@@ -19,9 +19,9 @@ Session::Session(std::shared_ptr<IOperation_User> &&_user_op, std::shared_ptr<IO
 Session::Session(void)
 {
 
-    user_op = std::make_shared<Operation_User>();
-    category_op = std::make_shared<Operation_Category>();
-    subject_op = std::make_shared<Operation_Subject>();
+    user_op = std::make_shared<OperationUser>();
+    category_op = std::make_shared<OperationCategory>();
+    subject_op = std::make_shared<OperationSubject>();
 
     if (user_op == nullptr || category_op == nullptr || subject_op == nullptr)
     {
@@ -37,7 +37,7 @@ Session::~Session(void)
 
 rst_code_e Session::initialize(void){
 
-    Configuration_System &config = Configuration_System::getInstance();
+    ConfigurationSystem &config = ConfigurationSystem::getInstance();
 
     session_user = nullptr;
     return RST_OK;

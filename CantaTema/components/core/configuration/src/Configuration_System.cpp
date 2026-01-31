@@ -6,14 +6,14 @@
 
 #include "primitives/tool_paths.hpp"
 #include "primitives/utils_logger.hpp"
-#include "configuration/Configuration_System.hpp"
+#include "configuration/configuration_system.hpp"
 
-Configuration_System& Configuration_System::getInstance() {
-    static Configuration_System instance;
+ConfigurationSystem& ConfigurationSystem::getInstance() {
+    static ConfigurationSystem instance;
     return instance;
 }
 
-Configuration_System::Configuration_System() : IConfigurationBase() {
+ConfigurationSystem::ConfigurationSystem() : IConfigurationBase() {
     std::filesystem::path db_path = ToolPath::get_path_for_system_config() / config_file_name;
     set_file_path(db_path);
     parse();
@@ -22,7 +22,7 @@ Configuration_System::Configuration_System() : IConfigurationBase() {
     update_values_to_file();
 }
 
-Configuration_System::~Configuration_System() {
+ConfigurationSystem::~ConfigurationSystem() {
 }
 
 /**
@@ -31,11 +31,11 @@ Configuration_System::~Configuration_System() {
  * @param patterns Array of character pointers to be populated with extension strings.
  * @return int The number of extensions actually retrieved and stored in patterns.
  */
-int Configuration_System::get_text_files_extensions_allowed(char patterns[MAX_EXTENSIONS_COUNT][MAX_EXTENSIONS_LENGTH]) const {
+int ConfigurationSystem::get_text_files_extensions_allowed(char patterns[MAX_EXTENSIONS_COUNT][MAX_EXTENSIONS_LENGTH]) const {
     const std::string section = "TEXT_FILES";
     const std::string key = "extensions_allowed";
 
-    std::string value = const_cast<Configuration_System*>(this)->get(section, key);
+    std::string value = const_cast<ConfigurationSystem*>(this)->get(section, key);
 
     if(patterns == nullptr){
         logger->error("Destination variable cannot be null.");

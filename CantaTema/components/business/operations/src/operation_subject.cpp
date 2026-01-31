@@ -3,21 +3,21 @@
 
 #include "primitives/tool_paths.hpp"
 #include "file_handler/text_handler.hpp"
-#include "operations/Operation_Subject_Logic.hpp"
+#include "operations/operation_subject.hpp"
 
 #include "database/db_main.hpp"
 #include "database/db_subject.hpp"
 
-Operation_Subject::Operation_Subject()
+OperationSubject::OperationSubject()
 {
     DB_Main *db_main = DB_Main::getInstance();
 }
 
-Operation_Subject::~Operation_Subject()
+OperationSubject::~OperationSubject()
 {
 }
 
-rst_code_e Operation_Subject::subject_add(const std::string source_file, Subject &subject)
+rst_code_e OperationSubject::subject_add(const std::string source_file, Subject &subject)
 {
     DB_Subject db_subject;
     
@@ -72,7 +72,7 @@ rst_code_e Operation_Subject::subject_add(const std::string source_file, Subject
     return RST_OK;
 }
 
-rst_code_e Operation_Subject::subject_update(const Subject &subject)
+rst_code_e OperationSubject::subject_update(const Subject &subject)
 {
     DB_Subject db_subject;
 
@@ -100,7 +100,7 @@ rst_code_e Operation_Subject::subject_update(const Subject &subject)
     return RST_OK;
 }
 
-rst_code_e Operation_Subject::subject_remove(unsigned int id)
+rst_code_e OperationSubject::subject_remove(unsigned int id)
 {
     DB_Subject db_subject;
     FileHandler file_handler;
@@ -133,7 +133,7 @@ rst_code_e Operation_Subject::subject_remove(unsigned int id)
     return RST_OK;
 }
 
-rst_code_e Operation_Subject::subject_get_by_id(unsigned int id, std::shared_ptr<Subject> &subject)
+rst_code_e OperationSubject::subject_get_by_id(unsigned int id, std::shared_ptr<Subject> &subject)
 {
     DB_Subject db_subject;
 
@@ -147,7 +147,7 @@ rst_code_e Operation_Subject::subject_get_by_id(unsigned int id, std::shared_ptr
     return RST_OK;
 }
 
-rst_code_e Operation_Subject::subject_get_all_by_category(unsigned int category_id, std::vector<std::shared_ptr<Subject>> &subjects)
+rst_code_e OperationSubject::subject_get_all_by_category(unsigned int category_id, std::vector<std::shared_ptr<Subject>> &subjects)
 {
     DB_Subject db_subject;
 
@@ -162,7 +162,7 @@ rst_code_e Operation_Subject::subject_get_all_by_category(unsigned int category_
     return RST_OK;
 }
 
-rst_code_e Operation_Subject::subject_get_all_by_user(unsigned int user_id, std::vector<std::shared_ptr<Subject>> &subjects)
+rst_code_e OperationSubject::subject_get_all_by_user(unsigned int user_id, std::vector<std::shared_ptr<Subject>> &subjects)
 {
     DB_Subject db_subject;
 

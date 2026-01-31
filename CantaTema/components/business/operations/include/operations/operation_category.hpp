@@ -1,14 +1,14 @@
 #ifndef __OPERATION_CATEGORY_LOGIC_HPP
 #define __OPERATION_CATEGORY_LOGIC_HPP
 
-#include "operations/IOperation_Category.hpp"
+#include "operations/i_operation_category.hpp"
 
-class Operation_Category : public IOperation_Category
+class OperationCategory : public IOperationCategory
 {
 public:
     // Default constructor
-    Operation_Category();
-    ~Operation_Category();
+    OperationCategory();
+    ~OperationCategory();
 
     rst_code_e category_add(Category &category) override;
 

@@ -3,15 +3,15 @@
 
 #include "tinyfiledialogs.h"
 
-#include "configuration/Configuration_System.hpp"
+#include "configuration/configuration_system.hpp"
 #include "primitives/utils_logger.hpp"
 #include "file_handler/file_handler.hpp"
 
 rst_code_e FileHandler::get_file_path_from_user_selection(std::string &file_path)
 {
-    Configuration_System &config = Configuration_System::getInstance();
+    ConfigurationSystem &config = ConfigurationSystem::getInstance();
 
-    char extensions_buffer[Configuration_System::MAX_EXTENSIONS_COUNT][Configuration_System::MAX_EXTENSIONS_LENGTH] = {};
+    char extensions_buffer[ConfigurationSystem::MAX_EXTENSIONS_COUNT][ConfigurationSystem::MAX_EXTENSIONS_LENGTH] = {};
     int count = config.get_text_files_extensions_allowed(extensions_buffer);
     if (count == 0)
     {
@@ -25,7 +25,7 @@ rst_code_e FileHandler::get_file_path_from_user_selection(std::string &file_path
     }
 
     // Create an array of pointers to pass to tinyfd
-    const char *lFilterPatterns[Configuration_System::MAX_EXTENSIONS_COUNT];
+    const char *lFilterPatterns[ConfigurationSystem::MAX_EXTENSIONS_COUNT];
     for (int i = 0; i < count; i++)
     {
         lFilterPatterns[i] = extensions_buffer[i];

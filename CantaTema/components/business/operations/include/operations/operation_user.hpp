@@ -2,14 +2,14 @@
 #ifndef __OPERATION_USER_LOGIC_HPP
 #define __OPERATION_USER_LOGIC_HPP
 
-#include "operations/IOperation_User.hpp"
+#include "operations/i_operation_user.hpp"
 
-class Operation_User : public IOperation_User
+class OperationUser : public IOperationUser
 {
 public:
     // Default constructor
-    Operation_User();
-    ~Operation_User();
+    OperationUser();
+    ~OperationUser();
 
     rst_code_e user_add(const std::string &name, const std::string &password);
 

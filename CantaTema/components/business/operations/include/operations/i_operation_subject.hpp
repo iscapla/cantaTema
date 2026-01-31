@@ -8,10 +8,10 @@
 #include "primitives/definitions.hpp"
 #include "primitives/subject.hpp"
 
-class IOperation_Subject
+class IOperationSubject
 {
 public:
-    virtual ~IOperation_Subject() = default;
+    virtual ~IOperationSubject() = default;
 
     virtual rst_code_e subject_add(const std::string source_file, Subject &subject) = 0;
 
