@@ -11,10 +11,8 @@ public:
     TextFileHandler(const std::string &file_path);
     ~TextFileHandler(void);
 
-    rst_code_e upload_file(const std::string &destination);
+    rst_code_e upload_file(const std::string &destination, unsigned int &uploaded_bytes) override;
 
-private:
-    std::string file_path;
 };
 
 #endif // TEXT_FILE_HANDLER_HPP

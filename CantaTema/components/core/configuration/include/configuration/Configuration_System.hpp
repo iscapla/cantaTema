@@ -26,6 +26,21 @@ public:
      */
     int get_text_files_extensions_allowed(char patterns[MAX_EXTENSIONS_COUNT][MAX_EXTENSIONS_LENGTH]) const;
 
+    /**
+     * @brief Retrieves the default maximum text file size allowed for a user in Megabytes.
+     * 
+     * @return unsigned int The maximum file size in MB.
+     */
+    unsigned int get_user_default_max_text_file_size_in_mb(void) const;
+
+    /**
+     * @brief Retrieves the total usage limit allowed for a user in Megabytes.
+     * 
+     * @return unsigned int The usage limit in MB.
+     */
+    unsigned int get_user_usage_limit_in_mb(void) const;
+
+
 private:
     ConfigurationSystem();
     ~ConfigurationSystem();

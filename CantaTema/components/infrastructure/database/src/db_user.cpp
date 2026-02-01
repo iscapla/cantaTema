@@ -42,7 +42,8 @@ rst_code_e DB_User::user_tables_create(void) const
         "recoveryemail TEXT DEFAULT null,"
         "firstname TEXT NOT NULL DEFAULT '',"
         "lastname TEXT NOT NULL DEFAULT '',"
-        "roleid INTEGER NOT NULL"
+        "roleid INTEGER NOT NULL,"
+        "max_space_size_in_kb INTEGER DEFAULT 0"
         ");";
 
     char *zErrMsg = nullptr;
@@ -104,8 +105,8 @@ rst_code_e DB_User::update_user(User &user) const
     try
     {
         // Use SQLite UPSERT syntax
-        const char *sql = "INSERT INTO useraccount (name, passwordkey, passwordsalt, resettoken, resetexpiration, status, creationdate, locknotes, workemail, recoveryemail, firstname, lastname, roleid) "
-                          "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
+        const char *sql = "INSERT INTO useraccount (name, passwordkey, passwordsalt, resettoken, resetexpiration, status, creationdate, locknotes, workemail, recoveryemail, firstname, lastname, roleid, max_space_size_in_kb) "
+                          "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
                           "ON CONFLICT (name) DO UPDATE SET "
                           "passwordkey = excluded.passwordkey, "
                           "passwordsalt = excluded.passwordsalt, "
@@ -118,7 +119,8 @@ rst_code_e DB_User::update_user(User &user) const
                           "recoveryemail = excluded.recoveryemail, "
                           "firstname = excluded.firstname, "
                           "lastname = excluded.lastname, "
-                          "roleid = excluded.roleid "
+                          "roleid = excluded.roleid, "
+                          "max_space_size_in_kb = excluded.max_space_size_in_kb "
                           "RETURNING useraccountid;";
 
         if (sqlite3_prepare_v2(db.get(), sql, -1, &stmt, nullptr) != SQLITE_OK) {
@@ -145,6 +147,7 @@ rst_code_e DB_User::update_user(User &user) const
         sqlite3_bind_text(stmt, idx++, user.get_firstname().c_str(), -1, SQLITE_TRANSIENT);
         sqlite3_bind_text(stmt, idx++, user.get_lastname().c_str(), -1, SQLITE_TRANSIENT);
         sqlite3_bind_int(stmt, idx++, user.get_roleid());
+        sqlite3_bind_int(stmt, idx++, user.get_max_space_size_in_kb());
 
         int rc = sqlite3_step(stmt);
         if (rc == SQLITE_ROW) {
@@ -263,6 +266,7 @@ void DB_User_set_user_data_from_db(sqlite3_stmt *stmt, User &user)
     user.set_firstname(get_col_text(11));
     user.set_lastname(get_col_text(12));
     user.set_roleid(sqlite3_column_int(stmt, 13));
+    user.set_max_space_size_in_kb(sqlite3_column_int(stmt, 14));
 }
 
 rst_code_e DB_User::get_user(User &user) const

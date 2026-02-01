@@ -5,13 +5,19 @@
 #include "operations/i_operation_user.hpp"
 #include "operations/i_operation_category.hpp"
 #include "operations/i_operation_subject.hpp"
+#include "operations/i_operation_user_metrics.hpp"
 
 
 class Session : public IOperationUser
 {
 
 public:
-    Session(std::shared_ptr<IOperationUser> &&_user_op, std::shared_ptr<IOperationCategory> &&_category_op, std::shared_ptr<IOperationSubject> &&_subject_op);
+    Session(
+        std::shared_ptr<IOperationUser> &&_user_op,
+        std::shared_ptr<IOperationCategory> &&_category_op,
+        std::shared_ptr<IOperationSubject> &&_subject_op,
+        std::shared_ptr<IOperationUserMetrics> &&_user_metrics_op
+    );
     Session(void);
     ~Session(void);
 
@@ -44,12 +50,17 @@ public:
 
     //-------------------------------------------------------------------------------------
 
+    rst_code_e user_metrics_get(std::shared_ptr<const UserMetrics> &user_metrics);
+
+    //-------------------------------------------------------------------------------------
+
     
 
 private:
     std::shared_ptr<IOperationUser> user_op{nullptr};
     std::shared_ptr<IOperationCategory> category_op{nullptr};
     std::shared_ptr<IOperationSubject> subject_op{nullptr};
+    std::shared_ptr<IOperationUserMetrics> user_metrics_op{nullptr};
 
     //-------------------------------------------------------------------------------------
 

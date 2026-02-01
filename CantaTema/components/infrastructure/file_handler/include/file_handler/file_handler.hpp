@@ -17,27 +17,35 @@ protected:
     // Common utility for child classes to validate paths
     bool IsPathValid(const std::string& path) const;
 
+    // Maximum allowed file size in bytes
+    std::uintmax_t max_file_size_in_bytes;
+
+private:
+
+    // File that we want to manage
+    std::string file_path;
+
 public:
+    FileHandler(void);
+    FileHandler(const std::string file_path, const std::uintmax_t max_file_size_in_bytes);
     virtual ~FileHandler() = default;
 
     /**
      * @brief Opens an OS selection window to select a file.
      * 
-     * @param file_path Reference to string where the selected path will be stored.
+     * @param obtained_file_path Reference to string where the selected path will be stored.
      * @return rst_code_e RST_OK if successful, error code otherwise.
      */
-    static rst_code_e get_file_path_from_user_selection(std::string &file_path);
+    static rst_code_e get_file_path_from_user_selection(std::string &obtained_file_path);
 
     /**
      * Reads a file in chunks and passes each chunk to the provided callback.
      * Use this to "send" files to a network or an encryption engine.
      * 
-     * @param sourcePath The path to the source file to read.
      * @param chunkCallback A callback function that receives each data chunk.
      * @return bool True if the operation completed successfully, false otherwise.
      */
-    virtual rst_code_e read_and_stream(const std::string& sourcePath, 
-                               std::function<rst_code_e(const std::vector<char>&)> chunkCallback);
+    virtual rst_code_e read_and_stream(std::function<rst_code_e(const std::vector<char>&)> chunkCallback);
 
     /**
      * Saves a single chunk of data to a file.
@@ -58,7 +66,7 @@ public:
      * @param file_path The path to the file to remove.
      * @return rst_code_e RST_OK if successful, FILE_NOT_FOUND if file doesn't exist, or error code.
      */
-    virtual rst_code_e remove_file(const std::string file_path);
+    virtual rst_code_e remove_file(void);
 
     /**
      * @brief Removes a folder from the filesystem and all of its content
@@ -72,9 +80,25 @@ public:
      * @brief Uploads the audio file to the specified destination.
      * 
      * @param destination The path where the file should be uploaded/saved.
+     * @param uploaded_bytes Total size of bytes saved
      * @return rst_code_e RST_OK if successful, error code otherwise.
      */
-    virtual rst_code_e upload_file(const std::string &destination);
+    virtual rst_code_e upload_file(const std::string &destination, unsigned int &uploaded_bytes);
+
+    /**
+     * @brief Checks if the internal file path points to an existing valid file.
+     * 
+     * @return true if file exists and is a regular file, false otherwise.
+     */
+    bool is_file_path_valid(void) const;
+
+    /**
+     * @brief Gets the size of the file in bytes.
+     * 
+     * @return std::uintmax_t Size of the file. Returns 0 if file doesn't exist or on error.
+     */
+    std::uintmax_t get_file_size_in_bytes(void) const;
+
 };
 
 #endif // FILE_HANDLER_HPP

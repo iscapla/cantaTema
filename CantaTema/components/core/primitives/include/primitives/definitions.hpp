@@ -40,6 +40,10 @@ enum rst_code_e
     USER_NO_AUTH,    // User not authorized
     USER_DUPLICATED, // User is already present on the database
 
+    USER_METRICS_ERROR, // User metrics general error
+    USER_METRICS_NOT_FOUND, // User metrics not found
+    USER_METRICS_NOT_ENOUGH_SPACE, // User metrics not enough space
+
     CATEGORY_ERROR,      // Category general error
     CATEGORY_NOT_FOUND,  // Category not found
     CATEGORY_DUPLICATED, // Category already exists
@@ -103,6 +107,16 @@ inline const std::string get_rst_txt(const rst_code_e &rst)
         break;
     case USER_DUPLICATED:
         txt = "USER_DUPLICATED";
+        break;
+    
+    case USER_METRICS_ERROR:
+        txt = "USER_METRICS_ERROR";
+        break;
+    case USER_METRICS_NOT_FOUND:
+        txt = "USER_METRICS_NOT_FOUND";
+        break;
+    case USER_METRICS_NOT_ENOUGH_SPACE:
+        txt = "USER_METRICS_NOT_ENOUGH_SPACE";
         break;
 
     case CATEGORY_ERROR:

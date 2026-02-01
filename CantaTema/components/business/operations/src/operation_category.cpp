@@ -12,11 +12,18 @@ OperationCategory::~OperationCategory()
 {
 }
 
-rst_code_e OperationCategory::category_add(Category &category)
+rst_code_e OperationCategory::category_add(const std::shared_ptr<const User> &user, Category &category)
 {
     DB_Category db_category;
     rst_code_e rst;
     bool already_exists = false;
+
+    if(user == nullptr || user->get_useraccountid() == 0){
+        logger->error("User info error");
+        return CATEGORY_ERROR;
+    }
+
+    category.set_user_id(user->get_useraccountid());
 
     rst = db_category.is_category_already_present(category.get_user_id(), category.get_name(), already_exists);
     if (rst)
@@ -42,12 +49,19 @@ rst_code_e OperationCategory::category_add(Category &category)
     return RST_OK;
 }
 
-rst_code_e OperationCategory::category_update(const Category &category)
+rst_code_e OperationCategory::category_update(const std::shared_ptr<const User> &user, Category &category)
 {
     DB_Category db_category;
 
+    if(user == nullptr || user->get_useraccountid() == 0){
+        logger->error("User info error");
+        return CATEGORY_ERROR;
+    }
+
+    category.set_user_id(user->get_useraccountid());
+
     std::vector<std::shared_ptr<Category>> categories;
-    rst_code_e rst = category_get_all_by_user(category.get_user_id(), categories);
+    rst_code_e rst = category_get_all_by_user(user, categories);
     if (rst != RST_OK)
         return rst;
 
@@ -99,11 +113,16 @@ rst_code_e OperationCategory::category_get_by_id(unsigned int id, std::shared_pt
     return RST_OK;
 }
 
-rst_code_e OperationCategory::category_get_all_by_user(unsigned int user_id, std::vector<std::shared_ptr<Category>> &categories)
+rst_code_e OperationCategory::category_get_all_by_user(const std::shared_ptr<const User> &user, std::vector<std::shared_ptr<Category>> &categories)
 {
     DB_Category db_category;
 
-    rst_code_e rst = db_category.get_all_categories_by_user(user_id, categories);
+    if(user == nullptr || user->get_useraccountid() == 0){
+        logger->error("User info error");
+        return CATEGORY_ERROR;
+    }
+
+    rst_code_e rst = db_category.get_all_categories_by_user(user->get_useraccountid(), categories);
 
     if (rst)
     {

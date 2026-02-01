@@ -7,7 +7,17 @@
 #include "primitives/utils_logger.hpp"
 #include "file_handler/file_handler.hpp"
 
-rst_code_e FileHandler::get_file_path_from_user_selection(std::string &file_path)
+FileHandler::FileHandler(void) :
+    file_path(std::string()), max_file_size_in_bytes(0)
+{
+}
+
+FileHandler::FileHandler(const std::string file_path, const std::uintmax_t max_file_size_in_bytes) :
+    file_path(file_path), max_file_size_in_bytes(max_file_size_in_bytes)
+{
+}
+
+rst_code_e FileHandler::get_file_path_from_user_selection(std::string &obtained_file_path)
 {
     ConfigurationSystem &config = ConfigurationSystem::getInstance();
 
@@ -41,8 +51,8 @@ rst_code_e FileHandler::get_file_path_from_user_selection(std::string &file_path
 
     if (selection)
     {
-        file_path = std::string(selection);
-        logger->info("Selected: {}", file_path);
+        obtained_file_path = std::string(selection);
+        logger->info("Selected: {}", obtained_file_path);
         return RST_OK;
     }
 
@@ -54,23 +64,27 @@ bool FileHandler::IsPathValid(const std::string& path) const {
     return !path.empty() && std::filesystem::exists(std::filesystem::path(path).parent_path());
 }
 
-rst_code_e FileHandler::read_and_stream(const std::string& sourcePath, 
-                                 std::function<rst_code_e(const std::vector<char>&)> chunkCallback) {
+rst_code_e FileHandler::read_and_stream(std::function<rst_code_e(const std::vector<char>&)> chunkCallback) {
 
-    if (!std::filesystem::is_regular_file(sourcePath)) {
-        logger->error("Error: {} is not a regular file.", sourcePath);
+    if(file_path.empty()){
+        logger->error("File path is empty");
         return FILE_NOT_FOUND;
     }
 
-    if ((std::filesystem::status(sourcePath).permissions() & std::filesystem::perms::owner_read) == std::filesystem::perms::none) {
-        logger->error("Error: Missing read permissions for {}.", sourcePath);
+    if (!std::filesystem::is_regular_file(file_path)) {
+        logger->error("Error: {} is not a regular file.", file_path);
+        return FILE_NOT_FOUND;
+    }
+
+    if ((std::filesystem::status(file_path).permissions() & std::filesystem::perms::owner_read) == std::filesystem::perms::none) {
+        logger->error("Error: Missing read permissions for {}.", file_path);
         return FILE_READ_ERROR;
     }
 
-    std::ifstream inFile(sourcePath, std::ios::binary);
+    std::ifstream inFile(file_path, std::ios::binary);
     
     if (!inFile.is_open()) {
-        logger->error("Error: Cannot open {} for reading.", sourcePath);
+        logger->error("Error: Cannot open {} for reading.", file_path);
         return FILE_READ_ERROR;
     }
 
@@ -103,7 +117,9 @@ rst_code_e FileHandler::read_and_stream(const std::string& sourcePath,
 
 rst_code_e FileHandler::save_chunk(const std::string& destPath, 
                             const std::vector<char>& data, 
-                            bool isFirstChunk) {
+                            bool isFirstChunk)
+{
+
     // If it's the first chunk, we truncate (overwrite). Otherwise, we append.
     std::ios_base::openmode mode = std::ios::binary;
     if (isFirstChunk) {
@@ -134,8 +150,14 @@ rst_code_e FileHandler::save_chunk(const std::string& destPath,
     return outFile.good() ? RST_OK : FILE_UPLOAD_ERROR;
 }
 
-rst_code_e FileHandler::remove_file(const std::string file_path) {
+rst_code_e FileHandler::remove_file(void) {
     std::error_code ec;
+
+    if(file_path.empty()){
+        logger->error("File path is empty");
+        return FILE_NOT_FOUND;
+    }
+
     if (!std::filesystem::exists(file_path)) {
         logger->warn("File not found for deletion: {}", file_path);
         return RST_OK;
@@ -170,7 +192,24 @@ rst_code_e FileHandler::remove_folder(const std::string folder_path){
     return RST_OK;
 }
 
-rst_code_e FileHandler::upload_file(const std::string &destination) {
+rst_code_e FileHandler::upload_file(const std::string &destination, unsigned int &uploaded_bytes) {
     logger->error("Not implemented yet.");
     return UNKNOWN;
+}
+
+bool FileHandler::is_file_path_valid(void) const {
+    if (file_path.empty()) return false;
+    // Check if it exists and is not a directory
+    return std::filesystem::exists(file_path) && std::filesystem::is_regular_file(file_path);
+}
+
+std::uintmax_t FileHandler::get_file_size_in_bytes(void) const {
+    if (!is_file_path_valid()) return 0;
+    std::error_code ec;
+    std::uintmax_t size = std::filesystem::file_size(file_path, ec);
+    if (ec) {
+        logger->error("Error getting file size for {}: {}", file_path, ec.message());
+        return 0;
+    }
+    return size;
 }

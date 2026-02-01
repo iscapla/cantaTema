@@ -227,3 +227,15 @@ void TerminalSession::subject_get_by_user(std::ostream &out)
         }
     }
 }
+
+void TerminalSession::user_metrics_get(std::ostream &out)
+{
+    std::shared_ptr<const UserMetrics> user_metrics;
+    rst_code_e rst = op->user_metrics_get(user_metrics);
+    if (rst)
+    {
+        logger->error("Operation error: {}", get_rst_txt(rst));
+    }else{
+        user_metrics->print();
+    }
+}

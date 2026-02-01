@@ -9,6 +9,7 @@ create_infra_library(
     src/db_main.cpp
     src/db_subject.cpp
     src/db_user.cpp
+    src/db_user_metrics.cpp
     INC_PUBLIC
     INC_PRIVATE
     sqlite3

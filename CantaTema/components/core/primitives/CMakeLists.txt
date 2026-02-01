@@ -28,6 +28,7 @@ create_infra_library(
     SRCS
     src/utils_thread_pool.cpp
     src/user.cpp
+    src/user_metrics.cpp
     src/subject.cpp
     src/category.cpp
     INC_PUBLIC

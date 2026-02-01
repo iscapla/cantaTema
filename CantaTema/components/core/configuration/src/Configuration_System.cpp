@@ -19,6 +19,8 @@ ConfigurationSystem::ConfigurationSystem() : IConfigurationBase() {
     parse();
 
     set_default_if_not_present("TEXT_FILES", "extensions_allowed", "*.txt\n*.pdf");
+    set_default_if_not_present("USER_LIMITS", "max_text_file_size_mb", "50");
+    set_default_if_not_present("USER_LIMITS", "usage_limit_mb", "512");
     update_values_to_file();
 }
 
@@ -62,4 +64,22 @@ int ConfigurationSystem::get_text_files_extensions_allowed(char patterns[MAX_EXT
         count++;
     }
     return count;
+}
+
+unsigned int ConfigurationSystem::get_user_default_max_text_file_size_in_mb(void) const {
+    std::string value = const_cast<ConfigurationSystem*>(this)->get("USER_LIMITS", "max_text_file_size_mb");
+    try {
+        return std::stoul(value);
+    } catch (...) {
+        return 50; // Default fallback
+    }
+}
+
+unsigned int ConfigurationSystem::get_user_usage_limit_in_mb(void) const {
+    std::string value = const_cast<ConfigurationSystem*>(this)->get("USER_LIMITS", "usage_limit_mb");
+    try {
+        return std::stoul(value);
+    } catch (...) {
+        return 128; // Default fallback
+    }
 }

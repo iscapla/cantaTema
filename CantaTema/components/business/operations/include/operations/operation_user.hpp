@@ -3,12 +3,13 @@
 #define __OPERATION_USER_LOGIC_HPP
 
 #include "operations/i_operation_user.hpp"
+#include "operations/i_operation_user_metrics.hpp"
 
 class OperationUser : public IOperationUser
 {
 public:
     // Default constructor
-    OperationUser();
+    OperationUser(std::shared_ptr<IOperationUserMetrics> &&_user_metrics_op);
     ~OperationUser();
 
     rst_code_e user_add(const std::string &name, const std::string &password);
@@ -25,6 +26,7 @@ public:
     rst_code_e user_identify(const std::string &name, const std::string &password);
 
 private:
+    std::shared_ptr<IOperationUserMetrics> user_metrics_op{nullptr};
     std::shared_ptr<const User> local_user;
 };
 

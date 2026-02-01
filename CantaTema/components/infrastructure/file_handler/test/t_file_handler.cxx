@@ -13,6 +13,7 @@ namespace fs = std::filesystem;
 class TestableFileHandler : public FileHandler {
 public:
     using FileHandler::IsPathValid;
+    using FileHandler::FileHandler;
 };
 
 class FileHandlerTest : public ::testing::Test {
@@ -85,13 +86,14 @@ TEST_F(FileHandlerTest, ReadAndStreamReadsCorrectly) {
         ofs.write(original_data.data(), original_data.size());
     }
 
+    TestableFileHandler read_handler(file_path.string(), 0);
     std::vector<char> read_data;
     auto callback = [&](const std::vector<char>& chunk) -> rst_code_e {
         read_data.insert(read_data.end(), chunk.begin(), chunk.end());
         return RST_OK;
     };
 
-    rst_code_e result = handler.read_and_stream(file_path.string(), callback);
+    rst_code_e result = read_handler.read_and_stream(callback);
 
     EXPECT_EQ(result, RST_OK);
     EXPECT_EQ(read_data, original_data);
@@ -105,7 +107,8 @@ TEST_F(FileHandlerTest, RemoveFileDeletesFile) {
     }
     ASSERT_TRUE(fs::exists(file_path));
 
-    rst_code_e result = handler.remove_file(file_path.string());
+    TestableFileHandler remove_handler(file_path.string(), 0);
+    rst_code_e result = remove_handler.remove_file();
     
     EXPECT_EQ(result, RST_OK);
     EXPECT_FALSE(fs::exists(file_path));

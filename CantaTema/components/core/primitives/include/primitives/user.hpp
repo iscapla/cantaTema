@@ -1,5 +1,5 @@
-#ifndef __STOCK_USER_HPP
-#define __STOCK_USER_HPP
+#ifndef __USER_HPP
+#define __USER_HPP
 
 #include <string>
 
@@ -55,6 +55,8 @@ public:
     void set_lastname(std::string new_lastname);
     unsigned int get_roleid(void) const;
     void set_roleid(unsigned int new_roleid);
+    unsigned int get_max_space_size_in_kb(void) const;
+    void set_max_space_size_in_kb(unsigned int new_max_space_size_in_kb);
 
     User::Account_status parse_status_to_type(std::string &status) const;
     std::string parse_status_to_string(User::Account_status status) const;
@@ -78,6 +80,7 @@ private:
     std::string firstname;
     std::string lastname;
     unsigned int roleid;
+    unsigned int max_space_size_in_kb;
 };
 
-#endif //__STOCK_USER_HPP
+#endif //__USER_HPP

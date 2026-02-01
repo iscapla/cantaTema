@@ -40,7 +40,8 @@ TEST_F(TextHandlerTest, UploadFileCopiesContent) {
 
     TextFileHandler handler(source_path.string());
     
-    rst_code_e result = handler.upload_file(dest_path.string());
+    unsigned int uploaded_bytes;
+    rst_code_e result = handler.upload_file(dest_path.string(), uploaded_bytes);
 
     EXPECT_EQ(result, RST_OK);
     EXPECT_TRUE(fs::exists(dest_path));
@@ -59,8 +60,50 @@ TEST_F(TextHandlerTest, UploadFileFailsWhenSourceMissing) {
     TextFileHandler handler(source_path.string());
     
     // Expect failure since source does not exist
-    rst_code_e result = handler.upload_file(dest_path.string());
+    unsigned int uploaded_bytes;
+    rst_code_e result = handler.upload_file(dest_path.string(), uploaded_bytes);
 
     EXPECT_NE(result, RST_OK);
     EXPECT_FALSE(fs::exists(dest_path));
+}
+
+TEST_F(TextHandlerTest, UploadFileReturnsCorrectSize) {
+    fs::path source_path = test_dir / "size_test.txt";
+    fs::path dest_path = test_dir / "dest_size.txt";
+    std::string content = "1234567890";
+
+    {
+        std::ofstream ofs(source_path);
+        ofs << content;
+    }
+
+    TextFileHandler handler(source_path.string());
+    
+    // Initialize with garbage to ensure it gets reset
+    unsigned int uploaded_bytes = 12345;
+    rst_code_e result = handler.upload_file(dest_path.string(), uploaded_bytes);
+
+    EXPECT_EQ(result, RST_OK);
+    EXPECT_EQ(uploaded_bytes, content.size());
+}
+
+TEST_F(TextHandlerTest, UploadFileHandlesLargeContent) {
+    fs::path source_path = test_dir / "large_file.txt";
+    fs::path dest_path = test_dir / "dest_large.txt";
+    
+    // Create content larger than the default chunk size (64KB) to force multi-chunk processing
+    std::string content(70000, 'A'); 
+    {
+        std::ofstream ofs(source_path);
+        ofs << content;
+    }
+
+    TextFileHandler handler(source_path.string());
+    
+    unsigned int uploaded_bytes = 0;
+    rst_code_e result = handler.upload_file(dest_path.string(), uploaded_bytes);
+
+    EXPECT_EQ(result, RST_OK);
+    EXPECT_EQ(uploaded_bytes, content.size());
+    EXPECT_EQ(fs::file_size(dest_path), content.size());
 }

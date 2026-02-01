@@ -17,7 +17,8 @@ User::User(std::string new_name) : name(new_name),
                                              recoveryemail(""),
                                              firstname(""),
                                              lastname(""),
-                                             roleid(0)
+                                             roleid(0),
+                                             max_space_size_in_kb(0)
 {
 }
 User::~User(void) {}
@@ -66,6 +67,9 @@ void User::set_lastname(std::string new_lastname) { lastname = new_lastname; }
 
 unsigned int User::get_roleid(void) const { return roleid; }
 void User::set_roleid(unsigned int new_roleid) { roleid = new_roleid; }
+
+unsigned int User::get_max_space_size_in_kb(void) const { return max_space_size_in_kb; }
+void User::set_max_space_size_in_kb(unsigned int new_max_space_size_in_kb) { max_space_size_in_kb = new_max_space_size_in_kb; }
 
 User::Account_status User::parse_status_to_type(std::string &status) const
 {
@@ -117,7 +121,7 @@ void User::print(void) const{
 
 std::string t_creationdate{parse_time_t_to_string(creationdate, DATE_STRING_FORMAT_LONG)};
 
-logger->debug("| {:>2d} | {:>6d} | {:>10s} | {:>15s} | {:>20s} | {:>20s} | {:>3d} |",
-                  is_authenticated, useraccountid, name, passwordkey, t_creationdate, parse_status_to_string(status), roleid);
+logger->debug("| {:>2d} | {:>6d} | {:>10s} | {:>15s} | {:>20s} | {:>20s} | {:>3d} | {:>10d} |",
+                  is_authenticated, useraccountid, name, passwordkey, t_creationdate, parse_status_to_string(status), roleid, max_space_size_in_kb);
 
 }

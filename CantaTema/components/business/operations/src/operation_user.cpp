@@ -1,5 +1,6 @@
 
 #include "operations/operation_user.hpp"
+#include "configuration/configuration_system.hpp"
 
 #include "database/db_main.hpp"
 #include "database/db_user.hpp"
@@ -8,7 +9,7 @@
 #include "file_handler/file_handler.hpp"
 #include "primitives/tool_paths.hpp"
 
-OperationUser::OperationUser() : local_user(nullptr)
+OperationUser::OperationUser(std::shared_ptr<IOperationUserMetrics> &&_user_metrics_op) : local_user(nullptr), user_metrics_op(std::move(_user_metrics_op))
 {
     DB_Main *db_main = DB_Main::getInstance();
 }
@@ -40,12 +41,22 @@ rst_code_e OperationUser::user_add(const std::string &name, const std::string &p
     User tmp_user{name};
 
     tmp_user.set_passwordkey(password);
+    tmp_user.set_max_space_size_in_kb(ConfigurationSystem::getInstance().get_user_usage_limit_in_mb() * 1024);
 
     rst = dbuser.add_new_user(tmp_user);
-
     if (rst)
     {
         logger->warn("Error when adding a new user: {}", get_rst_txt(rst));
+        return USER_ERROR;
+    }
+
+    UserMetrics metrics(tmp_user.get_useraccountid());
+    std::shared_ptr<const User> tmp_user_ptr = std::make_shared<User>(tmp_user);
+    rst = user_metrics_op->user_metrics_add(tmp_user_ptr, metrics);
+    if (rst)
+    {
+        logger->warn("Error when adding a new user metrics: {}", get_rst_txt(rst));
+        dbuser.remove_user(name);
         return USER_ERROR;
     }
 
@@ -165,6 +176,13 @@ rst_code_e OperationUser::user_remove(void)
         rst = file_handler.remove_folder(user_folder);
         if(rst){
             logger->warn("Error when deleting user folder: {}", get_rst_txt(rst));
+            return USER_ERROR;
+        }
+
+        rst = user_metrics_op->user_metrics_remove(local_user);
+        if (rst)
+        {
+            logger->warn("Error when removing user metrics: {}", get_rst_txt(rst));
             return USER_ERROR;
         }
 

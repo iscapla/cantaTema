@@ -79,6 +79,14 @@ rst_code_e terminal_cli_start(void)
                 terminal_session->user_identify(out, name, password);
             },
             "Identify a user");
+        
+        rootMenu->Insert(
+            "metrics", {},
+            [](std::ostream &out)
+            {
+                terminal_session->user_metrics_get(out);
+            },
+            "User metrics");
 
         // create a cli with the given root menu and a persistent storage
         // you must pass to FileHistoryStorage the path of the history file

@@ -10,15 +10,15 @@ public:
     OperationCategory();
     ~OperationCategory();
 
-    rst_code_e category_add(Category &category) override;
+    rst_code_e category_add(const std::shared_ptr<const User> &user, Category &category) override;
 
-    rst_code_e category_update(const Category &category) override;
+    rst_code_e category_update(const std::shared_ptr<const User> &user, Category &category) override;
 
     rst_code_e category_remove(unsigned int id) override;
 
     rst_code_e category_get_by_id(unsigned int id, std::shared_ptr<Category> &category) override;
 
-    rst_code_e category_get_all_by_user(unsigned int user_id, std::vector<std::shared_ptr<Category>> &categories) override;
+    rst_code_e category_get_all_by_user(const std::shared_ptr<const User> &user, std::vector<std::shared_ptr<Category>> &categories) override;
 };
 
 #endif //__OPERATION_CATEGORY_LOGIC_HPP

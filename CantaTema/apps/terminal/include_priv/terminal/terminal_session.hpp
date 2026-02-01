@@ -41,7 +41,9 @@ public:
     void subject_get_by_category(std::ostream &out, unsigned int category_id);
     void subject_get_by_user(std::ostream &out);
 
-    
+    //-------------------------------------------------------------------------------------
+
+    void user_metrics_get(std::ostream &out);
 
 private:
     Session *op;
