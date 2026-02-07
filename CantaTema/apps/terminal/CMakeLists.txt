@@ -6,7 +6,7 @@ create_infra_library(
     SRCS
     src/terminal_cli.cpp
     src/terminal_session.cpp
-    # src/terminal_test.cpp
+    src/terminal_test.cpp
     INC_PUBLIC
     INC_PRIVATE
     cli::cli

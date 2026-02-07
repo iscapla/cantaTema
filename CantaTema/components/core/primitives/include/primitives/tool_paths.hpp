@@ -71,6 +71,26 @@ public:
      */
     static std::filesystem::path get_path_for_logs(void);
 
+    /**
+     * @brief Returns the path where subject files should be stored.
+     * Creates the directory if it does not exist.
+     * 
+     * @param user_id 
+     * @param subject_id 
+     * @return std::filesystem::path 
+     */
+    static std::filesystem::path get_path_for_subject(unsigned int user_id, unsigned int subject_id);
+
+    /**
+     * @brief Returns the path where practice event files should be stored.
+     * Creates the directory if it does not exist.
+     * 
+     * @param user_id 
+     * @param subject_id 
+     * @return std::filesystem::path 
+     */
+    static std::filesystem::path get_path_for_practice_event(unsigned int user_id, unsigned int subject_id);
+
 private:
     static void ensure_directory_exists(const std::filesystem::path& path);
     static std::filesystem::path get_base_path(void);

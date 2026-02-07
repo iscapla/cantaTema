@@ -239,3 +239,171 @@ void TerminalSession::user_metrics_get(std::ostream &out)
         user_metrics->print();
     }
 }
+
+void TerminalSession::practice_event_add_planned(std::ostream &out, unsigned int subject_id, unsigned int duration, const std::string &name)
+{
+    std::vector<std::shared_ptr<const Subject>> subjects;
+    rst_code_e rst = op->subject_get_by_user(subjects);
+    if (rst != RST_OK)
+    {
+        logger->error("Operation error fetching subjects: {}", get_rst_txt(rst));
+        return;
+    }
+
+    std::shared_ptr<const Subject> found_subject = nullptr;
+    for (const auto &sub : subjects)
+    {
+        if (sub->get_id() == subject_id)
+        {
+            found_subject = sub;
+            break;
+        }
+    }
+
+    if (!found_subject)
+    {
+        logger->error("Subject not found");
+        return;
+    }
+
+    PracticeEvent practice;
+    practice.set_subject_id(found_subject->get_id());
+    practice.set_duration(duration);
+    practice.set_description(name);
+
+    rst = op->practice_event_add_planned(practice);
+    if (rst)
+    {
+        logger->error("Operation error: {}", get_rst_txt(rst));
+    }
+    else
+    {
+        logger->info("Practice event planned added");
+    }
+}
+
+void TerminalSession::practice_event_add_recorded(std::ostream &out, unsigned int subject_id, const std::string &source_file, const std::string &name)
+{
+    std::vector<std::shared_ptr<const Subject>> subjects;
+    rst_code_e rst = op->subject_get_by_user(subjects);
+    if (rst != RST_OK)
+    {
+        logger->error("Operation error fetching subjects: {}", get_rst_txt(rst));
+        return;
+    }
+
+    std::shared_ptr<const Subject> found_subject = nullptr;
+    for (const auto &sub : subjects)
+    {
+        if (sub->get_id() == subject_id)
+        {
+            found_subject = sub;
+            break;
+        }
+    }
+
+    if (!found_subject)
+    {
+        logger->error("Subject not found");
+        return;
+    }
+
+    PracticeEvent practice;
+    practice.set_subject_id(found_subject->get_id());
+    practice.set_description(name);
+
+    rst = op->practice_event_add_recorded(source_file, practice);
+    if (rst)
+    {
+        logger->error("Operation error: {}", get_rst_txt(rst));
+    }
+    else
+    {
+        logger->info("Practice event recorded added");
+    }
+}
+
+void TerminalSession::practice_event_update(std::ostream &out, unsigned int id, unsigned int duration, const std::string &name)
+{
+    std::shared_ptr<PracticeEvent> practice;
+    rst_code_e rst = op->practice_event_get_by_id(id, practice);
+    if (rst != RST_OK)
+    {
+        logger->error("Operation error fetching practice event: {}", get_rst_txt(rst));
+        return;
+    }
+
+    practice->set_description(name);
+    practice->set_duration(duration);
+
+    rst = op->practice_event_update(*practice);
+    if (rst)
+    {
+        logger->error("Operation error: {}", get_rst_txt(rst));
+    }
+    else
+    {
+        logger->info("Practice event updated");
+    }
+}
+
+void TerminalSession::practice_event_remove(std::ostream &out, unsigned int id)
+{
+    rst_code_e rst = op->practice_event_remove(id);
+    if (rst)
+    {
+        logger->error("Operation error: {}", get_rst_txt(rst));
+    }
+    else
+    {
+        logger->info("Practice event removed");
+    }
+}
+
+void TerminalSession::practice_event_get_by_id(std::ostream &out, unsigned int id)
+{
+    std::shared_ptr<PracticeEvent> practice;
+    rst_code_e rst = op->practice_event_get_by_id(id, practice);
+    if (rst)
+    {
+        logger->error("Operation error: {}", get_rst_txt(rst));
+    }
+    else
+    {
+        practice->print();
+    }
+}
+
+void TerminalSession::practice_event_get_by_subject(std::ostream &out, unsigned int subject_id)
+{
+    std::vector<std::shared_ptr<PracticeEvent>> practices;
+    rst_code_e rst = op->practice_event_get_by_subject(subject_id, practices);
+    if (rst)
+    {
+        logger->error("Operation error: {}", get_rst_txt(rst));
+    }
+    else
+    {
+        for (const auto &practice : practices)
+        {
+            practice->print();
+        }
+    }
+}
+
+void TerminalSession::practice_event_get_by_user(std::ostream &out)
+{
+    std::vector<std::shared_ptr<PracticeEvent>> practices;
+    rst_code_e rst = op->practice_event_get_by_user(practices);
+    if (rst)
+    {
+        logger->error("Operation error: {}", get_rst_txt(rst));
+    }
+    else
+    {
+        for (const auto &practice : practices)
+        {
+            practice->print();
+        }
+    }
+}

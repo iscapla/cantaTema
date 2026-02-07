@@ -27,7 +27,14 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 )
 
 # install information
-install(TARGETS ${PROJECT_NAME} DESTINATION bin)
+install(TARGETS ${PROJECT_NAME} DESTINATION bin/${PROJECT_NAME})
 
 # Set the runtime output directory for each executable
-set_target_properties(${PROJECT_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set_target_properties(${PROJECT_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin/${PROJECT_NAME})
+
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    ${CMAKE_CURRENT_SOURCE_DIR}/../example_data
+    $<TARGET_FILE_DIR:${PROJECT_NAME}>/example_data
+    COMMENT "Copying example_data to ${PROJECT_NAME} binary directory"
+)

@@ -6,6 +6,8 @@
 #include "database/db_category.hpp"
 #include "database/db_subject.hpp"
 #include "database/db_user_metrics.hpp"
+#include "database/db_practice_event.hpp"
+
 
 // initializing instancePtr with NULL
 DB_Main *DB_Main::instancePtr{nullptr};
@@ -22,6 +24,8 @@ DB_Main::DB_Main(void)
         subject.subject_tables_create();
         DB_UserMetrics user_metrics;
         user_metrics.user_metrics_tables_create();
+        DB_PracticeEvent practice_event;
+        practice_event.practice_event_tables_create();
         DB_Main::initialized = true;
         logger->info("Database initialized");
     }

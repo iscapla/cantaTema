@@ -50,6 +50,17 @@ std::filesystem::path ToolPath::get_path_for_logs(void) {
     return path;
 }
 
+std::filesystem::path ToolPath::get_path_for_subject(unsigned int user_id, unsigned int subject_id) {
+    std::filesystem::path path = get_path_for_files() / std::to_string(user_id) / std::to_string(subject_id);
+    ensure_directory_exists(path);
+    return path;
+}
+
+std::filesystem::path ToolPath::get_path_for_practice_event(unsigned int user_id, unsigned int subject_id) {
+    std::filesystem::path path = get_path_for_subject(user_id, subject_id) / "practices";
+    ensure_directory_exists(path);
+    return path;
+}
 
 void ToolPath::ensure_directory_exists(const std::filesystem::path& path) {
     try {

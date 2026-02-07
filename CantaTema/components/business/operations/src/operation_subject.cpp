@@ -67,7 +67,7 @@ rst_code_e OperationSubject::subject_add(const std::shared_ptr<const User> &user
     }
 
     std::filesystem::path p(source_file);
-    std::string dst_file = (ToolPath::get_path_for_files() / std::to_string(user->get_useraccountid()) / std::to_string(subject.get_id()) / p.filename()).string();
+    std::string dst_file = (ToolPath::get_path_for_subject(user->get_useraccountid(), user->get_useraccountid()) / p.filename()).string();
     unsigned int uploaded_bytes;
     rst = text_handler.upload_file(dst_file, uploaded_bytes);
     if(rst != RST_OK){

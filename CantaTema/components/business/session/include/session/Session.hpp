@@ -6,6 +6,7 @@
 #include "operations/i_operation_category.hpp"
 #include "operations/i_operation_subject.hpp"
 #include "operations/i_operation_user_metrics.hpp"
+#include "operations/i_operation_practice_event.hpp"
 
 
 class Session : public IOperationUser
@@ -16,7 +17,8 @@ public:
         std::shared_ptr<IOperationUser> &&_user_op,
         std::shared_ptr<IOperationCategory> &&_category_op,
         std::shared_ptr<IOperationSubject> &&_subject_op,
-        std::shared_ptr<IOperationUserMetrics> &&_user_metrics_op
+        std::shared_ptr<IOperationUserMetrics> &&_user_metrics_op,
+        std::shared_ptr<IOperationPracticeEvent> &&_practice_event_op
     );
     Session(void);
     ~Session(void);
@@ -54,6 +56,16 @@ public:
 
     //-------------------------------------------------------------------------------------
 
+    rst_code_e practice_event_add_planned(PracticeEvent &practice);
+    rst_code_e practice_event_add_recorded(const std::string &source_file, PracticeEvent &practice);
+    rst_code_e practice_event_update(const PracticeEvent &practice);
+    rst_code_e practice_event_remove(unsigned int id);
+    rst_code_e practice_event_get_by_id(unsigned int id, std::shared_ptr<PracticeEvent> &practice);
+    rst_code_e practice_event_get_by_subject(unsigned int subject_id, std::vector<std::shared_ptr<PracticeEvent>> &practices);
+    rst_code_e practice_event_get_by_user(std::vector<std::shared_ptr<PracticeEvent>> &practices);
+
+    //-------------------------------------------------------------------------------------
+
     
 
 private:
@@ -61,6 +73,7 @@ private:
     std::shared_ptr<IOperationCategory> category_op{nullptr};
     std::shared_ptr<IOperationSubject> subject_op{nullptr};
     std::shared_ptr<IOperationUserMetrics> user_metrics_op{nullptr};
+    std::shared_ptr<IOperationPracticeEvent> practice_event_op{nullptr};
 
     //-------------------------------------------------------------------------------------
 

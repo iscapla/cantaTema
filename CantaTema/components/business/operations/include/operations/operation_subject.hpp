@@ -25,6 +25,8 @@ public:
 private:
     std::shared_ptr<IOperationUserMetrics> user_metrics_op{nullptr};
 
+    //TODO Add here the category_op variable to check that the subjects always contigure a valid category id
+
 };
 
 #endif //__OPERATION_SUBJECT_LOGIC_HPP

@@ -30,8 +30,8 @@ function(create_test_exec)
     )
 
     # Set the runtime output directory for each executable
-    set_target_properties(${PARSED_ARGS_TARGET} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin/test)
+    set_target_properties(${PARSED_ARGS_TARGET} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin/Test)
 
-    add_test(NAME ${PARSED_ARGS_TARGET} COMMAND ${PARSED_ARGS_TARGET} WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/bin/test)
+    add_test(NAME ${PARSED_ARGS_TARGET} COMMAND ${PARSED_ARGS_TARGET} WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/bin/Test)
 
 endfunction(create_test_exec)

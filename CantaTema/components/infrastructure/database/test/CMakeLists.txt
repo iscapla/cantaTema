@@ -9,6 +9,7 @@ create_test_exec(
         t_db_category.cxx
         t_db_subject.cxx
         t_db_user_metrics.cxx
+        t_db_practice_event.cxx
     INC_PRIVATE
         sqlite3
         CORE::PRIMITIVES

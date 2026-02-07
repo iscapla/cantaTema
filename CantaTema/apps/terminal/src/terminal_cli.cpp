@@ -15,7 +15,6 @@
 
 #include "primitives/utils_logger.hpp"
 #include "terminal/terminal_session.hpp"
-#include "database/db_main.hpp"
 #include "file_handler/file_handler.hpp"
 
 using MainScheduler = cli::StandaloneAsioScheduler;
@@ -26,6 +25,7 @@ static std::unique_ptr<TerminalSession> terminal_session;
 rst_code_e terminal_init_user(std::unique_ptr<cli::Menu> &rootMenu);
 rst_code_e terminal_init_category(std::unique_ptr<cli::Menu> &rootMenu);
 rst_code_e terminal_init_subject(std::unique_ptr<cli::Menu> &rootMenu);
+rst_code_e terminal_init_practice(std::unique_ptr<cli::Menu> &rootMenu);
 
 
 
@@ -45,10 +45,17 @@ rst_code_e terminal_cli_start(void)
             "db_purge", {},
             [](std::ostream &out)
             {
-                DB_Main *db_main = DB_Main::getInstance();
-                db_main->purge();
+                terminal_session->db_purge(out);
             },
             "Purge database");
+
+        rootMenu->Insert(
+            "test_start", {},
+            [](std::ostream &out)
+            {
+                terminal_session->test_start(out);
+            },
+            "Purge and populate database with test data");
 
         // rootMenu->Insert(
         //     "test_start",
@@ -70,6 +77,7 @@ rst_code_e terminal_cli_start(void)
         terminal_init_user(rootMenu);
         terminal_init_category(rootMenu);
         terminal_init_subject(rootMenu);
+        terminal_init_practice(rootMenu);
 
 
         rootMenu->Insert(
@@ -130,6 +138,90 @@ rst_code_e terminal_cli_start(void)
     catch (...)
     {
         logger->critical("Unknown exception caugth.");
+    }
+
+    return CONSOLE_EXP;
+}
+
+rst_code_e terminal_init_practice(std::unique_ptr<cli::Menu> &rootMenu)
+{
+    try
+    {
+        auto practiceMenu = std::make_unique<cli::Menu>("practice", "Practice event commands (MENU)");
+
+        practiceMenu->Insert(
+            "add_planned", {"subject_id", "duration", "name"},
+            [](std::ostream &out, unsigned int subject_id, unsigned int duration, const std::string &name)
+            {
+                terminal_session->practice_event_add_planned(out, subject_id, duration, name);
+            },
+            "Add a planned practice event");
+
+        practiceMenu->Insert(
+            "add_recorded", {"subject_id", "name"},
+            [](std::ostream &out, unsigned int subject_id, const std::string &name)
+            {
+                std::string file_path;
+                rst_code_e rst = FileHandler::get_file_path_from_user_selection(file_path);
+                if(rst == RST_OK){
+                    logger->info("File path: {}", file_path);
+                    terminal_session->practice_event_add_recorded(out, subject_id, file_path, name);
+                }else{
+                    logger->error("Error getting file path. {}", get_rst_txt(rst));
+                }
+            },
+            "Add a recorded practice event (select file)");
+
+        practiceMenu->Insert(
+            "update", {"id", "duration", "name"},
+            [](std::ostream &out, unsigned int id, unsigned int duration, const std::string &name)
+            {
+                terminal_session->practice_event_update(out, id, duration, name);
+            },
+            "Update a practice event");
+
+        practiceMenu->Insert(
+            "remove", {"id"},
+            [](std::ostream &out, unsigned int id)
+            {
+                terminal_session->practice_event_remove(out, id);
+            },
+            "Remove a practice event");
+
+        practiceMenu->Insert(
+            "get_by_id", {"id"},
+            [](std::ostream &out, unsigned int id)
+            {
+                terminal_session->practice_event_get_by_id(out, id);
+            },
+            "Get practice event by ID");
+
+        practiceMenu->Insert(
+            "get_by_subject", {"subject_id"},
+            [](std::ostream &out, unsigned int subject_id)
+            {
+                terminal_session->practice_event_get_by_subject(out, subject_id);
+            },
+            "Get practice events by subject ID");
+
+        practiceMenu->Insert(
+            "get_by_user", {},
+            [](std::ostream &out)
+            {
+                terminal_session->practice_event_get_by_user(out);
+            },
+            "Get all practice events for current user");
+
+        rootMenu->Insert(std::move(practiceMenu));
+        return RST_OK;
+    }
+    catch (const std::exception &e)
+    {
+        logger->error("Exception caught in practice menu: {}", e.what());
+    }
+    catch (...)
+    {
+        logger->critical("Unknown exception caught in practice menu.");
     }
 
     return CONSOLE_EXP;

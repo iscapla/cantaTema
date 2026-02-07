@@ -31,6 +31,7 @@ create_infra_library(
     src/user_metrics.cpp
     src/subject.cpp
     src/category.cpp
+    src/practice_event.cpp
     INC_PUBLIC
     CORE::LOGGER
     INC_PRIVATE

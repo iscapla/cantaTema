@@ -8,6 +8,7 @@ create_infra_library(
     src/operation_category.cpp
     src/operation_subject.cpp
     src/operation_user_metrics.cpp
+    src/operation_practice_event.cpp
     INC_PUBLIC
     INC_PRIVATE
     CORE::PRIMITIVES

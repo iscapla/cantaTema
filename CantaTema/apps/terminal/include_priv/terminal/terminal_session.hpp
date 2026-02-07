@@ -14,10 +14,9 @@ public:
     ~TerminalSession();
 
     //-------------------------------------------------------------------------------------
-    // void test_start(std::ostream &out);
-    // void test_populate(std::ostream &out);
 
     void db_purge(std::ostream &out);
+    void test_start(std::ostream &out);
 
     //-------------------------------------------------------------------------------------
 
@@ -44,6 +43,16 @@ public:
     //-------------------------------------------------------------------------------------
 
     void user_metrics_get(std::ostream &out);
+
+    //-------------------------------------------------------------------------------------
+
+    void practice_event_add_planned(std::ostream &out, unsigned int subject_id, unsigned int duration, const std::string &name);
+    void practice_event_add_recorded(std::ostream &out, unsigned int subject_id, const std::string &source_file, const std::string &name);
+    void practice_event_update(std::ostream &out, unsigned int id, unsigned int duration, const std::string &name);
+    void practice_event_remove(std::ostream &out, unsigned int id);
+    void practice_event_get_by_id(std::ostream &out, unsigned int id);
+    void practice_event_get_by_subject(std::ostream &out, unsigned int subject_id);
+    void practice_event_get_by_user(std::ostream &out);
 
 private:
     Session *op;

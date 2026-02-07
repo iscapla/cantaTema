@@ -52,6 +52,11 @@ enum rst_code_e
     SUBJECT_NOT_FOUND,  // Subject not found
     SUBJECT_DUPLICATED, // Subject already exists
 
+    PRACTICE_EVENT_ERROR,      // Practice event general error
+    PRACTICE_EVENT_NOT_FOUND,  // Practice event not found
+    PRACTICE_EVENT_ILLEGAL_CHANGE,  // Practice event illegal change
+    PRACTICE_EVENT_DATE_MISSMATCH,  // Practice event date mismatch
+
     FILE_NOT_FOUND, // File not found
     FILE_READ_ERROR, // File read error
     FILE_UPLOAD_ERROR, // File upload error
@@ -137,6 +142,19 @@ inline const std::string get_rst_txt(const rst_code_e &rst)
         break;
     case SUBJECT_DUPLICATED:
         txt = "SUBJECT_DUPLICATED";
+        break;
+
+    case PRACTICE_EVENT_ERROR:
+        txt = "PRACTICE_EVENT_ERROR";
+        break;
+    case PRACTICE_EVENT_NOT_FOUND:
+        txt = "PRACTICE_EVENT_NOT_FOUND";
+        break;
+    case PRACTICE_EVENT_ILLEGAL_CHANGE:
+        txt = "PRACTICE_EVENT_ILLEGAL_CHANGE";
+        break;
+    case PRACTICE_EVENT_DATE_MISSMATCH:
+        txt = "PRACTICE_EVENT_DATE_MISSMATCH";
         break;
 
     case FILE_NOT_FOUND:

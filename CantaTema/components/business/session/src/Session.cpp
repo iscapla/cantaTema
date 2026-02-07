@@ -7,16 +7,18 @@
 #include "operations/operation_category.hpp"
 #include "operations/operation_subject.hpp"
 #include "operations/operation_user_metrics.hpp"
+#include "operations/operation_practice_event.hpp"
 
 Session::Session(
     std::shared_ptr<IOperationUser> &&_user_op,
     std::shared_ptr<IOperationCategory> &&_category_op,
     std::shared_ptr<IOperationSubject> &&_subject_op,
-    std::shared_ptr<IOperationUserMetrics> &&_user_metrics_op
-) : user_op(std::move(_user_op)), category_op(std::move(_category_op)), subject_op(std::move(_subject_op)), user_metrics_op(std::move(_user_metrics_op))
+    std::shared_ptr<IOperationUserMetrics> &&_user_metrics_op,
+    std::shared_ptr<IOperationPracticeEvent> &&_practice_event_op
+) : user_op(std::move(_user_op)), category_op(std::move(_category_op)), subject_op(std::move(_subject_op)), user_metrics_op(std::move(_user_metrics_op)), practice_event_op(std::move(_practice_event_op))
 
 {
-    if (user_op == nullptr || category_op == nullptr || subject_op == nullptr || user_metrics_op == nullptr)
+    if (user_op == nullptr || category_op == nullptr || subject_op == nullptr || user_metrics_op == nullptr || practice_event_op == nullptr)
     {
         throw std::runtime_error("Operation session received wrong operation instances.");
     }
@@ -29,8 +31,9 @@ Session::Session(void)
     user_op = std::make_shared<OperationUser>(std::shared_ptr<IOperationUserMetrics>(user_metrics_op));
     category_op = std::make_shared<OperationCategory>();
     subject_op = std::make_shared<OperationSubject>(std::shared_ptr<IOperationUserMetrics>(user_metrics_op));
+    practice_event_op = std::make_shared<OperationPracticeEvent>(std::shared_ptr<IOperationUserMetrics>(user_metrics_op), std::shared_ptr<IOperationSubject>(subject_op));
 
-    if (user_op == nullptr || category_op == nullptr || subject_op == nullptr || user_metrics_op == nullptr)
+    if (user_op == nullptr || category_op == nullptr || subject_op == nullptr || user_metrics_op == nullptr || practice_event_op == nullptr)
     {
         throw std::runtime_error("Operation session received wrong operation instances. (2)");
     }
@@ -361,4 +364,60 @@ rst_code_e Session::user_metrics_get(std::shared_ptr<const UserMetrics> &user_me
     user_metrics = temp_metrics;
 
     return rst;
+}
+
+rst_code_e Session::practice_event_add_planned(PracticeEvent &practice)
+{
+    if (session_user == nullptr || !user_op->user_is_authenticated())
+        return USER_NO_AUTH;
+
+    return practice_event_op->practice_event_add_planned(session_user, practice);
+}
+
+rst_code_e Session::practice_event_add_recorded(const std::string &source_file, PracticeEvent &practice)
+{
+    if (session_user == nullptr || !user_op->user_is_authenticated())
+        return USER_NO_AUTH;
+
+    return practice_event_op->practice_event_add_recorded(session_user, source_file, practice);
+}
+
+rst_code_e Session::practice_event_update(const PracticeEvent &practice)
+{
+    if (session_user == nullptr || !user_op->user_is_authenticated())
+        return USER_NO_AUTH;
+
+    return practice_event_op->practice_event_update(session_user, practice);
+}
+
+rst_code_e Session::practice_event_remove(unsigned int id)
+{
+    if (session_user == nullptr || !user_op->user_is_authenticated())
+        return USER_NO_AUTH;
+
+    return practice_event_op->practice_event_remove(session_user, id);
+}
+
+rst_code_e Session::practice_event_get_by_id(unsigned int id, std::shared_ptr<PracticeEvent> &practice)
+{
+    if (session_user == nullptr || !user_op->user_is_authenticated())
+        return USER_NO_AUTH;
+
+    return practice_event_op->practice_event_get_by_id(session_user, id, practice);
+}
+
+rst_code_e Session::practice_event_get_by_subject(unsigned int subject_id, std::vector<std::shared_ptr<PracticeEvent>> &practices)
+{
+    if (session_user == nullptr || !user_op->user_is_authenticated())
+        return USER_NO_AUTH;
+
+    return practice_event_op->practice_event_get_all_by_subject(session_user, subject_id, practices);
+}
+
+rst_code_e Session::practice_event_get_by_user(std::vector<std::shared_ptr<PracticeEvent>> &practices)
+{
+    if (session_user == nullptr || !user_op->user_is_authenticated())
+        return USER_NO_AUTH;
+
+    return practice_event_op->practice_event_get_all_by_user(session_user, practices);
 }
