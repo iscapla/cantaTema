@@ -101,7 +101,7 @@ TEST_F(DBSubjectTest, AddNewSubject_Success) {
     DB_Subject db_subject;
     Subject subject(0, "Test Subject");
     subject.set_user_id(user_id);
-    subject.set_category(std::make_shared<Category>(cat_id, "sub_test_cat_1"));
+    subject.set_category_id(cat_id);
 
     // Perform DB operation
     rst_code_e result = db_subject.add_new_subject(subject);
@@ -118,7 +118,7 @@ TEST_F(DBSubjectTest, GetSubjectById_Success) {
     DB_Subject db_subject;
     Subject original_sub(0, "Retrieval Subject");
     original_sub.set_user_id(user_id);
-    original_sub.set_category(std::make_shared<Category>(cat_id, "sub_test_cat_2"));
+    original_sub.set_category_id(cat_id);
 
     ASSERT_EQ(db_subject.add_new_subject(original_sub), RST_OK);
 
@@ -130,7 +130,7 @@ TEST_F(DBSubjectTest, GetSubjectById_Success) {
     ASSERT_NE(retrieved_sub, nullptr);
     EXPECT_EQ(retrieved_sub->get_id(), original_sub.get_id());
     EXPECT_EQ(retrieved_sub->get_name(), "Retrieval Subject");
-    EXPECT_EQ(retrieved_sub->get_category()->get_id(), cat_id);
+    EXPECT_EQ(retrieved_sub->get_category_id(), cat_id);
 }
 
 TEST_F(DBSubjectTest, UpdateSubject_Success) {
@@ -140,7 +140,7 @@ TEST_F(DBSubjectTest, UpdateSubject_Success) {
     DB_Subject db_subject;
     Subject subject(0, "Update Subject");
     subject.set_user_id(user_id);
-    subject.set_category(std::make_shared<Category>(cat_id, "sub_test_cat_3"));
+    subject.set_category_id(cat_id);
 
     ASSERT_EQ(db_subject.add_new_subject(subject), RST_OK);
 
@@ -164,7 +164,7 @@ TEST_F(DBSubjectTest, RemoveSubject_Success) {
     DB_Subject db_subject;
     Subject subject(0, "Delete Subject");
     subject.set_user_id(user_id);
-    subject.set_category(std::make_shared<Category>(cat_id, "sub_test_cat_4"));
+    subject.set_category_id(cat_id);
 
     ASSERT_EQ(db_subject.add_new_subject(subject), RST_OK);
 
@@ -185,10 +185,10 @@ TEST_F(DBSubjectTest, RemoveAllSubjectsFromUser_Success) {
     
     Subject sub1(0, "Sub 1");
     sub1.set_user_id(user_id);
-    sub1.set_category(std::make_shared<Category>(cat_id, "sub_test_cat_5"));
+    sub1.set_category_id(cat_id);
     Subject sub2(0, "Sub 2");
     sub2.set_user_id(user_id);
-    sub2.set_category(std::make_shared<Category>(cat_id, "sub_test_cat_5"));
+    sub2.set_category_id(cat_id);
     
     ASSERT_EQ(db_subject.add_new_subject(sub1), RST_OK);
     ASSERT_EQ(db_subject.add_new_subject(sub2), RST_OK);
@@ -211,10 +211,10 @@ TEST_F(DBSubjectTest, GetAllSubjectsByCategory_Success) {
     
     Subject sub1(0, "Sub A");
     sub1.set_user_id(user_id);
-    sub1.set_category(std::make_shared<Category>(cat_id, "sub_test_cat_6"));
+    sub1.set_category_id(cat_id);
     Subject sub2(0, "Sub B");
     sub2.set_user_id(user_id);
-    sub2.set_category(std::make_shared<Category>(cat_id, "sub_test_cat_6"));
+    sub2.set_category_id(cat_id);
     
     ASSERT_EQ(db_subject.add_new_subject(sub1), RST_OK);
     ASSERT_EQ(db_subject.add_new_subject(sub2), RST_OK);
@@ -235,10 +235,10 @@ TEST_F(DBSubjectTest, GetAllSubjectsByUser_Success) {
     
     Subject sub1(0, "Sub X");
     sub1.set_user_id(user_id);
-    sub1.set_category(std::make_shared<Category>(cat_id, "sub_test_cat_7"));
+    sub1.set_category_id(cat_id);
     Subject sub2(0, "Sub Y");
     sub2.set_user_id(user_id);
-    sub2.set_category(std::make_shared<Category>(cat_id, "sub_test_cat_7"));
+    sub2.set_category_id(cat_id);
     
     ASSERT_EQ(db_subject.add_new_subject(sub1), RST_OK);
     ASSERT_EQ(db_subject.add_new_subject(sub2), RST_OK);

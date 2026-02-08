@@ -29,8 +29,10 @@ rst_code_e OperationPracticeEvent::practice_event_add_planned(const std::shared_
 
     practice.set_user_id(user->get_useraccountid());
     practice.set_status(PracticeEvent::PracticeEvent_status::PLANNED);
+    practice.set_duration(0);
+    practice.set_filepath("");
 
-    rst = check_class_consistency(&practice);
+    rst = check_class_consistency(user, &practice);
     if(rst != RST_OK){
         return rst;
     }
@@ -67,7 +69,7 @@ rst_code_e OperationPracticeEvent::practice_event_add_recorded(const std::shared
     practice.set_user_id(user->get_useraccountid());
     practice.set_status(PracticeEvent::PracticeEvent_status::RECORDED);
 
-    rst = check_class_consistency(&practice);
+    rst = check_class_consistency(user, &practice);
     if(rst != RST_OK){
         return rst;
     }
@@ -81,7 +83,7 @@ rst_code_e OperationPracticeEvent::practice_event_add_recorded(const std::shared
     }
 
     std::filesystem::path p(source_file);
-    std::string dst_file = (ToolPath::get_path_for_subject(user->get_useraccountid(), user->get_useraccountid()) / std::to_string(practice.get_id()) / p.filename()).string();
+    std::string dst_file = (ToolPath::get_path_for_practice_event(user->get_useraccountid(), practice.get_subject_id()) / std::to_string(practice.get_id()) / p.filename()).string();
     
     unsigned int uploaded_bytes;
     rst = text_handler.upload_file(dst_file, uploaded_bytes);
@@ -107,7 +109,7 @@ rst_code_e OperationPracticeEvent::practice_event_add_recorded(const std::shared
     return RST_OK;
 }
 
-rst_code_e OperationPracticeEvent::check_updates(const PracticeEvent *from, const PracticeEvent *to) const
+rst_code_e OperationPracticeEvent::check_updates(const std::shared_ptr<const User> &user, const PracticeEvent *from, const PracticeEvent *to) const
 {
     if(
         from->get_status() == PracticeEvent::PracticeEvent_status::RECORDED &&
@@ -143,7 +145,7 @@ rst_code_e OperationPracticeEvent::check_updates(const PracticeEvent *from, cons
         return PRACTICE_EVENT_ILLEGAL_CHANGE;
     }
 
-    rst_code_e rst = check_class_consistency(to);
+    rst_code_e rst = check_class_consistency(user, to);
     if(rst != RST_OK){
         return rst;
     }
@@ -151,7 +153,7 @@ rst_code_e OperationPracticeEvent::check_updates(const PracticeEvent *from, cons
     return RST_OK;
 }
 
-rst_code_e OperationPracticeEvent::check_class_consistency(const PracticeEvent *event) const
+rst_code_e OperationPracticeEvent::check_class_consistency(const std::shared_ptr<const User> &user, const PracticeEvent *event) const
 {
     rst_code_e rst = RST_OK;
 
@@ -178,7 +180,7 @@ rst_code_e OperationPracticeEvent::check_class_consistency(const PracticeEvent *
     }
 
     std::shared_ptr<Subject> subject;
-    rst = subject_op->subject_get_by_id(event->get_subject_id(), subject);
+    rst = subject_op->subject_get_by_id(user, event->get_subject_id(), subject);
     if(rst != RST_OK){
         return rst;
     }
@@ -215,7 +217,7 @@ rst_code_e OperationPracticeEvent::practice_event_update(const std::shared_ptr<c
         return PRACTICE_EVENT_ERROR;
     }
 
-    rst = check_updates(existing_practice.get(), &practice);
+    rst = check_updates(user, existing_practice.get(), &practice);
     if(rst != RST_OK){
         return rst;
     }
@@ -288,7 +290,7 @@ rst_code_e OperationPracticeEvent::practice_event_remove_by_subject_id(const std
     }
 
     std::shared_ptr<Subject> subject;
-    rst_code_e rst = subject_op->subject_get_by_id(id, subject);
+    rst_code_e rst = subject_op->subject_get_by_id(user, id, subject);
     if (rst != RST_OK)
     {
         return rst;
@@ -381,7 +383,7 @@ rst_code_e OperationPracticeEvent::practice_event_get_all_by_subject(const std::
     }
 
     std::shared_ptr<Subject> subject;
-    rst_code_e rst = subject_op->subject_get_by_id(subject_id, subject);
+    rst_code_e rst = subject_op->subject_get_by_id(user, subject_id, subject);
     if (rst != RST_OK)
     {
         return rst;

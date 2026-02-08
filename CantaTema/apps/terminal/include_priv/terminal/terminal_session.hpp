@@ -34,8 +34,9 @@ public:
 
     //-------------------------------------------------------------------------------------
 
-    void subject_add(std::ostream &out, const std::string &name, unsigned int category_id, const std::string &file_path);
-    void subject_update(std::ostream &out, unsigned int id, const std::string &new_name, const unsigned int new_category_id, const std::string &file_path_new);
+    void subject_add(std::ostream &out, unsigned int category_id, const std::string &name);
+    void subject_add_from_path(std::ostream &out, unsigned int category_id, const std::string &name, const std::string &file_path);
+    void subject_update(std::ostream &out, unsigned int id, const unsigned int new_category_id, const std::string &new_name);
     void subject_remove(std::ostream &out, unsigned int id);
     void subject_get_by_category(std::ostream &out, unsigned int category_id);
     void subject_get_by_user(std::ostream &out);
@@ -46,9 +47,10 @@ public:
 
     //-------------------------------------------------------------------------------------
 
-    void practice_event_add_planned(std::ostream &out, unsigned int subject_id, unsigned int duration, const std::string &name);
-    void practice_event_add_recorded(std::ostream &out, unsigned int subject_id, const std::string &source_file, const std::string &name);
-    void practice_event_update(std::ostream &out, unsigned int id, unsigned int duration, const std::string &name);
+    void practice_event_add_planned(std::ostream &out, unsigned int subject_id, const std::string &date, const std::string &description);
+    void practice_event_add_recorded(std::ostream &out, unsigned int subject_id);
+    void practice_event_add_recorded_from_file(std::ostream &out, unsigned int subject_id, const std::string &date);
+    void practice_event_update(std::ostream &out, unsigned int id, const std::string &new_status, const std::string &description);
     void practice_event_remove(std::ostream &out, unsigned int id);
     void practice_event_get_by_id(std::ostream &out, unsigned int id);
     void practice_event_get_by_subject(std::ostream &out, unsigned int subject_id);

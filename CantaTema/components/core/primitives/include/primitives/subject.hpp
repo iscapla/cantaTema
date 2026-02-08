@@ -19,23 +19,21 @@ public:
     unsigned int get_user_id(void) const;
     void set_user_id(unsigned int new_user_id);
 
+    unsigned int get_category_id(void) const;
+    void set_category_id(unsigned int new_category_id);
+
     std::string get_name(void) const;
     void set_name(std::string new_name);
 
     std::string get_filepath(void) const;
     void set_filepath(std::string new_filepath);
 
-    std::shared_ptr<Category> get_category(void) const;
-    void set_category(std::shared_ptr<Category> new_category);
-
-    void print(void) const;
-
 private:
     unsigned int id;
     unsigned int user_id;
+    unsigned int category_id;
     std::string name;
     std::string filepath;
-    std::shared_ptr<Category> category;
 };
 
 #endif //__SUBJECT_HPP

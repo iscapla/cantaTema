@@ -1,3 +1,6 @@
+#include "primitives/utils_functions.hpp"
+#include "primitives/utils_prints.hpp"
+#include "file_handler/file_handler.hpp"
 #include "terminal/terminal_session.hpp"
 #include <iomanip>
 
@@ -45,7 +48,9 @@ void TerminalSession::user_get(std::ostream &out)
     }
     else
     {
-        current_user->print();
+        logger->info("User information:");
+        logger->info(UtilsPrints::get_user_header());
+        logger->info(UtilsPrints::get_user_body(*current_user));
     }
 }
 
@@ -129,18 +134,31 @@ void TerminalSession::category_get_by_user(std::ostream &out)
     }
     else
     {
-        out << std::left << std::setw(10) << "ID" << std::setw(30) << "Name" << std::endl;
-        out << std::string(40, '-') << std::endl;
-
+        logger->info("Category information:");
+        logger->info(UtilsPrints::get_category_header());
         for (const auto &cat : categories)
         {
-            out << std::left << std::setw(10) << cat->get_id() << std::setw(30) << cat->get_name() << std::endl;
+            logger->info(UtilsPrints::get_category_body(*cat));
         }
     }
 }
 
-void TerminalSession::subject_add(std::ostream &out, const std::string &name, unsigned int category_id, const std::string &file_path)
+void TerminalSession::subject_add(std::ostream &out, unsigned int category_id, const std::string &name)
 {
+    std::string file_path;
+    rst_code_e rst = FileHandler::get_file_path_from_user_selection(file_path);
+    if(rst != RST_OK){
+        logger->error("Error getting file path. {}", get_rst_txt(rst));
+    }else{
+        subject_add_from_path(out, category_id, name, file_path);
+    }
+}
+
+void TerminalSession::subject_add_from_path(std::ostream &out, unsigned int category_id, const std::string &name, const std::string &file_path)
+{
+    logger->info("File path: {}", file_path);
+    std::filesystem::path p(file_path);
+
     rst_code_e rst = op->subject_add(name, category_id, file_path);
     if (rst)
     {
@@ -152,9 +170,21 @@ void TerminalSession::subject_add(std::ostream &out, const std::string &name, un
     }
 }
 
-void TerminalSession::subject_update(std::ostream &out, unsigned int id, const std::string &new_name, const unsigned int new_category_id, const std::string &file_path_new)
+void TerminalSession::subject_update(std::ostream &out, unsigned int id, const unsigned int new_category_id, const std::string &name)
 {
-    rst_code_e rst = op->subject_update(id, new_name, new_category_id, file_path_new);
+    std::string file_path;
+    rst_code_e rst = FileHandler::get_file_path_from_user_selection(file_path);
+    std::string file_path_new = "";
+    std::string name_new = "";
+    if(rst != RST_OK){
+        logger->info("No new path provided.");
+    }else{
+        logger->info("New file path: {}", file_path);
+        file_path_new = file_path;
+        name_new = std::filesystem::path(file_path).stem().string();
+    }
+
+    rst = op->subject_update(id, name_new, new_category_id, file_path_new);
     if (rst)
     {
         logger->error("Operation error: {}", get_rst_txt(rst));
@@ -180,7 +210,7 @@ void TerminalSession::subject_remove(std::ostream &out, unsigned int id)
 
 void TerminalSession::subject_get_by_category(std::ostream &out, unsigned int category_id)
 {
-    std::vector<std::shared_ptr<const Subject>> subjects;
+    std::vector<std::shared_ptr<Subject>> subjects;
     rst_code_e rst = op->subject_get_by_category(category_id, subjects);
     if (rst)
     {
@@ -193,11 +223,7 @@ void TerminalSession::subject_get_by_category(std::ostream &out, unsigned int ca
 
         for (const auto &sub : subjects)
         {
-            std::string category_info = "None";
-            if (sub->get_category())
-            {
-                category_info = std::to_string(sub->get_category()->get_id()) + "-" + sub->get_category()->get_name();
-            }
+            std::string category_info = sub->get_category_id() == 0 ? "None" : std::to_string(sub->get_category_id());
             out << std::left << std::setw(10) << sub->get_id() << std::setw(30) << sub->get_name() << std::setw(30) << category_info << std::setw(50) << sub->get_filepath() << std::endl;
         }
     }
@@ -205,7 +231,7 @@ void TerminalSession::subject_get_by_category(std::ostream &out, unsigned int ca
 
 void TerminalSession::subject_get_by_user(std::ostream &out)
 {
-    std::vector<std::shared_ptr<const Subject>> subjects;
+    std::vector<std::shared_ptr<Subject>> subjects;
     rst_code_e rst = op->subject_get_by_user(subjects);
     if (rst)
     {
@@ -213,17 +239,11 @@ void TerminalSession::subject_get_by_user(std::ostream &out)
     }
     else
     {
-        out << std::left << std::setw(10) << "ID" << std::setw(30) << "Name" << std::setw(30) << "Category" << std::setw(50) << "File Path" << std::endl;
-        out << std::string(120, '-') << std::endl;
-
+        logger->info("Subject information:");
+        logger->info(UtilsPrints::get_subject_header());
         for (const auto &sub : subjects)
         {
-            std::string category_info = "None";
-            if (sub->get_category())
-            {
-                category_info = std::to_string(sub->get_category()->get_id()) + "-" + sub->get_category()->get_name();
-            }
-            out << std::left << std::setw(10) << sub->get_id() << std::setw(30) << sub->get_name() << std::setw(30) << category_info << std::setw(50) << sub->get_filepath() << std::endl;
+            logger->info(UtilsPrints::get_subject_body(*sub));
         }
     }
 }
@@ -236,42 +256,22 @@ void TerminalSession::user_metrics_get(std::ostream &out)
     {
         logger->error("Operation error: {}", get_rst_txt(rst));
     }else{
-        user_metrics->print();
+        logger->info("User metrics information:");
+        logger->info(UtilsPrints::get_user_metrics_header());
+        logger->info(UtilsPrints::get_user_metrics_body(*user_metrics));
     }
 }
 
-void TerminalSession::practice_event_add_planned(std::ostream &out, unsigned int subject_id, unsigned int duration, const std::string &name)
+void TerminalSession::practice_event_add_planned(std::ostream &out, unsigned int subject_id, const std::string &date, const std::string &description)
 {
-    std::vector<std::shared_ptr<const Subject>> subjects;
-    rst_code_e rst = op->subject_get_by_user(subjects);
-    if (rst != RST_OK)
-    {
-        logger->error("Operation error fetching subjects: {}", get_rst_txt(rst));
-        return;
-    }
-
-    std::shared_ptr<const Subject> found_subject = nullptr;
-    for (const auto &sub : subjects)
-    {
-        if (sub->get_id() == subject_id)
-        {
-            found_subject = sub;
-            break;
-        }
-    }
-
-    if (!found_subject)
-    {
-        logger->error("Subject not found");
-        return;
-    }
 
     PracticeEvent practice;
-    practice.set_subject_id(found_subject->get_id());
-    practice.set_duration(duration);
-    practice.set_description(name);
+    practice.set_subject_id(subject_id);
+    practice.set_duration(0);
+    practice.set_description(description);
+    practice.set_date(parse_time_to_time_t(date, DATE_STRING_FORMAT_SHORT));
 
-    rst = op->practice_event_add_planned(practice);
+    rst_code_e rst = op->practice_event_add_planned(practice);
     if (rst)
     {
         logger->error("Operation error: {}", get_rst_txt(rst));
@@ -282,37 +282,29 @@ void TerminalSession::practice_event_add_planned(std::ostream &out, unsigned int
     }
 }
 
-void TerminalSession::practice_event_add_recorded(std::ostream &out, unsigned int subject_id, const std::string &source_file, const std::string &name)
+void TerminalSession::practice_event_add_recorded(std::ostream &out, unsigned int subject_id){
+
+}
+
+void TerminalSession::practice_event_add_recorded_from_file(std::ostream &out, unsigned int subject_id, const std::string &date)
 {
-    std::vector<std::shared_ptr<const Subject>> subjects;
-    rst_code_e rst = op->subject_get_by_user(subjects);
-    if (rst != RST_OK)
-    {
-        logger->error("Operation error fetching subjects: {}", get_rst_txt(rst));
-        return;
+
+    std::string file_path;
+    rst_code_e rst = FileHandler::get_file_path_from_user_selection(file_path);
+    if(rst != RST_OK){
+        logger->error("Error getting file path. {}", get_rst_txt(rst));
     }
 
-    std::shared_ptr<const Subject> found_subject = nullptr;
-    for (const auto &sub : subjects)
-    {
-        if (sub->get_id() == subject_id)
-        {
-            found_subject = sub;
-            break;
-        }
-    }
-
-    if (!found_subject)
-    {
-        logger->error("Subject not found");
-        return;
-    }
+    logger->info("File path: {}", file_path);
+    std::filesystem::path p(file_path);
 
     PracticeEvent practice;
-    practice.set_subject_id(found_subject->get_id());
-    practice.set_description(name);
+    practice.set_subject_id(subject_id);
+    practice.set_duration(0);
+    practice.set_description(p.stem().string());
+    practice.set_date(parse_time_to_time_t(date, DATE_STRING_FORMAT_SHORT));
 
-    rst = op->practice_event_add_recorded(source_file, practice);
+    rst = op->practice_event_add_recorded(file_path, practice);
     if (rst)
     {
         logger->error("Operation error: {}", get_rst_txt(rst));
@@ -323,7 +315,7 @@ void TerminalSession::practice_event_add_recorded(std::ostream &out, unsigned in
     }
 }
 
-void TerminalSession::practice_event_update(std::ostream &out, unsigned int id, unsigned int duration, const std::string &name)
+void TerminalSession::practice_event_update(std::ostream &out, unsigned int id, const std::string &new_status, const std::string &description)
 {
     std::shared_ptr<PracticeEvent> practice;
     rst_code_e rst = op->practice_event_get_by_id(id, practice);
@@ -333,8 +325,8 @@ void TerminalSession::practice_event_update(std::ostream &out, unsigned int id, 
         return;
     }
 
-    practice->set_description(name);
-    practice->set_duration(duration);
+    practice->set_description(description);
+    practice->set_status(PracticeEvent::parse_status_from_string(new_status));
 
     rst = op->practice_event_update(*practice);
     if (rst)
@@ -370,7 +362,8 @@ void TerminalSession::practice_event_get_by_id(std::ostream &out, unsigned int i
     }
     else
     {
-        practice->print();
+        logger->info(UtilsPrints::get_practice_event_header);
+        logger->info(UtilsPrints::get_practice_event_body(*practice));
     }
 }
 
@@ -384,9 +377,10 @@ void TerminalSession::practice_event_get_by_subject(std::ostream &out, unsigned 
     }
     else
     {
+        logger->info(UtilsPrints::get_practice_event_header());
         for (const auto &practice : practices)
         {
-            practice->print();
+            logger->info(UtilsPrints::get_practice_event_body(*practice));
         }
     }
 }
@@ -401,9 +395,11 @@ void TerminalSession::practice_event_get_by_user(std::ostream &out)
     }
     else
     {
+        logger->info("Practice event information:");
+        logger->info(UtilsPrints::get_practice_event_header());
         for (const auto &practice : practices)
         {
-            practice->print();
+            logger->info(UtilsPrints::get_practice_event_body(*practice));
         }
     }
 }

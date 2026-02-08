@@ -35,30 +35,33 @@ void TerminalSession::test_start(std::ostream &out)
     // Use example data file
     std::string file_path = "example_data/subject_es_1.pdf";
     file_path = std::filesystem::absolute(file_path).string();
+    std::filesystem::path p(file_path);
+    std::string file_name = p.stem().string();
 
     // 5. Create 2 subjects with a file. Set the category to match the previosly created
-    subject_add(out, "Subject 1", category_id, file_path);
-    subject_add(out, "Subject 2", category_id, file_path);
+    
+    subject_add_from_path(out, category_id, file_name + "_1", file_path);
+    subject_add_from_path(out, category_id, file_name + "_2", file_path);
 
     // 6. Create 2 subjects without category
-    subject_add(out, "Subject 3", 0, file_path);
-    subject_add(out, "Subject 4", 0, file_path);
+    subject_add_from_path(out, 0, file_name + "_3", file_path);
+    subject_add_from_path(out, 0, file_name + "_4", file_path);
 
     // 7. Add practice events
-    std::vector<std::shared_ptr<const Subject>> subjects;
+    std::vector<std::shared_ptr<Subject>> subjects;
     if (op->subject_get_by_user(subjects) == RST_OK)
     {
         int idx = 0;
         for (const auto &sub : subjects)
         {
             if (idx == 0) {
-                practice_event_add_planned(out, sub->get_id(), 30, "Scales");
-                practice_event_add_recorded(out, sub->get_id(), file_path, "Improvisation");
+                practice_event_add_planned(out, sub->get_id(), "2025-02-08", "Scales");
+                practice_event_add_recorded(out, sub->get_id());
             } else if (idx == 1) {
-                practice_event_add_planned(out, sub->get_id(), 45, "Repertoire A");
-                practice_event_add_planned(out, sub->get_id(), 60, "Repertoire B");
+                practice_event_add_planned(out, sub->get_id(), "2025-02-09", "Repertoire A");
+                practice_event_add_planned(out, sub->get_id(), "2025-02-10", "Repertoire B");
             } else if (idx == 2) {
-                practice_event_add_recorded(out, sub->get_id(), file_path, "Session Recording");
+                practice_event_add_recorded(out, sub->get_id());
             }
             idx++;
         }
@@ -82,8 +85,15 @@ void TerminalSession::test_start(std::ostream &out)
     // out << std::endl;
 
     // 8. Print all the information
+    out << std::endl << std::endl;
     user_get(out);
+    out << std::endl << std::endl;
+    user_metrics_get(out);
+    out << std::endl << std::endl;
     category_get_by_user(out);
+    out << std::endl << std::endl;
     subject_get_by_user(out);
+    out << std::endl << std::endl;
     practice_event_get_by_user(out);
+    out << std::endl << std::endl;
 }

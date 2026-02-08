@@ -61,8 +61,6 @@ public:
     User::Account_status parse_status_to_type(std::string &status) const;
     std::string parse_status_to_string(User::Account_status status) const;
 
-    void print(void) const;
-
 private:
     bool is_authenticated;
 

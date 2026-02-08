@@ -20,8 +20,6 @@ public:
     std::string get_name(void) const;
     void set_name(std::string new_name);
 
-    void print(void) const;
-
 private:
     unsigned int id;
     unsigned int user_id;

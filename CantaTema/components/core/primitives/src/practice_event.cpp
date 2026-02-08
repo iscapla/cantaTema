@@ -74,11 +74,3 @@ void PracticeEvent::set_description(std::string new_description) { description =
 
 PracticeEvent::PracticeEvent_status PracticeEvent::get_status(void) const { return status; }
 void PracticeEvent::set_status(PracticeEvent_status new_status) { status = new_status; }
-
-void PracticeEvent::print(void) const
-{
-    std::string date_str = parse_time_t_to_string((time_t)date, DATE_STRING_FORMAT_SHORT);
-    std::string recorded_date_str = parse_time_t_to_string((time_t)recorded_date, DATE_STRING_FORMAT_SHORT);
-    logger->debug("| {:>6d} | {:>6d} | {:>6d} | {:>10s} | {:>10s} | {:>10d} | {:>10s} | {:>30s} | {:>20s} |",
-                  id, user_id, subject_id, date_str, recorded_date_str, duration, get_status_as_string(status), filepath, description);
-}

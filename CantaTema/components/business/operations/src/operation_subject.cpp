@@ -8,7 +8,9 @@
 #include "database/db_main.hpp"
 #include "database/db_subject.hpp"
 
-OperationSubject::OperationSubject(std::shared_ptr<IOperationUserMetrics> &&_user_metrics_op) : user_metrics_op(std::move(_user_metrics_op))
+OperationSubject::OperationSubject(std::shared_ptr<IOperationUserMetrics> &&_user_metrics_op, std::shared_ptr<IOperationCategory> &&_category_op) :
+    user_metrics_op(std::move(_user_metrics_op)),
+    category_op(std::move(_category_op))
 {
     DB_Main *db_main = DB_Main::getInstance();
 }
@@ -28,11 +30,6 @@ rst_code_e OperationSubject::subject_add(const std::shared_ptr<const User> &user
         return SUBJECT_ERROR;
     }
 
-    if(user_metrics_op == nullptr){
-        logger->error("User metrics operation error");
-        return SUBJECT_ERROR;
-    }
-
     std::uintmax_t file_size_in_kb = text_handler.get_file_size_in_bytes() / 1024;
     rst = user_metrics_op->user_metrics_can_accept_file_size(user, file_size_in_kb);
     if(rst != RST_OK){
@@ -42,6 +39,29 @@ rst_code_e OperationSubject::subject_add(const std::shared_ptr<const User> &user
 
     subject.set_user_id(user->get_useraccountid());
     
+    if (subject.get_category_id() != 0)
+    {
+        if (category_op == nullptr)
+        {
+            logger->error("Category operation error");
+            return SUBJECT_ERROR;
+        }
+
+        std::shared_ptr<Category> category_check;
+        rst = category_op->category_get_by_id(subject.get_category_id(), category_check);
+        if (rst != RST_OK)
+        {
+            logger->error("Category not found");
+            return SUBJECT_ERROR;
+        }
+
+        if (category_check->get_user_id() != user->get_useraccountid())
+        {
+            logger->error("Category does not belong to user");
+            return SUBJECT_ERROR;
+        }
+    }
+
     std::vector<std::shared_ptr<Subject>> subjects;
     rst = db_subject.get_all_subjects_by_user(user->get_useraccountid(), subjects);
     if (rst != RST_OK)
@@ -67,7 +87,7 @@ rst_code_e OperationSubject::subject_add(const std::shared_ptr<const User> &user
     }
 
     std::filesystem::path p(source_file);
-    std::string dst_file = (ToolPath::get_path_for_subject(user->get_useraccountid(), user->get_useraccountid()) / p.filename()).string();
+    std::string dst_file = (ToolPath::get_path_for_subject(user->get_useraccountid(), subject.get_id()) / p.filename()).string();
     unsigned int uploaded_bytes;
     rst = text_handler.upload_file(dst_file, uploaded_bytes);
     if(rst != RST_OK){
@@ -150,8 +170,30 @@ rst_code_e OperationSubject::subject_update(const std::shared_ptr<const User> &u
         return SUBJECT_ERROR;
     }
 
-    rst = db_subject.update_subject(subject);
+    if (subject.get_category_id() != 0)
+    {
+        if (category_op == nullptr)
+        {
+            logger->error("Category operation error");
+            return SUBJECT_ERROR;
+        }
 
+        std::shared_ptr<Category> category_check;
+        rst = category_op->category_get_by_id(subject.get_category_id(), category_check);
+        if (rst != RST_OK)
+        {
+            logger->error("Category not found");
+            return SUBJECT_ERROR;
+        }
+
+        if (category_check->get_user_id() != user->get_useraccountid())
+        {
+            logger->error("Category does not belong to user");
+            return SUBJECT_ERROR;
+        }
+    }
+
+    rst = db_subject.update_subject(subject);
     if (rst != RST_OK)
     {
         logger->warn("Update subject error ({})", get_rst_txt(rst));
@@ -166,7 +208,7 @@ rst_code_e OperationSubject::subject_remove(const std::shared_ptr<const User> &u
     DB_Subject db_subject;
 
     std::shared_ptr<Subject> subject = nullptr;
-    rst_code_e rst = subject_get_by_id(id, subject);
+    rst_code_e rst = subject_get_by_id(user,id, subject);
     if (rst != RST_OK)
         return rst;
     
@@ -213,7 +255,7 @@ rst_code_e OperationSubject::subject_remove(const std::shared_ptr<const User> &u
     return RST_OK;
 }
 
-rst_code_e OperationSubject::subject_get_by_id(unsigned int id, std::shared_ptr<Subject> &subject)
+rst_code_e OperationSubject::subject_get_by_id(const std::shared_ptr<const User> &user, unsigned int id, std::shared_ptr<Subject> &subject)
 {
     DB_Subject db_subject;
 
@@ -224,15 +266,36 @@ rst_code_e OperationSubject::subject_get_by_id(unsigned int id, std::shared_ptr<
         return SUBJECT_NOT_FOUND;
     }
 
+    if(subject->get_user_id() != user->get_useraccountid())
+    {
+        logger->error("User ID does not match");
+        subject = nullptr;
+        return SUBJECT_NOT_FOUND;
+    }
+
     return RST_OK;
 }
 
-rst_code_e OperationSubject::subject_get_all_by_category(unsigned int category_id, std::vector<std::shared_ptr<Subject>> &subjects)
+rst_code_e OperationSubject::subject_get_all_by_category(const std::shared_ptr<const User> &user, unsigned int category_id, std::vector<std::shared_ptr<Subject>> &subjects)
 {
     DB_Subject db_subject;
 
-    rst_code_e rst = db_subject.get_all_subjects_by_category(category_id, subjects);
+    rst_code_e rst = RST_OK;
 
+    std::shared_ptr<Category> category = nullptr;
+    rst = category_op->category_get_by_id(category_id, category);
+    if (rst != RST_OK)
+    {
+        logger->warn("Category not found");
+        return CATEGORY_NOT_FOUND;
+    }
+
+    if(category->get_user_id() != user->get_useraccountid()){
+        logger->error("User ID does not match");
+        return CATEGORY_NOT_FOUND;
+    }
+
+    rst = db_subject.get_all_subjects_by_category(category_id, subjects);
     if (rst != RST_OK)
     {
         logger->warn("Get all subjects by category error ({})", get_rst_txt(rst));

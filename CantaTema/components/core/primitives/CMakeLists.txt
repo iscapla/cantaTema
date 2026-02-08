@@ -27,6 +27,7 @@ create_infra_library(
     "primitives"
     SRCS
     src/utils_thread_pool.cpp
+    src/utils_prints.cpp
     src/user.cpp
     src/user_metrics.cpp
     src/subject.cpp

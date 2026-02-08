@@ -116,12 +116,3 @@ std::string User::parse_status_to_string(User::Account_status status) const
         break;
     }
 }
-
-void User::print(void) const{
-
-std::string t_creationdate{parse_time_t_to_string(creationdate, DATE_STRING_FORMAT_LONG)};
-
-logger->debug("| {:>2d} | {:>6d} | {:>10s} | {:>15s} | {:>20s} | {:>20s} | {:>3d} | {:>10d} |",
-                  is_authenticated, useraccountid, name, passwordkey, t_creationdate, parse_status_to_string(status), roleid, max_space_size_in_kb);
-
-}

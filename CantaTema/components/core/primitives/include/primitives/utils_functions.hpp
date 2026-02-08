@@ -14,7 +14,7 @@
  * @param format 
  * @return time_t 
  */
-inline time_t parse_time_to_time_t(std::string &text, const char *format) noexcept
+inline time_t parse_time_to_time_t(const std::string &text, const char *format) noexcept
 {
 
     try

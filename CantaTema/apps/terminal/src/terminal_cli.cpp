@@ -15,7 +15,6 @@
 
 #include "primitives/utils_logger.hpp"
 #include "terminal/terminal_session.hpp"
-#include "file_handler/file_handler.hpp"
 
 using MainScheduler = cli::StandaloneAsioScheduler;
 // using CliTelnetServer = cli::StandaloneAsioCliTelnetServer;
@@ -150,33 +149,34 @@ rst_code_e terminal_init_practice(std::unique_ptr<cli::Menu> &rootMenu)
         auto practiceMenu = std::make_unique<cli::Menu>("practice", "Practice event commands (MENU)");
 
         practiceMenu->Insert(
-            "add_planned", {"subject_id", "duration", "name"},
-            [](std::ostream &out, unsigned int subject_id, unsigned int duration, const std::string &name)
+            "add_planned", {"subject_id", "date", "description"},
+            [](std::ostream &out, unsigned int subject_id, const std::string &date, const std::string &description)
             {
-                terminal_session->practice_event_add_planned(out, subject_id, duration, name);
+                terminal_session->practice_event_add_planned(out, subject_id, date, description);
             },
             "Add a planned practice event");
 
         practiceMenu->Insert(
-            "add_recorded", {"subject_id", "name"},
-            [](std::ostream &out, unsigned int subject_id, const std::string &name)
+            "add_recorded", {"subject_id"},
+            [](std::ostream &out, unsigned int subject_id)
             {
-                std::string file_path;
-                rst_code_e rst = FileHandler::get_file_path_from_user_selection(file_path);
-                if(rst == RST_OK){
-                    logger->info("File path: {}", file_path);
-                    terminal_session->practice_event_add_recorded(out, subject_id, file_path, name);
-                }else{
-                    logger->error("Error getting file path. {}", get_rst_txt(rst));
-                }
+                terminal_session->practice_event_add_recorded(out, subject_id);
+            },
+            "Add a recorded practice event (user recording action)");
+        
+        practiceMenu->Insert(
+            "add_recorded_file", {"subject_id", "date"},
+            [](std::ostream &out, unsigned int subject_id, const std::string &date)
+            {
+                terminal_session->practice_event_add_recorded_from_file(out, subject_id, date);
             },
             "Add a recorded practice event (select file)");
 
         practiceMenu->Insert(
-            "update", {"id", "duration", "name"},
-            [](std::ostream &out, unsigned int id, unsigned int duration, const std::string &name)
+            "update", {"id", "status", "description"},
+            [](std::ostream &out, unsigned int id, const std::string &status, const std::string &description)
             {
-                terminal_session->practice_event_update(out, id, duration, name);
+                terminal_session->practice_event_update(out, id, status, description);
             },
             "Update a practice event");
 
@@ -235,25 +235,17 @@ rst_code_e terminal_init_subject(std::unique_ptr<cli::Menu> &rootMenu)
 
         subjectMenu->Insert(
             "subject_add", {"category_id"},
-            [](std::ostream &out, unsigned int category_id)
+            [](std::ostream &out, unsigned int category_id, const std::string &name)
             {
-                std::string file_path;
-                rst_code_e rst = FileHandler::get_file_path_from_user_selection(file_path);
-                if(rst == RST_OK){
-                    logger->info("File path: {}", file_path);
-                    std::filesystem::path p(file_path);
-                    terminal_session->subject_add(out, (p.stem()).string(), category_id, file_path);
-                }else{
-                    logger->error("Error getting file path. {}", get_rst_txt(rst));
-                }
+                terminal_session->subject_add(out, category_id, name);
             },
             "Add new subject");
 
         subjectMenu->Insert(
-            "subject_update", {"id", "new_name", "new_category_id", "file_path_new"},
-            [](std::ostream &out, unsigned int id, const std::string &new_name, const unsigned int new_category_id, const std::string &file_path_new)
+            "subject_update", {"id", "new_category_id", "new_name"},
+            [](std::ostream &out, unsigned int id, const unsigned int new_category_id, const std::string &new_name)
             {
-                terminal_session->subject_update(out, id, new_name, new_category_id, file_path_new);
+                terminal_session->subject_update(out, id, new_category_id, new_name);
             },
             "Update subject");
 

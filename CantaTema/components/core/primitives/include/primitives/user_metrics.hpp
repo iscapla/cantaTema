@@ -18,8 +18,6 @@ public:
     unsigned int get_space_used_kb(void) const;
     void set_space_used_kb(unsigned int new_space_used_kb);
 
-    void print(void) const;
-
 private:
     unsigned int useraccountid;
     unsigned int space_used_kb;

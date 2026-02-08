@@ -28,9 +28,9 @@ Session::Session(
 Session::Session(void)
 {
     user_metrics_op = std::make_shared<OperationUserMetrics>();
-    user_op = std::make_shared<OperationUser>(std::shared_ptr<IOperationUserMetrics>(user_metrics_op));
     category_op = std::make_shared<OperationCategory>();
-    subject_op = std::make_shared<OperationSubject>(std::shared_ptr<IOperationUserMetrics>(user_metrics_op));
+    user_op = std::make_shared<OperationUser>(std::shared_ptr<IOperationUserMetrics>(user_metrics_op));
+    subject_op = std::make_shared<OperationSubject>(std::shared_ptr<IOperationUserMetrics>(user_metrics_op), std::shared_ptr<IOperationCategory>(category_op));
     practice_event_op = std::make_shared<OperationPracticeEvent>(std::shared_ptr<IOperationUserMetrics>(user_metrics_op), std::shared_ptr<IOperationSubject>(subject_op));
 
     if (user_op == nullptr || category_op == nullptr || subject_op == nullptr || user_metrics_op == nullptr || practice_event_op == nullptr)
@@ -204,31 +204,9 @@ rst_code_e Session::subject_add(const std::string &name, unsigned int category_i
     if (session_user == nullptr || !user_op->user_is_authenticated())
         return USER_NO_AUTH;
 
-    std::shared_ptr<Category> found_category = nullptr;
-
-    if (category_id != 0)
-    {
-        std::vector<std::shared_ptr<Category>> categories;
-        rst_code_e rst = category_op->category_get_all_by_user(session_user, categories);
-        if (rst != RST_OK)
-            return rst;
-
-        for (const auto &cat : categories)
-        {
-            if (cat->get_id() == category_id)
-            {
-                found_category = cat;
-                break;
-            }
-        }
-
-        if (!found_category)
-            return CATEGORY_NOT_FOUND;
-    }
-
     Subject subject(0, name);
     subject.set_user_id(session_user->get_useraccountid());
-    subject.set_category(found_category);
+    subject.set_category_id(category_id);
 
     return subject_op->subject_add(session_user, file_path, subject);
 }
@@ -238,44 +216,16 @@ rst_code_e Session::subject_update(unsigned int id, const std::string &new_name,
     if (session_user == nullptr || !user_op->user_is_authenticated())
         return USER_NO_AUTH;
 
-    std::vector<std::shared_ptr<Subject>> subjects;
-    rst_code_e rst = subject_op->subject_get_all_by_user(session_user, subjects);
+    std::shared_ptr<Subject> subject;
+    rst_code_e rst = subject_op->subject_get_by_id(session_user, id, subject);
     if (rst != RST_OK)
         return rst;
 
-    for (auto &sub : subjects)
-    {
-        if (sub->get_id() == id)
-        {
-            std::shared_ptr<Category> found_category = nullptr;
+    subject->set_name(new_name);
+    subject->set_category_id(new_category_id);
+    subject->set_filepath(file_path_new);
 
-            if (new_category_id != 0)
-            {
-                std::vector<std::shared_ptr<Category>> categories;
-                rst_code_e rst_cat = category_op->category_get_all_by_user(session_user, categories);
-                if (rst_cat != RST_OK)
-                    return rst_cat;
-
-                for (const auto &cat : categories)
-                {
-                    if (cat->get_id() == new_category_id)
-                    {
-                        found_category = cat;
-                        break;
-                    }
-                }
-
-                if (!found_category)
-                    return CATEGORY_NOT_FOUND;
-            }
-
-            sub->set_category(found_category);
-            sub->set_name(new_name);
-            sub->set_filepath(file_path_new);
-            return subject_op->subject_update(session_user, *sub);
-        }
-    }
-    return SUBJECT_NOT_FOUND;
+    return subject_op->subject_update(session_user, *subject);
 }
 
 rst_code_e Session::subject_remove(unsigned int id)
@@ -283,22 +233,18 @@ rst_code_e Session::subject_remove(unsigned int id)
     if (session_user == nullptr || !user_op->user_is_authenticated())
         return USER_NO_AUTH;
 
-    std::vector<std::shared_ptr<Subject>> subjects;
-    rst_code_e rst = subject_op->subject_get_all_by_user(session_user, subjects);
-    if (rst != RST_OK)
-        return rst;
-
-    for (auto &sub : subjects)
-    {
-        if (sub->get_id() == id)
-        {
-            return subject_op->subject_remove(session_user, id);
-        }
-    }
-    return SUBJECT_NOT_FOUND;
+    return subject_op->subject_remove(session_user, id);
 }
 
-rst_code_e Session::subject_get_by_category(unsigned int category_id, std::vector<std::shared_ptr<const Subject>> &subjects)
+rst_code_e Session::subject_get_by_id(unsigned int subject_id, std::shared_ptr<Subject> &subject)
+{
+    if (session_user == nullptr || !user_op->user_is_authenticated())
+        return USER_NO_AUTH;
+
+    return subject_op->subject_get_by_id(session_user, subject_id, subject);
+}
+
+rst_code_e Session::subject_get_by_category(unsigned int category_id, std::vector<std::shared_ptr<Subject>> &subjects)
 {
     if (session_user == nullptr || !user_op->user_is_authenticated())
         return USER_NO_AUTH;
@@ -322,7 +268,7 @@ rst_code_e Session::subject_get_by_category(unsigned int category_id, std::vecto
         return CATEGORY_NOT_FOUND;
 
     std::vector<std::shared_ptr<Subject>> user_subjects;
-    rst = subject_op->subject_get_all_by_category(category_id, user_subjects);
+    rst = subject_op->subject_get_all_by_category(session_user, category_id, user_subjects);
     if (rst != RST_OK)
         return rst;
 
@@ -335,7 +281,7 @@ rst_code_e Session::subject_get_by_category(unsigned int category_id, std::vecto
     return RST_OK;
 }
 
-rst_code_e Session::subject_get_by_user(std::vector<std::shared_ptr<const Subject>> &subjects)
+rst_code_e Session::subject_get_by_user(std::vector<std::shared_ptr<Subject>> &subjects)
 {
     if (session_user == nullptr || !user_op->user_is_authenticated())
         return USER_NO_AUTH;

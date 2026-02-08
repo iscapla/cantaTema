@@ -47,8 +47,9 @@ public:
     rst_code_e subject_add(const std::string &name, unsigned int category_id, const std::string &file_path);
     rst_code_e subject_update(unsigned int id, const std::string &new_name, const unsigned int new_category_id, const std::string &file_path_new);
     rst_code_e subject_remove(unsigned int id);
-    rst_code_e subject_get_by_category(unsigned int category_id, std::vector<std::shared_ptr<const Subject>> &subjects);
-    rst_code_e subject_get_by_user(std::vector<std::shared_ptr<const Subject>> &subjects);
+    rst_code_e subject_get_by_id(unsigned int subject_id, std::shared_ptr<Subject> &subject);
+    rst_code_e subject_get_by_category(unsigned int category_id, std::vector<std::shared_ptr<Subject>> &subjects);
+    rst_code_e subject_get_by_user(std::vector<std::shared_ptr<Subject>> &subjects);
 
     //-------------------------------------------------------------------------------------
 

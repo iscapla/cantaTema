@@ -51,8 +51,6 @@ public:
     std::string get_description(void) const;
     void set_description(std::string new_description);
 
-    void print(void) const;
-
 private:
     unsigned int id;
     unsigned int user_id;

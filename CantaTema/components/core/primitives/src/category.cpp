@@ -16,8 +16,3 @@ void Category::set_user_id(unsigned int new_user_id) { user_id = new_user_id; }
 
 std::string Category::get_name(void) const { return name; }
 void Category::set_name(std::string new_name) { name = new_name; }
-
-void Category::print(void) const
-{
-    logger->debug("| {:>6d} | {:>6d} | {:>20s} |", id, user_id, name);
-}

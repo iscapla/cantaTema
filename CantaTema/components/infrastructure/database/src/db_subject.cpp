@@ -1,6 +1,5 @@
 #include "database/db_subject.hpp"
 #include "database/db_connection.hpp"
-#include "database/db_category.hpp"
 #include <sqlite3mc_amalgamation.h>
 
 DB_Subject::DB_Subject(void) {}
@@ -43,9 +42,9 @@ rst_code_e DB_Subject::add_new_subject(Subject &subject) const
 
     sqlite3_bind_int(stmt, 1, subject.get_user_id());
 
-    if (subject.get_category())
+    if (subject.get_category_id() != 0)
     {
-        sqlite3_bind_int(stmt, 2, subject.get_category()->get_id());
+        sqlite3_bind_int(stmt, 2, subject.get_category_id());
     }
     else
     {
@@ -81,9 +80,9 @@ rst_code_e DB_Subject::update_subject(const Subject &subject) const
 
     sqlite3_bind_int(stmt, 1, subject.get_user_id());
 
-    if (subject.get_category())
+    if (subject.get_category_id() != 0)
     {
-        sqlite3_bind_int(stmt, 2, subject.get_category()->get_id());
+        sqlite3_bind_int(stmt, 2, subject.get_category_id());
     }
     else
     {
@@ -172,11 +171,9 @@ rst_code_e DB_Subject::get_subject_by_id(unsigned int id, std::shared_ptr<Subjec
             unsigned int user_id = sqlite3_column_int(stmt, 1);
             
             unsigned int category_id = 0;
-            bool has_category = false;
             if (sqlite3_column_type(stmt, 2) != SQLITE_NULL)
             {
                 category_id = sqlite3_column_int(stmt, 2);
-                has_category = true;
             }
 
             std::string name = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 3));
@@ -185,20 +182,7 @@ rst_code_e DB_Subject::get_subject_by_id(unsigned int id, std::shared_ptr<Subjec
             subject = std::make_shared<Subject>(sub_id, name);
             subject->set_user_id(user_id);
             subject->set_filepath(filepath);
-
-            if (has_category)
-            {
-                DB_Category db_category;
-                std::shared_ptr<Category> category;
-                if (db_category.get_category_by_id(category_id, category) == rst_code_e::RST_OK)
-                {
-                    subject->set_category(category);
-                }
-            }
-            else
-            {
-                subject->set_category(nullptr);
-            }
+            subject->set_category_id(category_id);
             
             result = rst_code_e::RST_OK;
         }
@@ -211,11 +195,9 @@ rst_code_e DB_Subject::get_all_subjects_by_category(unsigned int category_id, st
 {
     std::shared_ptr<sqlite3> db = DB_Connection::getConn();
     sqlite3_stmt *stmt;
-    const char *sql = "SELECT s.subjects_id, s.user_id, s.name, s.filepath, "
-                      "c.category_id, c.name, c.user_id "
-                      "FROM subjects s "
-                      "LEFT JOIN categories c ON s.category_id = c.category_id "
-                      "WHERE s.category_id = ?;";
+    const char *sql = "SELECT subjects_id, user_id, name, filepath "
+                      "FROM subjects "
+                      "WHERE category_id = ?;";
 
     if (sqlite3_prepare_v2(db.get(), sql, -1, &stmt, 0) == SQLITE_OK)
     {
@@ -231,21 +213,7 @@ rst_code_e DB_Subject::get_all_subjects_by_category(unsigned int category_id, st
             auto subject = std::make_shared<Subject>(sub_id, name);
             subject->set_user_id(user_id);
             subject->set_filepath(filepath);
-
-            if (sqlite3_column_type(stmt, 4) != SQLITE_NULL)
-            {
-                unsigned int cat_id = sqlite3_column_int(stmt, 4);
-                std::string cat_name = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 5));
-                unsigned int cat_user_id = sqlite3_column_int(stmt, 6);
-
-                auto category = std::make_shared<Category>(cat_id, cat_name);
-                category->set_user_id(cat_user_id);
-                subject->set_category(category);
-            }
-            else
-            {
-                subject->set_category(nullptr);
-            }
+            subject->set_category_id(category_id);
 
             subjects.push_back(subject);
         }
@@ -258,11 +226,9 @@ rst_code_e DB_Subject::get_all_subjects_by_user(unsigned int user_id, std::vecto
 {
     std::shared_ptr<sqlite3> db = DB_Connection::getConn();
     sqlite3_stmt *stmt;
-    const char *sql = "SELECT s.subjects_id, s.user_id, s.name, s.filepath, "
-                      "c.category_id, c.name, c.user_id "
-                      "FROM subjects s "
-                      "LEFT JOIN categories c ON s.category_id = c.category_id "
-                      "WHERE s.user_id = ?;";
+    const char *sql = "SELECT subjects_id, user_id, category_id, name, filepath "
+                      "FROM subjects "
+                      "WHERE user_id = ?;";
 
     if (sqlite3_prepare_v2(db.get(), sql, -1, &stmt, 0) == SQLITE_OK)
     {
@@ -272,27 +238,20 @@ rst_code_e DB_Subject::get_all_subjects_by_user(unsigned int user_id, std::vecto
         {
             unsigned int sub_id = sqlite3_column_int(stmt, 0);
             unsigned int u_id = sqlite3_column_int(stmt, 1);
-            std::string name = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 2));
-            std::string filepath = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 3));
+            
+            unsigned int category_id = 0;
+            if (sqlite3_column_type(stmt, 2) != SQLITE_NULL)
+            {
+                category_id = sqlite3_column_int(stmt, 2);
+            }
+
+            std::string name = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 3));
+            std::string filepath = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 4));
 
             auto subject = std::make_shared<Subject>(sub_id, name);
             subject->set_user_id(u_id);
             subject->set_filepath(filepath);
-
-            if (sqlite3_column_type(stmt, 4) != SQLITE_NULL)
-            {
-                unsigned int cat_id = sqlite3_column_int(stmt, 4);
-                std::string cat_name = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 5));
-                unsigned int cat_user_id = sqlite3_column_int(stmt, 6);
-
-                auto category = std::make_shared<Category>(cat_id, cat_name);
-                category->set_user_id(cat_user_id);
-                subject->set_category(category);
-            }
-            else
-            {
-                subject->set_category(nullptr);
-            }
+            subject->set_category_id(category_id);
 
             subjects.push_back(subject);
         }

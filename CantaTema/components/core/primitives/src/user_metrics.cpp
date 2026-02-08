@@ -12,8 +12,3 @@ void UserMetrics::set_useraccountid(unsigned int new_useraccountid) { useraccoun
 
 unsigned int UserMetrics::get_space_used_kb(void) const { return space_used_kb; }
 void UserMetrics::set_space_used_kb(unsigned int new_space_used_kb) { space_used_kb = new_space_used_kb; }
-
-void UserMetrics::print(void) const
-{
-    logger->debug("| {:>6d} | {:>10d} |", useraccountid, space_used_kb);
-}

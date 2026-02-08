@@ -32,8 +32,8 @@ private:
     std::shared_ptr<IOperationUserMetrics> user_metrics_op{nullptr};
     std::shared_ptr<IOperationSubject> subject_op{nullptr};
 
-    rst_code_e check_updates(const PracticeEvent *from, const PracticeEvent *to) const;
-    rst_code_e check_class_consistency(const PracticeEvent *event) const;
+    rst_code_e check_updates(const std::shared_ptr<const User> &user, const PracticeEvent *from, const PracticeEvent *to) const;
+    rst_code_e check_class_consistency(const std::shared_ptr<const User> &user, const PracticeEvent *event) const;
 
 };
 

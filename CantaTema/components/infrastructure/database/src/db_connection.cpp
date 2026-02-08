@@ -76,13 +76,9 @@ void DB_Connection::reset_connection() {
         delete instance;
         instance = nullptr;
 
-        // Construct the full path to the database file
-        std::filesystem::path db_path = ToolPath::get_path_for_database() / "data.db";
-
-        // Delete the database file
-        if (std::filesystem::exists(db_path)) {
-            std::filesystem::remove(db_path);
-            logger->info("Database file deleted: {}", db_path.string());
+        if (std::filesystem::exists(ToolPath::get_path_for_database())) {
+            std::filesystem::remove_all(ToolPath::get_path_for_database());
+            logger->info("Data folder deleted: {}", ToolPath::get_path_for_database().string());
         }
 
     }
