@@ -11,6 +11,7 @@ public:
         int sampleRate = 48000;
         int channels = 1;
         int frameSize = 960; // 20ms at 48kHz
+        std::string encryptionKey = "";
     };
 
     struct SoundSystemDeviceInfo {

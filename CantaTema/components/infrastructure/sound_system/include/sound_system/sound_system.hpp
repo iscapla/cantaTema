@@ -11,7 +11,6 @@
 
 class SoundSystem : public ISoundSystem {
 public:
-    // TODO: add encryption and its usage
     /**
      * @brief Constructor. Initializes the miniaudio context with the given configuration.
      * @param config The configuration settings for audio capture and playback.
@@ -113,6 +112,23 @@ private:
     // Internal Callbacks
     static void data_callback_record(ma_device* pDevice, void* pOutput, const void* pInput, ma_uint32 frameCount);
     static void data_callback_play(ma_device* pDevice, void* pOutput, const void* pInput, ma_uint32 frameCount);
+
+    // Ogg and Encryption Helpers
+    struct OggStreamState {
+        uint32_t serial;
+        uint32_t sequence;
+        uint64_t granulePos;
+    };
+    OggStreamState m_oggState;
+
+    static uint32_t update_crc(uint32_t crc, const uint8_t* data, size_t len);
+    void write_le32(std::vector<uint8_t>& buf, uint32_t val);
+    void write_le64(std::vector<uint8_t>& buf, uint64_t val);
+    void write_le16(std::vector<uint8_t>& buf, uint16_t val);
+    void write_ogg_page(FILE* file, OggStreamState& state, const uint8_t* packet, int packetLen, int headerType);
+    void xor_process(void* data, size_t len, long offset);
+    size_t secure_fwrite(const void* ptr, size_t size, size_t count, FILE* stream);
+    size_t secure_fread(void* ptr, size_t size, size_t count, FILE* stream);
 };
 
 #endif //SOUND_SYSTEM_HPP

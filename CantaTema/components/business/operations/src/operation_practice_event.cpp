@@ -68,6 +68,7 @@ rst_code_e OperationPracticeEvent::practice_event_add_recorded(const std::shared
 
     practice.set_user_id(user->get_useraccountid());
     practice.set_status(PracticeEvent::PracticeEvent_status::RECORDED);
+    //TODO Set duration
 
     rst = check_class_consistency(user, &practice);
     if(rst != RST_OK){
