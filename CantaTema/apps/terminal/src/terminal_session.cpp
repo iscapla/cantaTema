@@ -2,7 +2,9 @@
 #include "primitives/utils_prints.hpp"
 #include "file_handler/file_handler.hpp"
 #include "terminal/terminal_session.hpp"
+
 #include <iomanip>
+
 
 TerminalSession::TerminalSession()
 {
@@ -280,10 +282,6 @@ void TerminalSession::practice_event_add_planned(std::ostream &out, unsigned int
     {
         logger->info("Practice event planned added");
     }
-}
-
-void TerminalSession::practice_event_add_recorded(std::ostream &out, unsigned int subject_id){
-
 }
 
 void TerminalSession::practice_event_add_recorded_from_file(std::ostream &out, unsigned int subject_id, const std::string &date)

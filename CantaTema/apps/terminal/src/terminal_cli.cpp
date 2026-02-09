@@ -157,10 +157,10 @@ rst_code_e terminal_init_practice(std::unique_ptr<cli::Menu> &rootMenu)
             "Add a planned practice event");
 
         practiceMenu->Insert(
-            "add_recorded", {"subject_id"},
-            [](std::ostream &out, unsigned int subject_id)
+            "add_recorded", {"subject_id", "name"},
+            [](std::ostream &out, unsigned int subject_id, const std::string name)
             {
-                terminal_session->practice_event_add_recorded(out, subject_id);
+                terminal_session->practice_event_add_recorded(out, subject_id, name);
             },
             "Add a recorded practice event (user recording action)");
         
@@ -171,6 +171,14 @@ rst_code_e terminal_init_practice(std::unique_ptr<cli::Menu> &rootMenu)
                 terminal_session->practice_event_add_recorded_from_file(out, subject_id, date);
             },
             "Add a recorded practice event (select file)");
+        
+        practiceMenu->Insert(
+            "play", {"practice_id"},
+            [](std::ostream &out, unsigned int practice_id)
+            {
+                terminal_session->practice_event_play(out, practice_id);
+            },
+            "Play a practice event");
 
         practiceMenu->Insert(
             "update", {"id", "status", "description"},

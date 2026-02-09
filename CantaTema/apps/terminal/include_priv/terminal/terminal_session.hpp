@@ -48,8 +48,9 @@ public:
     //-------------------------------------------------------------------------------------
 
     void practice_event_add_planned(std::ostream &out, unsigned int subject_id, const std::string &date, const std::string &description);
-    void practice_event_add_recorded(std::ostream &out, unsigned int subject_id);
+    void practice_event_add_recorded(std::ostream &out, unsigned int subject_id, const std::string name);
     void practice_event_add_recorded_from_file(std::ostream &out, unsigned int subject_id, const std::string &date);
+    void practice_event_play(std::ostream &out, unsigned int id);
     void practice_event_update(std::ostream &out, unsigned int id, const std::string &new_status, const std::string &description);
     void practice_event_remove(std::ostream &out, unsigned int id);
     void practice_event_get_by_id(std::ostream &out, unsigned int id);

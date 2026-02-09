@@ -1,13 +1,10 @@
 #include <fstream>
 #include <filesystem>
+#include <ctime>
 
 #include "terminal/terminal_cli.hpp"
 #include "terminal/terminal_session.hpp"
 #include "database/db_main.hpp"
-
-#include <thread>
-#include <chrono>
-#include <iomanip>
 
 void TerminalSession::db_purge(std::ostream &out)
 {
@@ -21,8 +18,8 @@ void TerminalSession::test_start(std::ostream &out)
     db_purge(out);
 
     // 2. Create a user with a password
-    std::string username = "test_user";
-    std::string password = "password123";
+    std::string username = "user";
+    std::string password = "pass";
     user_add(out, username, password);
 
     // 3. Identify the user with the given credentials
@@ -37,6 +34,10 @@ void TerminalSession::test_start(std::ostream &out)
     file_path = std::filesystem::absolute(file_path).string();
     std::filesystem::path p(file_path);
     std::string file_name = p.stem().string();
+
+    // Use example audio file
+    std::string audio_file_path = "example_data/subject_es_1_p_1.opus";
+    audio_file_path = std::filesystem::absolute(audio_file_path).string();
 
     // 5. Create 2 subjects with a file. Set the category to match the previosly created
     
@@ -56,33 +57,28 @@ void TerminalSession::test_start(std::ostream &out)
         {
             if (idx == 0) {
                 practice_event_add_planned(out, sub->get_id(), "2025-02-08", "Scales");
-                practice_event_add_recorded(out, sub->get_id());
+                
+                PracticeEvent practice;
+                practice.set_subject_id(sub->get_id());
+                practice.set_duration(60);
+                practice.set_description("Recorded Scales");
+                practice.set_date(std::time(nullptr));
+                op->practice_event_add_recorded(audio_file_path, practice);
+
             } else if (idx == 1) {
                 practice_event_add_planned(out, sub->get_id(), "2025-02-09", "Repertoire A");
                 practice_event_add_planned(out, sub->get_id(), "2025-02-10", "Repertoire B");
             } else if (idx == 2) {
-                practice_event_add_recorded(out, sub->get_id());
+                PracticeEvent practice;
+                practice.set_subject_id(sub->get_id());
+                practice.set_duration(120);
+                practice.set_description("Recorded Improvisation");
+                practice.set_date(std::time(nullptr));
+                op->practice_event_add_recorded(audio_file_path, practice);
             }
             idx++;
         }
     }
-
-    // for (int seconds_elapsed = 0; seconds_elapsed < 10; ++seconds_elapsed) {
-    //     int mm = seconds_elapsed / 60;
-    //     int ss = seconds_elapsed % 60;
-
-    //     // \r moves cursor to start of line
-    //     // Save previous fill char to avoid affecting other outputs (like tables)
-    //     char old_fill = out.fill('0');
-    //     out << "\rTimer: " 
-    //         << std::setw(2) << mm << ":" 
-    //         << std::setw(2) << ss 
-    //         << std::flush;
-    //     out.fill(old_fill);
-
-    //     std::this_thread::sleep_for(std::chrono::seconds(1));
-    // }
-    // out << std::endl;
 
     // 8. Print all the information
     out << std::endl << std::endl;
