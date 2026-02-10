@@ -19,7 +19,9 @@ ConfigurationSystem::ConfigurationSystem() : IConfigurationBase() {
     parse();
 
     set_default_if_not_present("TEXT_FILES", "extensions_allowed", "*.txt\n*.pdf");
-    set_default_if_not_present("USER_LIMITS", "max_text_file_size_mb", "50");
+    set_default_if_not_present("SOUND_FILES", "extensions_allowed", "*.opus");
+    set_default_if_not_present("USER_LIMITS", "max_text_file_size_mb", "25");
+    set_default_if_not_present("USER_LIMITS", "max_sound_file_size_mb", "25");
     set_default_if_not_present("USER_LIMITS", "usage_limit_mb", "512");
     update_values_to_file();
 }
@@ -28,14 +30,16 @@ ConfigurationSystem::~ConfigurationSystem() {
 }
 
 /**
- * @brief Retrieves the allowed text file extensions from the configuration.
+ * @brief Retrieves the allowed file extensions from the configuration.
  * 
  * @param patterns Array of character pointers to be populated with extension strings.
  * @return int The number of extensions actually retrieved and stored in patterns.
  */
-int ConfigurationSystem::get_text_files_extensions_allowed(char patterns[MAX_EXTENSIONS_COUNT][MAX_EXTENSIONS_LENGTH]) const {
-    const std::string section = "TEXT_FILES";
-    const std::string key = "extensions_allowed";
+int ConfigurationSystem::get_files_extensions_allowed(
+    const std::string section,
+    const std::string key,
+    char patterns[MAX_EXTENSIONS_COUNT][MAX_EXTENSIONS_LENGTH]
+) const {
 
     std::string value = const_cast<ConfigurationSystem*>(this)->get(section, key);
 
@@ -66,8 +70,37 @@ int ConfigurationSystem::get_text_files_extensions_allowed(char patterns[MAX_EXT
     return count;
 }
 
+/**
+ * @brief Retrieves the allowed text file extensions from the configuration.
+ * 
+ * @param patterns Array of character pointers to be populated with extension strings.
+ * @return int The number of extensions actually retrieved and stored in patterns.
+ */
+int ConfigurationSystem::get_text_files_extensions_allowed(char patterns[MAX_EXTENSIONS_COUNT][MAX_EXTENSIONS_LENGTH]) const {
+    return get_files_extensions_allowed("TEXT_FILES", "extensions_allowed", patterns);
+}
+
 unsigned int ConfigurationSystem::get_user_default_max_text_file_size_in_mb(void) const {
     std::string value = const_cast<ConfigurationSystem*>(this)->get("USER_LIMITS", "max_text_file_size_mb");
+    try {
+        return std::stoul(value);
+    } catch (...) {
+        return 10; // Default fallback
+    }
+}
+
+/**
+ * @brief Retrieves the allowed sound file extensions from the configuration.
+ * 
+ * @param patterns Array of character pointers to be populated with extension strings.
+ * @return int The number of extensions actually retrieved and stored in patterns.
+ */
+int ConfigurationSystem::get_sound_files_extensions_allowed(char patterns[MAX_EXTENSIONS_COUNT][MAX_EXTENSIONS_LENGTH]) const {
+    return get_files_extensions_allowed("SOUND_FILES", "extensions_allowed", patterns);
+}
+
+unsigned int ConfigurationSystem::get_user_default_max_sound_file_size_in_mb(void) const {
+    std::string value = const_cast<ConfigurationSystem*>(this)->get("USER_LIMITS", "max_sound_file_size_mb");
     try {
         return std::stoul(value);
     } catch (...) {

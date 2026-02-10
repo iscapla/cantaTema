@@ -4,6 +4,7 @@
 
 #include "primitives/utils_logger.hpp"
 #include "sound_system/sound_system.hpp"
+#include "file_handler/sound_handler.hpp"
 
 namespace {
     const uint32_t kOggCrcPoly = 0x04c11db7;
@@ -87,7 +88,7 @@ void SoundSystem::data_callback_record(ma_device* pDevice, void* pOutput, const 
     pSystem->m_recordedFrames += frameCount;
 }
 
-bool SoundSystem::startRecording(const std::string& filePath, int deviceIndex) {
+bool SoundSystem::startRecording(const SoundFileHandler& fileHandler, int deviceIndex) {
     if (!m_contextInitialized) return false;
     if (m_isRecording) stopRecording();
 
@@ -98,9 +99,10 @@ bool SoundSystem::startRecording(const std::string& filePath, int deviceIndex) {
         logger->error("[SoundSystem] Failed to create Opus encoder.");
         return false;
     }
-    m_recordFile = fopen(filePath.c_str(), "wb");
+    std::string pathStr = fileHandler.get_file_path().string();
+    m_recordFile = fopen(pathStr.c_str(), "wb");
     if (!m_recordFile) {
-        logger->error("[SoundSystem] Failed to initialize output file: {}", filePath);
+        logger->error("[SoundSystem] Failed to initialize output file: {}", pathStr);
         opus_encoder_destroy(m_opusEncoder);
         m_opusEncoder = nullptr;
         return false;
@@ -297,12 +299,23 @@ void SoundSystem::data_callback_play(ma_device* pDevice, void* pOutput, const vo
     pSystem->m_playedFrames += frameCount;
 }
 
-bool SoundSystem::play(const std::string& filePath) {
+bool SoundSystem::play(const SoundFileHandler& fileHandler) {
     if (m_isPlaying) stopPlaying();
 
-    m_playFile = fopen(filePath.c_str(), "rb");
+    std::uintmax_t duration = fileHandler.get_recorded_seconds();
+    if (duration == 0 && !m_config.encryptionKey.empty()) {
+        duration = get_encrypted_file_duration(fileHandler.get_file_path().string());
+    }
+
+    if (duration == 0) {
+        logger->error("[SoundSystem] Audio file has no duration. Playback aborted.");
+        return false;
+    }
+
+    std::string pathStr = fileHandler.get_file_path().string();
+    m_playFile = fopen(pathStr.c_str(), "rb");
     if (!m_playFile) {
-        logger->error("[SoundSystem] Could not load file: {}", filePath);
+        logger->error("[SoundSystem] Could not load file: {}", pathStr);
         return false;
     }
     int error;
@@ -481,4 +494,46 @@ void SoundSystem::write_ogg_page(FILE* file, OggStreamState& state, const uint8_
     if (packet && packetLen > 0) {
         secure_fwrite(packet, 1, packetLen, file);
     }
+}
+
+std::uintmax_t SoundSystem::get_encrypted_file_duration(const std::string& filePath) {
+    FILE* f = fopen(filePath.c_str(), "rb");
+    if (!f) return 0;
+
+    fseek(f, 0, SEEK_END);
+    long fileSize = ftell(f);
+    if (fileSize < 27) { // Minimum Ogg page size
+        fclose(f);
+        return 0;
+    }
+
+    // Scan the last 64KB (or the whole file if smaller) to find the last Ogg page
+    long scanSize = (fileSize > 65536) ? 65536 : fileSize;
+    long startPos = fileSize - scanSize;
+    
+    std::vector<uint8_t> buffer(scanSize);
+    fseek(f, startPos, SEEK_SET);
+    
+    // secure_fread will decrypt the data in memory using the correct file offset
+    if (secure_fread(buffer.data(), 1, scanSize, f) != (size_t)scanSize) {
+        fclose(f);
+        return 0;
+    }
+    fclose(f);
+
+    // Scan backwards for the "OggS" capture pattern
+    for (long i = scanSize - 4; i >= 0; --i) {
+        if (buffer[i] == 'O' && buffer[i+1] == 'g' && buffer[i+2] == 'g' && buffer[i+3] == 'S') {
+            // Found OggS. The granule position is at offset 6 (8 bytes, little-endian)
+            if (i + 14 <= scanSize) {
+                uint64_t granulePos = 0;
+                for (int j = 0; j < 8; ++j) {
+                    granulePos |= (uint64_t)buffer[i + 6 + j] << (j * 8);
+                }
+                // Opus always uses 48kHz for granule position
+                return (std::uintmax_t)(granulePos / 48000);
+            }
+        }
+    }
+    return 0;
 }

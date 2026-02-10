@@ -3,7 +3,7 @@
 #include "database/db_main.hpp"
 #include "database/db_practice_event.hpp"
 #include "primitives/tool_paths.hpp"
-#include "file_handler/text_handler.hpp"
+#include "file_handler/sound_handler.hpp"
 #include <filesystem>
 
 OperationPracticeEvent::OperationPracticeEvent(
@@ -52,23 +52,29 @@ rst_code_e OperationPracticeEvent::practice_event_add_recorded(const std::shared
 {
     DB_PracticeEvent db_practice;
     rst_code_e rst;
-    TextFileHandler text_handler(source_file);
+    SoundFileHandler sound_handler(source_file);
 
     if(user == nullptr || user->get_useraccountid() == 0){
         logger->error("User info error");
         return PRACTICE_EVENT_ERROR;
     }
 
-    std::uintmax_t file_size_in_kb = text_handler.get_file_size_in_bytes() / 1024;
+    std::uintmax_t file_size_in_kb = sound_handler.get_file_size_in_bytes() / 1024;
     rst = user_metrics_op->user_metrics_can_accept_file_size(user, file_size_in_kb);
     if(rst != RST_OK){
         logger->error("User metrics operation error: {}", get_rst_txt(rst));
         return rst;
     }
 
+    std::uintmax_t duration = sound_handler.get_recorded_seconds();
+    if (duration == 0) {
+        logger->error("Audio file duration is 0 or invalid");
+        return PRACTICE_EVENT_NO_SOUND_LENGHT;
+    }
+
     practice.set_user_id(user->get_useraccountid());
     practice.set_status(PracticeEvent::PracticeEvent_status::RECORDED);
-    //TODO Set duration
+    practice.set_duration(duration);
 
     rst = check_class_consistency(user, &practice);
     if(rst != RST_OK){
@@ -87,7 +93,7 @@ rst_code_e OperationPracticeEvent::practice_event_add_recorded(const std::shared
     std::string dst_file = (ToolPath::get_path_for_practice_event(user->get_useraccountid(), practice.get_subject_id()) / std::to_string(practice.get_id()) / p.filename()).string();
     
     unsigned int uploaded_bytes;
-    rst = text_handler.upload_file(dst_file, uploaded_bytes);
+    rst = sound_handler.upload_file(dst_file, uploaded_bytes);
     if(rst != RST_OK){
         logger->warn("Error uploading file: {}", get_rst_txt(rst));
         db_practice.remove_practice_event(practice.get_id());
@@ -254,7 +260,7 @@ rst_code_e OperationPracticeEvent::practice_event_remove(const std::shared_ptr<c
     }
 
     if(!existing_practice->get_filepath().empty()){
-        TextFileHandler file_handler(existing_practice->get_filepath());
+        SoundFileHandler file_handler(existing_practice->get_filepath());
         std::uintmax_t file_size = file_handler.get_file_size_in_bytes();
         
         std::filesystem::path file_path(existing_practice->get_filepath());

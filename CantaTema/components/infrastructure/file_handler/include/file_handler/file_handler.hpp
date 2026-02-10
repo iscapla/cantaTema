@@ -10,20 +10,6 @@
 #include "primitives/definitions.hpp"
 
 class FileHandler {
-protected:
-    // 64KB chunks: optimal for most OS disk buffers
-    static constexpr size_t CHUNK_SIZE = 65536;
-
-    // Common utility for child classes to validate paths
-    bool IsPathValid(const std::string& path) const;
-
-    // Maximum allowed file size in bytes
-    std::uintmax_t max_file_size_in_bytes;
-
-private:
-
-    // File that we want to manage
-    std::string file_path;
 
 public:
     FileHandler(void);
@@ -37,28 +23,6 @@ public:
      * @return rst_code_e RST_OK if successful, error code otherwise.
      */
     static rst_code_e get_file_path_from_user_selection(std::string &obtained_file_path);
-
-    /**
-     * Reads a file in chunks and passes each chunk to the provided callback.
-     * Use this to "send" files to a network or an encryption engine.
-     * 
-     * @param chunkCallback A callback function that receives each data chunk.
-     * @return bool True if the operation completed successfully, false otherwise.
-     */
-    virtual rst_code_e read_and_stream(std::function<rst_code_e(const std::vector<char>&)> chunkCallback);
-
-    /**
-     * Saves a single chunk of data to a file.
-     * Set 'isFirstChunk' to true to overwrite existing files, false to append.
-     * 
-     * @param destPath The destination file path.
-     * @param data The vector containing the data chunk to write.
-     * @param isFirstChunk If true, truncates the file before writing; otherwise appends.
-     * @return bool True if the write operation was successful, false otherwise.
-     */
-    virtual rst_code_e save_chunk(const std::string& destPath, 
-                           const std::vector<char>& data, 
-                           bool isFirstChunk = false);
     
     /**
      * @brief Removes a file from the filesystem.
@@ -98,6 +62,46 @@ public:
      * @return std::uintmax_t Size of the file. Returns 0 if file doesn't exist or on error.
      */
     std::uintmax_t get_file_size_in_bytes(void) const;
+
+    /**
+     * @brief Gets the file path.
+     * 
+     * @return std::filesystem::path The file path.
+     */
+    std::filesystem::path get_file_path(void) const;
+
+private:
+    // File that we want to manage
+    std::filesystem::path file_path;
+
+    // Maximum allowed file size in bytes
+    std::uintmax_t max_file_size_in_bytes;
+
+    // 64KB chunks: optimal for most OS disk buffers
+    static constexpr size_t CHUNK_SIZE = 65536;
+
+protected:
+    /**
+     * Reads a file in chunks and passes each chunk to the provided callback.
+     * Use this to "send" files to a network or an encryption engine.
+     * 
+     * @param chunkCallback A callback function that receives each data chunk.
+     * @return bool True if the operation completed successfully, false otherwise.
+     */
+    virtual rst_code_e read_and_stream(std::function<rst_code_e(const std::vector<char>&)> chunkCallback);
+
+    /**
+     * Saves a single chunk of data to a file.
+     * Set 'isFirstChunk' to true to overwrite existing files, false to append.
+     * 
+     * @param destPath The destination file path.
+     * @param data The vector containing the data chunk to write.
+     * @param isFirstChunk If true, truncates the file before writing; otherwise appends.
+     * @return bool True if the write operation was successful, false otherwise.
+     */
+    virtual rst_code_e save_chunk(const std::string& destPath, 
+                           const std::vector<char>& data, 
+                           bool isFirstChunk = false);
 
 };
 

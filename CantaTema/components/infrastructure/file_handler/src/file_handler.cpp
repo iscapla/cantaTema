@@ -60,10 +60,6 @@ rst_code_e FileHandler::get_file_path_from_user_selection(std::string &obtained_
     return FILE_UPLOAD_ERROR;
 }
 
-bool FileHandler::IsPathValid(const std::string& path) const {
-    return !path.empty() && std::filesystem::exists(std::filesystem::path(path).parent_path());
-}
-
 rst_code_e FileHandler::read_and_stream(std::function<rst_code_e(const std::vector<char>&)> chunkCallback) {
 
     if(file_path.empty()){
@@ -72,19 +68,19 @@ rst_code_e FileHandler::read_and_stream(std::function<rst_code_e(const std::vect
     }
 
     if (!std::filesystem::is_regular_file(file_path)) {
-        logger->error("Error: {} is not a regular file.", file_path);
+        logger->error("Error: {} is not a regular file.", file_path.string());
         return FILE_NOT_FOUND;
     }
 
     if ((std::filesystem::status(file_path).permissions() & std::filesystem::perms::owner_read) == std::filesystem::perms::none) {
-        logger->error("Error: Missing read permissions for {}.", file_path);
+        logger->error("Error: Missing read permissions for {}.", file_path.string());
         return FILE_READ_ERROR;
     }
 
     std::ifstream inFile(file_path, std::ios::binary);
     
     if (!inFile.is_open()) {
-        logger->error("Error: Cannot open {} for reading.", file_path);
+        logger->error("Error: Cannot open {} for reading.", file_path.string());
         return FILE_READ_ERROR;
     }
 
@@ -159,7 +155,7 @@ rst_code_e FileHandler::remove_file(void) {
     }
 
     if (!std::filesystem::exists(file_path)) {
-        logger->warn("File not found for deletion: {}", file_path);
+        logger->warn("File not found for deletion: {}", file_path.string());
         return RST_OK;
     }
 
@@ -167,7 +163,7 @@ rst_code_e FileHandler::remove_file(void) {
         return RST_OK;
     }
 
-    logger->error("Error removing file {}: {}", file_path, ec.message());
+    logger->error("Error removing file {}: {}", file_path.string(), ec.message());
     return UNKNOWN;
 }
 
@@ -193,8 +189,34 @@ rst_code_e FileHandler::remove_folder(const std::string folder_path){
 }
 
 rst_code_e FileHandler::upload_file(const std::string &destination, unsigned int &uploaded_bytes) {
-    logger->error("Not implemented yet.");
-    return UNKNOWN;
+    bool first = true;
+    rst_code_e rst = FILE_UPLOAD_ERROR;
+    uploaded_bytes = 0;
+
+    std::uintmax_t file_size = get_file_size_in_bytes();
+    if(is_file_path_valid() && file_size > max_file_size_in_bytes){
+        logger->error("File too big for upload: {}", file_size);
+    }else{
+        logger->debug("Uploading file of size: {}", file_size);
+    }
+
+    rst = read_and_stream([&](const std::vector<char>& chunk) {
+        uploaded_bytes += chunk.size();
+        // Here you could encrypt the chunk or send via gRPC
+        // For this example, we just save it back to a "received" file
+        rst_code_e rst = save_chunk(destination, chunk, first);
+        first = false;
+        return rst;
+    });
+
+    if(rst == RST_OK){
+        logger->info("File saved into {} (Size: {} bytes)", destination, uploaded_bytes);
+    }else{
+        logger->error("Impossible to save file into");
+        uploaded_bytes = 0;
+    }
+
+    return rst;
 }
 
 bool FileHandler::is_file_path_valid(void) const {
@@ -208,8 +230,12 @@ std::uintmax_t FileHandler::get_file_size_in_bytes(void) const {
     std::error_code ec;
     std::uintmax_t size = std::filesystem::file_size(file_path, ec);
     if (ec) {
-        logger->error("Error getting file size for {}: {}", file_path, ec.message());
+        logger->error("Error getting file size for {}: {}", file_path.string(), ec.message());
         return 0;
     }
     return size;
+}
+
+std::filesystem::path FileHandler::get_file_path(void) const {
+    return file_path;
 }

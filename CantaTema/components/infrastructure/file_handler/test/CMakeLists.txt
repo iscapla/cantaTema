@@ -7,6 +7,7 @@ create_test_exec(
         t_file_handler_main.cxx
         t_file_handler.cxx
         t_text_handler.cxx
+        t_sound_handler.cxx
     INC_PRIVATE
         CORE::PRIMITIVES
         INFRASTRUCTURE::FILE_HANDLER

@@ -12,7 +12,8 @@ namespace fs = std::filesystem;
 // Helper class to access protected members for testing
 class TestableFileHandler : public FileHandler {
 public:
-    using FileHandler::IsPathValid;
+    using FileHandler::read_and_stream;
+    using FileHandler::save_chunk;
     using FileHandler::FileHandler;
 };
 
@@ -38,11 +39,16 @@ protected:
 };
 
 TEST_F(FileHandlerTest, IsPathValidChecks) {
-    // Valid path
-    EXPECT_TRUE(handler.IsPathValid((test_dir / "valid.txt").string()));
-    
-    // Invalid path (empty)
-    EXPECT_FALSE(handler.IsPathValid(""));
+    fs::path valid_path = test_dir / "valid.txt";
+    {
+        std::ofstream ofs(valid_path);
+        ofs << "content";
+    }
+    TestableFileHandler h1(valid_path.string(), 0);
+    EXPECT_TRUE(h1.is_file_path_valid());
+
+    TestableFileHandler h2("", 0);
+    EXPECT_FALSE(h2.is_file_path_valid());
 }
 
 TEST_F(FileHandlerTest, SaveChunkCreatesFile) {

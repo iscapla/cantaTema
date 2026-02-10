@@ -34,6 +34,10 @@ add_compile_definitions(MAIN_PROJECT_NAME=${PROJECT_NAME})
 # PROJECT CONFIGURATION
 #####################################################################################################
 
+if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+  set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/install" CACHE PATH "Installation Directory" FORCE)
+endif()
+
 # Offer the user the choice of overriding the installation directories
 set(INSTALL_LIB_DIR lib CACHE PATH "Installation directory for libraries")
 set(INSTALL_BIN_DIR bin CACHE PATH "Installation directory for executables")
@@ -41,6 +45,10 @@ set(INSTALL_INCLUDE_DIR include CACHE PATH "Installation directory for header fi
 set(INSTALL_CMAKE_DIR "lib/cmake" CACHE PATH "Installation directory for CMake files")
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+     
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
+set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 
 #####################################################################################################
 # PROJECT COMPILATION
@@ -48,7 +56,7 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 # define our sub projects that will not require to use the find_package
 # functionality
-set(SUBPROJECTS)
+set(SUBPROJECTS utf8cpp)
 
 # find_package override
 if(POLICY CMP0057)
@@ -206,6 +214,44 @@ FetchContent_MakeAvailable(libopus)
 
 
 ################################
+# utf8cpp (needed for taglib)
+################################
+
+FetchContent_Declare(
+  utf8cpp
+  GIT_REPOSITORY https://github.com/nemtrif/utfcpp.git
+  GIT_TAG v4.0.9
+)
+set(UTF8_TESTS OFF CACHE BOOL "" FORCE)
+set(UTF8_SAMPLES OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(utf8cpp)
+# Manually set utf8cpp_FOUND to prevent TagLib from trying to build it again
+# and causing a target name collision.
+set(utf8cpp_FOUND TRUE CACHE BOOL "" FORCE)
+
+################################
+# taglib
+################################
+set(TAGLIB_WITH_ZLIB OFF CACHE BOOL "" FORCE)
+
+FetchContent_Declare(
+  taglib
+  GIT_REPOSITORY https://github.com/taglib/taglib.git
+  GIT_TAG v2.1.1
+)
+# Disable optional utf8cpp dependency
+set(WITH_APE OFF CACHE BOOL "" FORCE)
+set(WITH_ASF OFF CACHE BOOL "" FORCE)
+set(WITH_DSF OFF CACHE BOOL "" FORCE)
+set(WITH_MATROSKA OFF CACHE BOOL "" FORCE)
+set(WITH_MOD OFF CACHE BOOL "" FORCE)
+set(WITH_MP4 OFF CACHE BOOL "" FORCE)
+set(WITH_SHORTEN OFF CACHE BOOL "" FORCE)
+set(WITH_TRUEAUDIO OFF CACHE BOOL "" FORCE)
+set(WITH_ZLIB OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(taglib)
+
+################################
 # miniaudio
 ################################
 
@@ -245,7 +291,6 @@ endif()
 ################################
 
 set(SDL_INSTALL ON)
-set(BUILD_SHARED_LIBS OFF)
 set(SDLMIXER_INSTALL ON)
 set(SDLMIXER_DEPS_SHARED OFF)
 set(SDLMIXER_VENDORED ON)

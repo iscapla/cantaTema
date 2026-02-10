@@ -56,6 +56,7 @@ enum rst_code_e
     PRACTICE_EVENT_NOT_FOUND,  // Practice event not found
     PRACTICE_EVENT_ILLEGAL_CHANGE,  // Practice event illegal change
     PRACTICE_EVENT_DATE_MISSMATCH,  // Practice event date mismatch
+    PRACTICE_EVENT_NO_SOUND_LENGHT, // Practice event no sound lenght
 
     FILE_NOT_FOUND, // File not found
     FILE_READ_ERROR, // File read error
@@ -155,6 +156,9 @@ inline const std::string get_rst_txt(const rst_code_e &rst)
         break;
     case PRACTICE_EVENT_DATE_MISSMATCH:
         txt = "PRACTICE_EVENT_DATE_MISSMATCH";
+        break;
+    case PRACTICE_EVENT_NO_SOUND_LENGHT:
+        txt = "PRACTICE_EVENT_NO_SOUND_LENGHT";
         break;
 
     case FILE_NOT_FOUND:

@@ -5,6 +5,7 @@
 #include <thread>
 #include <chrono>
 #include <cstring>
+#include "file_handler/sound_handler.hpp"
 
 namespace {
 
@@ -62,7 +63,8 @@ TEST_F(SoundSystemTest, PlaybackStateManagement) {
 
 TEST_F(SoundSystemTest, PlayInvalidFile) {
     SoundSystem ss(ISoundSystem::SoundSystemConfig{});
-    bool result = ss.play("non_existent_random_file_12345.opus");
+    SoundFileHandler fileHandler("non_existent_random_file_12345.opus");
+    bool result = ss.play(fileHandler);
     EXPECT_FALSE(result);
     EXPECT_FALSE(ss.isPlaying());
 }
@@ -87,7 +89,7 @@ TEST_F(SoundSystemTest, RecordAndPlayPlain) {
         SoundSystem ss(ISoundSystem::SoundSystemConfig{});
         EXPECT_TRUE(ss.startRecording(kTestFile));
         EXPECT_TRUE(ss.isRecording());
-        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        std::this_thread::sleep_for(std::chrono::milliseconds(1100));
         EXPECT_GE(ss.get_recording_timestamp(), 0);
         ss.stopRecording();
         EXPECT_FALSE(ss.isRecording());
@@ -122,7 +124,7 @@ TEST_F(SoundSystemTest, RecordAndPlayEncrypted) {
     {
         SoundSystem ss(config);
         EXPECT_TRUE(ss.startRecording(kEncryptedFile));
-        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        std::this_thread::sleep_for(std::chrono::milliseconds(1100));
         ss.stopRecording();
     }
     EXPECT_TRUE(std::filesystem::exists(kEncryptedFile));

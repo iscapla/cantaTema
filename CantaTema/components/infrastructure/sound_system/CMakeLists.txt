@@ -6,6 +6,7 @@ create_infra_library(
     SRCS
     src/sound_system.cpp
     INC_PUBLIC
+    INFRASTRUCTURE::FILE_HANDLER
     miniaudio
     opus
     INC_PRIVATE

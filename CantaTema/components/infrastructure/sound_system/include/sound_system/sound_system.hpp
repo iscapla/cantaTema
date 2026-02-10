@@ -8,6 +8,7 @@
 #include <vector>
 #include <atomic>
 #include <cstdio>
+#include <cstdint>
 
 class SoundSystem : public ISoundSystem {
 public:
@@ -37,7 +38,7 @@ public:
      * @param deviceIndex The index of the capture device to use. Pass -1 to use the default device.
      * @return bool True if recording started successfully, false otherwise.
      */
-    bool startRecording(const std::string& filePath, int deviceIndex = -1) override;
+    bool startRecording(const SoundFileHandler& fileHandler, int deviceIndex = -1) override;
 
     /**
      * @brief Stops the current recording session.
@@ -65,7 +66,7 @@ public:
      * @param filePath The path to the audio file to play.
      * @return bool True if playback started successfully, false otherwise.
      */
-    bool play(const std::string& filePath) override;
+    bool play(const SoundFileHandler& fileHandler) override;
 
     /**
      * @brief Stops the current playback.
@@ -129,6 +130,7 @@ private:
     void xor_process(void* data, size_t len, long offset);
     size_t secure_fwrite(const void* ptr, size_t size, size_t count, FILE* stream);
     size_t secure_fread(void* ptr, size_t size, size_t count, FILE* stream);
+    std::uintmax_t get_encrypted_file_duration(const std::string& filePath);
 };
 
 #endif //SOUND_SYSTEM_HPP
