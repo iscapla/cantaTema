@@ -10,7 +10,7 @@ create_infra_library(
     INC_PUBLIC
     INC_PRIVATE
     tag #taglib
-    tinyfiledialogs
+    SDL3::SDL3
     CORE::PRIMITIVES
     CORE::CONFIGURATION
 )

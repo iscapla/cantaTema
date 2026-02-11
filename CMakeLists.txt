@@ -140,7 +140,8 @@ FetchContent_Declare(
   GIT_REPOSITORY https://github.com/google/googletest.git
   GIT_TAG        v1.17.0
 )
-set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+set(gtest_force_shared_crt OFF CACHE BOOL "" FORCE)
+set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
 ################################
@@ -153,7 +154,9 @@ FetchContent_Declare(
   GIT_TAG 12.1.0
   OVERRIDE_FIND_PACKAGE
 )
-set(FMT_INSTALL ON)
+set(FMT_INSTALL OFF CACHE BOOL "" FORCE)
+set(FMT_TEST OFF CACHE BOOL "" FORCE)
+set(FMT_DOC OFF CACHE BOOL "" FORCE)
 if(WIN32)
   set(FMT_USE_WINDOWS_H ON)
 endif()
@@ -169,12 +172,12 @@ FetchContent_Declare(
   GIT_TAG v1.16.0
   OVERRIDE_FIND_PACKAGE
 )
-set(SPDLOG_INSTALL ON)
+set(SPDLOG_INSTALL OFF CACHE BOOL "" FORCE)
+set(SPDLOG_BUILD_SHARED OFF CACHE BOOL "" FORCE)
 set(SPDLOG_COMPILED_LIB ON)
 set(SPDLOG_BUILD_EXAMPLES OFF) # Example: Disable building examples
 set(SPDLOG_BUILD_TESTS OFF) # Example: Disable building tests
 set(SPDLOG_FMT_EXTERNAL ON CACHE BOOL "" FORCE)
-set(spdlog_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(spdlog)
 
 ################################
@@ -186,7 +189,8 @@ FetchContent_Declare(
   GIT_REPOSITORY https://github.com/daniele77/cli.git
   GIT_TAG v2.2.0
 )
-set(cli_force_shared_crt ON CACHE BOOL "" FORCE)
+set(CLI_BuildTests OFF CACHE BOOL "" FORCE)
+set(CLI_BuildExamples OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(cli)
 
 include(add_asio_library)
@@ -210,6 +214,8 @@ FetchContent_Declare(
 set(OPUS_BUILD_TESTING OFF CACHE BOOL "" FORCE)
 set(OPUS_BUILD_PROGRAMS OFF CACHE BOOL "" FORCE)
 set(OPUS_BUILD_SHARED_LIBRARY OFF CACHE BOOL "" FORCE)
+set(OPUS_INSTALL_PKG_CONFIG_MODULE OFF CACHE BOOL "" FORCE)
+set(OPUS_INSTALL_CMAKE_CONFIG_MODULE OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(libopus)
 
 
@@ -224,6 +230,7 @@ FetchContent_Declare(
 )
 set(UTF8_TESTS OFF CACHE BOOL "" FORCE)
 set(UTF8_SAMPLES OFF CACHE BOOL "" FORCE)
+set(UTF8_INSTALL OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(utf8cpp)
 # Manually set utf8cpp_FOUND to prevent TagLib from trying to build it again
 # and causing a target name collision.
@@ -249,6 +256,8 @@ set(WITH_MP4 OFF CACHE BOOL "" FORCE)
 set(WITH_SHORTEN OFF CACHE BOOL "" FORCE)
 set(WITH_TRUEAUDIO OFF CACHE BOOL "" FORCE)
 set(WITH_ZLIB OFF CACHE BOOL "" FORCE)
+set(TAGLIB_INSTALL OFF CACHE BOOL "" FORCE)
+set(TAGLIB_BUILD_BINDINGS OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(taglib)
 
 ################################
@@ -290,10 +299,26 @@ endif()
 # SDL2
 ################################
 
-set(SDL_INSTALL ON)
-set(SDLMIXER_INSTALL ON)
+set(SDL_INSTALL OFF CACHE BOOL "" FORCE)
+set(SDLMIXER_INSTALL OFF CACHE BOOL "" FORCE)
 set(SDLMIXER_DEPS_SHARED OFF)
 set(SDLMIXER_VENDORED ON)
+set(SDL_SHARED OFF CACHE BOOL "" FORCE)
+set(SDL_STATIC ON CACHE BOOL "" FORCE)
+set(SDL_VIDEO OFF CACHE BOOL "" FORCE)
+set(SDL_JOYSTICK OFF CACHE BOOL "" FORCE)
+set(SDL_HAPTIC OFF CACHE BOOL "" FORCE)
+set(SDL_HIDAPI OFF CACHE BOOL "" FORCE)
+set(SDL_POWER OFF CACHE BOOL "" FORCE)
+set(SDL_SENSOR OFF CACHE BOOL "" FORCE)
+set(SDL_CAMERA OFF CACHE BOOL "" FORCE)
+set(SDL_DIALOG ON CACHE BOOL "" FORCE)
+set(SDL_RENDER OFF CACHE BOOL "" FORCE)
+set(SDL_GPU OFF CACHE BOOL "" FORCE)
+set(SDL_OPENGL OFF CACHE BOOL "" FORCE)
+set(SDL_OPENGLES OFF CACHE BOOL "" FORCE)
+set(SDL_VULKAN OFF CACHE BOOL "" FORCE)
+set(SDL_METAL OFF CACHE BOOL "" FORCE)
 FetchContent_Declare(
   SDL3
   GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
@@ -303,12 +328,6 @@ FetchContent_Declare(
 set(SDL_TEST OFF CACHE BOOL "Build the SDL3 test programs" FORCE)
 FetchContent_MakeAvailable(SDL3)
 
-
-################################
-# tinyfiledialogs
-################################
-
-include(add_tinyfiledialogs_library)
 
 ################################
 # simpleini

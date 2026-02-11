@@ -1,7 +1,9 @@
 #include <fstream>
 #include <iostream>
+#include <future>
+#include <vector>
 
-#include "tinyfiledialogs.h"
+#include <SDL3/SDL.h>
 
 #include "configuration/configuration_system.hpp"
 #include "primitives/utils_logger.hpp"
@@ -29,29 +31,52 @@ rst_code_e FileHandler::get_file_path_from_user_selection(std::string &obtained_
         return FILE_UPLOAD_ERROR;
     }
 
+    std::string filter_pattern;
     for (int i = 0; i < count; i++)
     {
+        std::string ext = extensions_buffer[i];
+        // Remove wildcard and dot if present (e.g. "*.txt" -> "txt") for SDL3 format
+        size_t last_dot = ext.find_last_of('.');
+        if (last_dot != std::string::npos) {
+            ext = ext.substr(last_dot + 1);
+        }
+        
+        if (!filter_pattern.empty()) {
+            filter_pattern += ";";
+        }
+        filter_pattern += ext;
+        
         logger->info("Loaded extension: {}", extensions_buffer[i]);
     }
 
-    // Create an array of pointers to pass to tinyfd
-    const char *lFilterPatterns[ConfigurationSystem::MAX_EXTENSIONS_COUNT];
-    for (int i = 0; i < count; i++)
-    {
-        lFilterPatterns[i] = extensions_buffer[i];
+    SDL_DialogFileFilter filter;
+    filter.name = "CantaTema files filter";
+    filter.pattern = filter_pattern.c_str();
+
+    std::promise<std::string> promise;
+    std::future<std::string> future = promise.get_future();
+
+    auto callback = [](void* userdata, const char* const* filelist, int filter) {
+        auto* p = static_cast<std::promise<std::string>*>(userdata);
+        if (filelist && filelist[0]) {
+            p->set_value(std::string(filelist[0]));
+        } else {
+            p->set_value(""); // Cancelled or error
+        }
+    };
+
+    SDL_ShowOpenFileDialog(callback, &promise, nullptr, &filter, 1, nullptr, false);
+
+    // Wait for the result, pumping events to ensure the callback is dispatched
+    while (future.wait_for(std::chrono::milliseconds(10)) != std::future_status::ready) {
+        SDL_PumpEvents();
     }
 
-    const char *selection = tinyfd_openFileDialog(
-        "Select a text file",
-        "",
-        count,
-        lFilterPatterns,
-        "CantaTema files filter",
-        0);
+    std::string selection = future.get();
 
-    if (selection)
+    if (!selection.empty())
     {
-        obtained_file_path = std::string(selection);
+        obtained_file_path = selection;
         logger->info("Selected: {}", obtained_file_path);
         return RST_OK;
     }
