@@ -14,60 +14,67 @@ namespace {
 
 SoundSystem::SoundSystem(const SoundSystemConfig& config) 
     : m_config(config),
-      m_contextInitialized(false), 
+      m_sdlInitialized(false), 
       m_isRecording(false), 
-      m_captureDeviceInitialized(false),
+      m_captureStream(nullptr),
+      m_captureDeviceId(0),
       m_recordedFrames(0),
       m_isPlaying(false),
-      m_playbackDeviceInitialized(false),
+      m_playbackStream(nullptr),
+      m_playbackDeviceId(0),
       m_playedFrames(0),
       m_opusEncoder(nullptr),
       m_recordFile(nullptr),
       m_opusDecoder(nullptr),
       m_playFile(nullptr)
 {
-    if (ma_context_init(NULL, 0, NULL, &m_context) == MA_SUCCESS) {
-        m_contextInitialized = true;
+    if (SDL_Init(SDL_INIT_AUDIO)) {
+        m_sdlInitialized = true;
+        logger->info("[SoundSystem] Initialized SDL Audio");
     } else {
-        logger->error("[SoundSystem] Failed to initialize context.");
+        logger->error("[SoundSystem] Failed to initialize SDL Audio: {}", SDL_GetError());
     }
 }
 
 SoundSystem::~SoundSystem() {
     stopRecording();
     stopPlaying();
-    if (m_contextInitialized) {
-        ma_context_uninit(&m_context);
+    if (m_sdlInitialized) {
+        SDL_QuitSubSystem(SDL_INIT_AUDIO);
     }
 }
 
 std::vector<SoundSystem::SoundSystemDeviceInfo> SoundSystem::getCaptureDevices() {
     std::vector<SoundSystemDeviceInfo> devices;
-    if (!m_contextInitialized) return devices;
+    if (!m_sdlInitialized) return devices;
 
-    ma_device_info* pCaptureInfos;
-    ma_uint32 captureCount;
-    ma_device_info* pPlaybackInfos;
-    ma_uint32 playbackCount;
-
-    if (ma_context_get_devices(&m_context, &pPlaybackInfos, &playbackCount, &pCaptureInfos, &captureCount) == MA_SUCCESS) {
-        for (ma_uint32 i = 0; i < captureCount; ++i) {
-            devices.push_back({(int)i, pCaptureInfos[i].name, (bool)pCaptureInfos[i].isDefault});
+    int count = 0;
+    SDL_AudioDeviceID* deviceIds = SDL_GetAudioRecordingDevices(&count);
+    if (deviceIds) {
+        for (int i = 0; i < count; ++i) {
+            const char* name = SDL_GetAudioDeviceName(deviceIds[i]);
+            // SDL3 doesn't explicitly flag "default" in this list, but index 0 is usually default.
+            // We store the ID as the index for simplicity in this DTO, or we could store the actual ID.
+            // For compatibility with the interface expecting an int index, we'll use the loop index 
+            // and re-fetch in startRecording, or we could cast the ID to int if it fits.
+            // Here we stick to the index convention to map back later.
+            devices.push_back({i, name ? std::string(name) : "Unknown Device", (i == 0)});
         }
+        SDL_free(deviceIds);
     }
     return devices;
 }
 
-void SoundSystem::data_callback_record(ma_device* pDevice, void* pOutput, const void* pInput, ma_uint32 frameCount) {
-    (void)pOutput;
-    if (pInput == nullptr) return;
+void SDLCALL SoundSystem::data_callback_record(void *userdata, SDL_AudioStream *stream, int additional_amount, int total_amount) {
+    SoundSystem* pSystem = (SoundSystem*)userdata;
+    if (!pSystem) return;
+
+    std::vector<float> tempBuffer(total_amount / sizeof(float));
+    int bytesRead = SDL_GetAudioStreamData(stream, tempBuffer.data(), total_amount);
+    int samplesRead = bytesRead / sizeof(float);
+
+    pSystem->m_recordBuffer.insert(pSystem->m_recordBuffer.end(), tempBuffer.begin(), tempBuffer.begin() + samplesRead);
     
-    SoundSystem* pSystem = (SoundSystem*)pDevice->pUserData;
-    if (pSystem == nullptr) return;
-
-    const float* inputFloats = (const float*)pInput;
-    pSystem->m_recordBuffer.insert(pSystem->m_recordBuffer.end(), inputFloats, inputFloats + frameCount);
-
     const int frameSize = pSystem->m_config.frameSize;
     unsigned char encodedData[4000];
 
@@ -85,11 +92,11 @@ void SoundSystem::data_callback_record(ma_device* pDevice, void* pOutput, const 
         }
         pSystem->m_recordBuffer.erase(pSystem->m_recordBuffer.begin(), pSystem->m_recordBuffer.begin() + frameSize);
     }
-    pSystem->m_recordedFrames += frameCount;
+    pSystem->m_recordedFrames += samplesRead;
 }
 
 bool SoundSystem::startRecording(const SoundFileHandler& fileHandler, int deviceIndex) {
-    if (!m_contextInitialized) return false;
+    if (!m_sdlInitialized) return false;
     if (m_isRecording) stopRecording();
 
     // 1. SoundSystemConfigure Encoder (Opus)
@@ -146,48 +153,38 @@ bool SoundSystem::startRecording(const SoundFileHandler& fileHandler, int device
     }
 
     // 2. Select Device
-    ma_device_id* pDeviceID = NULL;
+    SDL_AudioDeviceID deviceID = SDL_AUDIO_DEVICE_DEFAULT_RECORDING;
     if (deviceIndex >= 0) {
-        ma_device_info* pCaptureInfos;
-        ma_uint32 captureCount;
-        ma_device_info* pPlaybackInfos;
-        ma_uint32 playbackCount;
-        if (ma_context_get_devices(&m_context, &pPlaybackInfos, &playbackCount, &pCaptureInfos, &captureCount) == MA_SUCCESS) {
-            if ((ma_uint32)deviceIndex < captureCount) {
-                pDeviceID = &pCaptureInfos[deviceIndex].id;
+        int count = 0;
+        SDL_AudioDeviceID* deviceIds = SDL_GetAudioRecordingDevices(&count);
+        if (deviceIds) {
+            if (deviceIndex < count) {
+                deviceID = deviceIds[deviceIndex];
             }
+            SDL_free(deviceIds);
         }
     }
 
-    // 3. SoundSystemConfigure Capture Device
-    ma_device_config deviceSoundSystemConfig = ma_device_config_init(ma_device_type_capture);
-    deviceSoundSystemConfig.capture.pDeviceID = pDeviceID;
-    deviceSoundSystemConfig.capture.format    = ma_format_f32;
-    deviceSoundSystemConfig.capture.channels  = m_config.channels;
-    deviceSoundSystemConfig.sampleRate        = m_config.sampleRate;
-    deviceSoundSystemConfig.dataCallback      = data_callback_record;
-    deviceSoundSystemConfig.pUserData         = this;
+    // 3. Open Stream
+    SDL_AudioSpec spec;
+    SDL_zero(spec);
+    spec.format = SDL_AUDIO_F32;
+    spec.channels = m_config.channels;
+    spec.freq = m_config.sampleRate;
 
-    if (ma_device_init(&m_context, &deviceSoundSystemConfig, &m_captureDevice) != MA_SUCCESS) {
-        logger->error("[SoundSystem] Failed to initialize capture device.");
+    m_captureStream = SDL_OpenAudioDeviceStream(deviceID, &spec, data_callback_record, this);
+    if (!m_captureStream) {
+        logger->error("[SoundSystem] Failed to open capture stream: {}", SDL_GetError());
         opus_encoder_destroy(m_opusEncoder);
         m_opusEncoder = nullptr;
         fclose(m_recordFile);
         m_recordFile = nullptr;
         return false;
     }
-    m_captureDeviceInitialized = true;
+    m_captureDeviceId = deviceID;
 
-    if (ma_device_start(&m_captureDevice) != MA_SUCCESS) {
-        std::cerr << "[SoundSystem] Failed to start capture device." << std::endl;
-        ma_device_uninit(&m_captureDevice);
-        opus_encoder_destroy(m_opusEncoder);
-        m_opusEncoder = nullptr;
-        fclose(m_recordFile);
-        m_recordFile = nullptr;
-        m_captureDeviceInitialized = false;
-        return false;
-    }
+    // 4. Start Recording
+    SDL_ResumeAudioStreamDevice(m_captureStream);
 
     m_recordedFrames = 0;
     m_isRecording = true;
@@ -195,9 +192,13 @@ bool SoundSystem::startRecording(const SoundFileHandler& fileHandler, int device
 }
 
 void SoundSystem::stopRecording() {
-    if (m_captureDeviceInitialized) {
-        ma_device_uninit(&m_captureDevice);
-        m_captureDeviceInitialized = false;
+    if (m_captureStream) {
+        // Flush remaining data? SDL_DestroyAudioStream handles cleanup.
+        // We might want to pause first.
+        SDL_PauseAudioStreamDevice(m_captureStream);
+        SDL_DestroyAudioStream(m_captureStream);
+        m_captureStream = nullptr;
+        m_captureDeviceId = 0;
     }
     if (m_isRecording) {
         if (m_opusEncoder) {
@@ -219,19 +220,17 @@ bool SoundSystem::isRecording() const {
 }
 
 unsigned long long SoundSystem::get_recording_timestamp() {
-    if (!m_isRecording || !m_captureDeviceInitialized) return 0;
-    return static_cast<unsigned long long>((m_recordedFrames * 1000) / m_captureDevice.sampleRate);
+    if (!m_isRecording) return 0;
+    return static_cast<unsigned long long>((m_recordedFrames * 1000) / m_config.sampleRate);
 }
 
-void SoundSystem::data_callback_play(ma_device* pDevice, void* pOutput, const void* pInput, ma_uint32 frameCount) {
-    (void)pInput;
-    SoundSystem* pSystem = (SoundSystem*)pDevice->pUserData;
-    if (pSystem == NULL) return;
+void SDLCALL SoundSystem::data_callback_play(void *userdata, SDL_AudioStream *stream, int additional_amount, int total_amount) {
+    SoundSystem* pSystem = (SoundSystem*)userdata;
+    if (!pSystem) return;
 
-    float* outputFloats = (float*)pOutput;
     const int frameSize = pSystem->m_config.frameSize;
     
-    while (pSystem->m_playBuffer.size() < frameCount) {
+    while (pSystem->m_playBuffer.size() * sizeof(float) < (size_t)additional_amount) {
         // Simple Ogg Page Parser
         // 1. Find OggS
         char capture[4];
@@ -283,32 +282,38 @@ void SoundSystem::data_callback_play(ma_device* pDevice, void* pOutput, const vo
         }
     }
 
-    size_t available = pSystem->m_playBuffer.size();
-    size_t toCopy = (available < frameCount) ? available : frameCount;
-    
-    for (size_t i = 0; i < toCopy; ++i) {
-        outputFloats[i] = pSystem->m_playBuffer[i];
-    }
-    for (size_t i = toCopy; i < frameCount; ++i) {
-        outputFloats[i] = 0.0f;
+    size_t bytesNeeded = additional_amount;
+    size_t bytesAvailable = pSystem->m_playBuffer.size() * sizeof(float);
+    size_t bytesToWrite = (bytesAvailable < bytesNeeded) ? bytesAvailable : bytesNeeded;
+
+    if (bytesToWrite > 0) {
+        SDL_PutAudioStreamData(stream, pSystem->m_playBuffer.data(), bytesToWrite);
+        pSystem->m_playBuffer.erase(pSystem->m_playBuffer.begin(), pSystem->m_playBuffer.begin() + (bytesToWrite / sizeof(float)));
+        pSystem->m_playedFrames += (bytesToWrite / sizeof(float));
     }
 
-    if (toCopy > 0) {
-        pSystem->m_playBuffer.erase(pSystem->m_playBuffer.begin(), pSystem->m_playBuffer.begin() + toCopy);
+    if (pSystem->m_playbackCallback) {
+        if (bytesToWrite < (size_t)additional_amount) {
+            pSystem->m_playbackCallback(PlaybackEvent::PLAY_END, (unsigned int)pSystem->get_playing_timestamp());
+        } else {
+            pSystem->m_playbackCallback(PlaybackEvent::PLAY_TIMESTAMP, (unsigned int)pSystem->get_playing_timestamp());
+        }
     }
-    pSystem->m_playedFrames += frameCount;
 }
 
-bool SoundSystem::play(const SoundFileHandler& fileHandler) {
+bool SoundSystem::play(const SoundFileHandler& fileHandler, PlaybackCallback callback) {
     if (m_isPlaying) stopPlaying();
 
+    m_playbackCallback = callback;
+
     std::uintmax_t duration = fileHandler.get_recorded_seconds();
-    if (duration == 0 && !m_config.encryptionKey.empty()) {
+    if (duration == 0) {
         duration = get_encrypted_file_duration(fileHandler.get_file_path().string());
     }
 
     if (duration == 0) {
         logger->error("[SoundSystem] Audio file has no duration. Playback aborted.");
+        if (m_playbackCallback) m_playbackCallback(PlaybackEvent::PLAY_ERROR, 0);
         return false;
     }
 
@@ -316,49 +321,44 @@ bool SoundSystem::play(const SoundFileHandler& fileHandler) {
     m_playFile = fopen(pathStr.c_str(), "rb");
     if (!m_playFile) {
         logger->error("[SoundSystem] Could not load file: {}", pathStr);
+        if (m_playbackCallback) m_playbackCallback(PlaybackEvent::PLAY_ERROR, 0);
         return false;
     }
     int error;
     m_opusDecoder = opus_decoder_create(m_config.sampleRate, m_config.channels, &error);
     m_playBuffer.clear();
 
-    ma_device_config deviceSoundSystemConfig = ma_device_config_init(ma_device_type_playback);
-    deviceSoundSystemConfig.playback.format   = ma_format_f32;
-    deviceSoundSystemConfig.playback.channels = m_config.channels;
-    deviceSoundSystemConfig.sampleRate        = m_config.sampleRate;
-    deviceSoundSystemConfig.dataCallback      = data_callback_play;
-    deviceSoundSystemConfig.pUserData         = this;
+    SDL_AudioSpec spec;
+    SDL_zero(spec);
+    spec.format = SDL_AUDIO_F32;
+    spec.channels = m_config.channels;
+    spec.freq = m_config.sampleRate;
 
-    if (ma_device_init(&m_context, &deviceSoundSystemConfig, &m_playbackDevice) != MA_SUCCESS) {
-        logger->error("[SoundSystem] Failed to open playback device.");
+    m_playbackStream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec, data_callback_play, this);
+    if (!m_playbackStream) {
+        logger->error("[SoundSystem] Failed to open playback stream: {}", SDL_GetError());
         opus_decoder_destroy(m_opusDecoder);
         m_opusDecoder = nullptr;
         fclose(m_playFile);
         m_playFile = nullptr;
+        if (m_playbackCallback) m_playbackCallback(PlaybackEvent::PLAY_ERROR, 0);
         return false;
     }
-    m_playbackDeviceInitialized = true;
+    m_playbackDeviceId = SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK;
 
-    if (ma_device_start(&m_playbackDevice) != MA_SUCCESS) {
-        logger->error("[SoundSystem] Failed to start playback device.");
-        ma_device_uninit(&m_playbackDevice);
-        opus_decoder_destroy(m_opusDecoder);
-        m_opusDecoder = nullptr;
-        fclose(m_playFile);
-        m_playFile = nullptr;
-        m_playbackDeviceInitialized = false;
-        return false;
-    }
+    SDL_ResumeAudioStreamDevice(m_playbackStream);
 
     m_playedFrames = 0;
     m_isPlaying = true;
+    if (m_playbackCallback) m_playbackCallback(PlaybackEvent::PLAY_START, 0);
     return true;
 }
 
 void SoundSystem::stopPlaying() {
-    if (m_playbackDeviceInitialized) {
-        ma_device_uninit(&m_playbackDevice);
-        m_playbackDeviceInitialized = false;
+    if (m_playbackStream) {
+        SDL_DestroyAudioStream(m_playbackStream);
+        m_playbackStream = nullptr;
+        m_playbackDeviceId = 0;
     }
     if (m_isPlaying) {
         if (m_opusDecoder) {
@@ -369,6 +369,10 @@ void SoundSystem::stopPlaying() {
             fclose(m_playFile);
             m_playFile = nullptr;
         }
+        if (m_playbackCallback) {
+            m_playbackCallback(PlaybackEvent::PLAY_STOP, (unsigned int)get_playing_timestamp());
+            m_playbackCallback = nullptr;
+        }
         m_isPlaying = false;
     }
 }
@@ -378,8 +382,8 @@ bool SoundSystem::isPlaying() const {
 }
 
 unsigned long long SoundSystem::get_playing_timestamp() {
-    if (!m_isPlaying || !m_playbackDeviceInitialized) return 0;
-    return static_cast<unsigned long long>((m_playedFrames * 1000) / m_playbackDevice.sampleRate);
+    if (!m_isPlaying) return 0;
+    return static_cast<unsigned long long>((m_playedFrames * 1000) / m_config.sampleRate);
 }
 
 // --------------------------------------------------------------------------------------

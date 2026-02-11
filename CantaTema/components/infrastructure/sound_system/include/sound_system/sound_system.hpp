@@ -1,7 +1,7 @@
 #ifndef SOUND_SYSTEM_HPP
 #define SOUND_SYSTEM_HPP
 
-#include "miniaudio.h"
+#include <SDL3/SDL.h>
 #include "opus.h"
 #include "sound_system/i_sound_system.hpp"
 #include <string>
@@ -13,7 +13,7 @@
 class SoundSystem : public ISoundSystem {
 public:
     /**
-     * @brief Constructor. Initializes the miniaudio context with the given configuration.
+     * @brief Constructor. Initializes the SDL3 audio subsystem with the given configuration.
      * @param config The configuration settings for audio capture and playback.
      */
     SoundSystem(const SoundSystemConfig& config);
@@ -34,7 +34,7 @@ public:
     /**
      * @brief Starts recording audio to a specified file.
      * 
-     * @param filePath The path where the recorded audio will be saved.
+     * @param fileHandler The file handler containing the path where the recorded audio will be saved.
      * @param deviceIndex The index of the capture device to use. Pass -1 to use the default device.
      * @return bool True if recording started successfully, false otherwise.
      */
@@ -63,10 +63,11 @@ public:
     /**
      * @brief Starts playing an audio file.
      * 
-     * @param filePath The path to the audio file to play.
+     * @param fileHandler The file handler containing the path to the audio file to play.
+     * @param callback Optional callback function to receive playback events (start, stop, end, error, timestamp).
      * @return bool True if playback started successfully, false otherwise.
      */
-    bool play(const SoundFileHandler& fileHandler) override;
+    bool play(const SoundFileHandler& fileHandler, PlaybackCallback callback = nullptr) override;
 
     /**
      * @brief Stops the current playback.
@@ -89,30 +90,30 @@ public:
 
 private:
     SoundSystemConfig m_config;
-    ma_context m_context;
-    bool m_contextInitialized;
+    bool m_sdlInitialized;
 
     // Recording State
-    ma_device m_captureDevice;
+    SDL_AudioStream* m_captureStream;
+    SDL_AudioDeviceID m_captureDeviceId;
     OpusEncoder* m_opusEncoder;
     FILE* m_recordFile;
     std::vector<float> m_recordBuffer;
     std::atomic<bool> m_isRecording;
-    bool m_captureDeviceInitialized;
-    std::atomic<ma_uint64> m_recordedFrames;
+    std::atomic<uint64_t> m_recordedFrames;
 
     // Playback State
-    ma_device m_playbackDevice;
+    SDL_AudioStream* m_playbackStream;
+    SDL_AudioDeviceID m_playbackDeviceId;
     OpusDecoder* m_opusDecoder;
     FILE* m_playFile;
     std::vector<float> m_playBuffer;
     std::atomic<bool> m_isPlaying;
-    bool m_playbackDeviceInitialized;
-    std::atomic<ma_uint64> m_playedFrames;
+    std::atomic<uint64_t> m_playedFrames;
+    PlaybackCallback m_playbackCallback;
 
     // Internal Callbacks
-    static void data_callback_record(ma_device* pDevice, void* pOutput, const void* pInput, ma_uint32 frameCount);
-    static void data_callback_play(ma_device* pDevice, void* pOutput, const void* pInput, ma_uint32 frameCount);
+    static void SDLCALL data_callback_record(void *userdata, SDL_AudioStream *stream, int additional_amount, int total_amount);
+    static void SDLCALL data_callback_play(void *userdata, SDL_AudioStream *stream, int additional_amount, int total_amount);
 
     // Ogg and Encryption Helpers
     struct OggStreamState {

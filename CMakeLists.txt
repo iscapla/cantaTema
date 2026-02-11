@@ -239,7 +239,6 @@ set(utf8cpp_FOUND TRUE CACHE BOOL "" FORCE)
 ################################
 # taglib
 ################################
-set(TAGLIB_WITH_ZLIB OFF CACHE BOOL "" FORCE)
 
 FetchContent_Declare(
   taglib
@@ -258,46 +257,14 @@ set(WITH_TRUEAUDIO OFF CACHE BOOL "" FORCE)
 set(WITH_ZLIB OFF CACHE BOOL "" FORCE)
 set(TAGLIB_INSTALL OFF CACHE BOOL "" FORCE)
 set(TAGLIB_BUILD_BINDINGS OFF CACHE BOOL "" FORCE)
+set(TAGLIB_WITH_ZLIB OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(taglib)
 
 ################################
-# miniaudio
+# SDL3
 ################################
 
-FetchContent_Declare(
-  miniaudio
-  GIT_REPOSITORY https://github.com/mackron/miniaudio.git
-  GIT_TAG 0.11.23
-  OVERRIDE_FIND_PACKAGE
-)
-FetchContent_MakeAvailable(miniaudio)
-
-if(WIN32)
-  # Windows typically handles this automatically
-elseif(APPLE)
-  # macOS requires CoreAudio frameworks
-  find_library(COREAUDIO_LIB CoreAudio)
-  find_library(AUDIOTOOLBOX_LIB AudioToolbox)
-  find_library(AUDIOUNIT_LIB AudioUnit)
-  target_link_libraries(miniaudio PRIVATE
-    ${COREAUDIO_LIB}
-    ${AUDIOTOOLBOX_LIB}
-    ${AUDIOUNIT_LIB}
-  )
-else()
-  # Linux requires pthread, libdl, and libm
-  target_link_libraries(miniaudio PRIVATE pthread dl m)
-endif()
-
-if(MSVC)
-  target_compile_options(miniaudio PRIVATE /W4)
-else()
-  target_compile_options(miniaudio PRIVATE -Wall -Wextra)
-endif()
-
-################################
-# SDL2
-################################
+add_compile_definitions(SDL_MAIN_HANDLED)
 
 set(SDL_INSTALL OFF CACHE BOOL "" FORCE)
 set(SDLMIXER_INSTALL OFF CACHE BOOL "" FORCE)
@@ -305,7 +272,7 @@ set(SDLMIXER_DEPS_SHARED OFF)
 set(SDLMIXER_VENDORED ON)
 set(SDL_SHARED OFF CACHE BOOL "" FORCE)
 set(SDL_STATIC ON CACHE BOOL "" FORCE)
-set(SDL_VIDEO OFF CACHE BOOL "" FORCE)
+set(SDL_VIDEO ON CACHE BOOL "" FORCE)
 set(SDL_JOYSTICK OFF CACHE BOOL "" FORCE)
 set(SDL_HAPTIC OFF CACHE BOOL "" FORCE)
 set(SDL_HIDAPI OFF CACHE BOOL "" FORCE)

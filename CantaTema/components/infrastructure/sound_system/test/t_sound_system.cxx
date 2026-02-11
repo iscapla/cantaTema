@@ -5,6 +5,8 @@
 #include <thread>
 #include <chrono>
 #include <cstring>
+#include <atomic>
+#include <future>
 #include "file_handler/sound_handler.hpp"
 
 namespace {
@@ -63,8 +65,8 @@ TEST_F(SoundSystemTest, PlaybackStateManagement) {
 
 TEST_F(SoundSystemTest, PlayInvalidFile) {
     SoundSystem ss(ISoundSystem::SoundSystemConfig{});
-    SoundFileHandler fileHandler("non_existent_random_file_12345.opus");
-    bool result = ss.play(fileHandler);
+    SoundFileHandler handler("non_existent_random_file_12345.opus");
+    bool result = ss.play(handler);
     EXPECT_FALSE(result);
     EXPECT_FALSE(ss.isPlaying());
 }
@@ -87,7 +89,8 @@ TEST_F(SoundSystemTest, RecordAndPlayPlain) {
     // 1. Record
     {
         SoundSystem ss(ISoundSystem::SoundSystemConfig{});
-        EXPECT_TRUE(ss.startRecording(kTestFile));
+        SoundFileHandler handler(kTestFile);
+        EXPECT_TRUE(ss.startRecording(handler));
         EXPECT_TRUE(ss.isRecording());
         std::this_thread::sleep_for(std::chrono::milliseconds(1100));
         EXPECT_GE(ss.get_recording_timestamp(), 0);
@@ -100,7 +103,8 @@ TEST_F(SoundSystemTest, RecordAndPlayPlain) {
     // 2. Play
     {
         SoundSystem ss(ISoundSystem::SoundSystemConfig{});
-        EXPECT_TRUE(ss.play(kTestFile));
+        SoundFileHandler handler(kTestFile);
+        EXPECT_TRUE(ss.play(handler));
         if (ss.isPlaying()) {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
             EXPECT_GE(ss.get_playing_timestamp(), 0);
@@ -123,7 +127,8 @@ TEST_F(SoundSystemTest, RecordAndPlayEncrypted) {
     // 1. Record Encrypted
     {
         SoundSystem ss(config);
-        EXPECT_TRUE(ss.startRecording(kEncryptedFile));
+        SoundFileHandler handler(kEncryptedFile);
+        EXPECT_TRUE(ss.startRecording(handler));
         std::this_thread::sleep_for(std::chrono::milliseconds(1100));
         ss.stopRecording();
     }
@@ -141,12 +146,53 @@ TEST_F(SoundSystemTest, RecordAndPlayEncrypted) {
     // 3. Play with Correct Key
     {
         SoundSystem ss(config);
-        EXPECT_TRUE(ss.play(kEncryptedFile));
+        SoundFileHandler handler(kEncryptedFile);
+        EXPECT_TRUE(ss.play(handler));
         if (ss.isPlaying()) {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
             ss.stopPlaying();
         }
     }
+}
+
+TEST_F(SoundSystemTest, PlaybackCallbackEvents) {
+    if (!has_capture_devices()) {
+        SUCCEED() << "No capture devices available, skipping test.";
+        return;
+    }
+
+    // Create a dummy recording first
+    {
+        SoundSystem ss(ISoundSystem::SoundSystemConfig{});
+        SoundFileHandler handler(kTestFile);
+        ss.startRecording(handler);
+        std::this_thread::sleep_for(std::chrono::milliseconds(1100));
+        ss.stopRecording();
+    }
+
+    SoundSystem ss(ISoundSystem::SoundSystemConfig{});
+    SoundFileHandler handler(kTestFile);
+    
+    std::promise<bool> startPromise;
+    std::future<bool> startFuture = startPromise.get_future();
+    
+    auto callback = [&](ISoundSystem::PlaybackEvent event, unsigned int timestamp) {
+        if (event == ISoundSystem::PlaybackEvent::PLAY_START) {
+            startPromise.set_value(true);
+        }
+    };
+
+    EXPECT_TRUE(ss.play(handler, callback));
+
+    // Wait for a short time to receive the PLAY_START event
+    std::chrono::milliseconds timeout(200);
+    if (startFuture.wait_for(timeout) == std::future_status::timeout) {
+        FAIL() << "PLAY_START event was not received within the timeout period.";
+    } else {
+        EXPECT_TRUE(startFuture.get()); // Verify that the start was received
+    }
+
+    ss.stopPlaying();
 }
 
 } // namespace

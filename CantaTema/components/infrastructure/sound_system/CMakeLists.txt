@@ -7,7 +7,7 @@ create_infra_library(
     src/sound_system.cpp
     INC_PUBLIC
     INFRASTRUCTURE::FILE_HANDLER
-    miniaudio
+    SDL3::SDL3
     opus
     INC_PRIVATE
     CORE::PRIMITIVES

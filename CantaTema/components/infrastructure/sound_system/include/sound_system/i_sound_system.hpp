@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <functional>
 
 #include "file_handler/sound_handler.hpp"
 
@@ -22,6 +23,16 @@ public:
         bool isDefault;
     };
 
+    enum class PlaybackEvent {
+        PLAY_START,
+        PLAY_END,
+        PLAY_STOP,
+        PLAY_ERROR,
+        PLAY_TIMESTAMP
+    };
+
+    using PlaybackCallback = std::function<void(PlaybackEvent, unsigned int)>;
+
     virtual ~ISoundSystem() = default;
 
     virtual std::vector<SoundSystemDeviceInfo> getCaptureDevices() = 0;
@@ -29,8 +40,7 @@ public:
     virtual void stopRecording() = 0;
     virtual bool isRecording() const = 0;
     virtual unsigned long long get_recording_timestamp() = 0;
-    // TODO: Add a callback to play with timestamp and other events
-    virtual bool play(const SoundFileHandler& fileHandler) = 0;
+    virtual bool play(const SoundFileHandler& fileHandler, PlaybackCallback callback = nullptr) = 0;
     virtual void stopPlaying() = 0;
     virtual bool isPlaying() const = 0;
     virtual unsigned long long get_playing_timestamp() = 0;

@@ -65,7 +65,8 @@ void TerminalSession::practice_event_add_recorded(std::ostream &out, unsigned in
     }
 
     std::string temp_file = "temp_recording.opus";
-    if (!sound.startRecording(temp_file, device_index))
+    SoundFileHandler handler(temp_file);
+    if (!sound.startRecording(handler, device_index))
     {
         out << "Error: Could not start recording." << std::endl;
         return;
@@ -180,7 +181,24 @@ void TerminalSession::practice_event_play(std::ostream &out, unsigned int id)
     ISoundSystem::SoundSystemConfig config;
     SoundSystem sound(config);
 
-    if (!sound.play(file_path))
+    std::atomic<bool> running{true};
+
+    auto callback = [&](ISoundSystem::PlaybackEvent event, unsigned int timestamp) {
+        if (event == ISoundSystem::PlaybackEvent::PLAY_TIMESTAMP) {
+            unsigned long long s = timestamp / 1000;
+            int mm = s / 60;
+            int ss = s % 60;
+            out << "\rTime: "
+                << std::setw(2) << std::setfill('0') << mm << ":"
+                << std::setw(2) << std::setfill('0') << ss
+                << std::flush;
+        } else if (event == ISoundSystem::PlaybackEvent::PLAY_END || event == ISoundSystem::PlaybackEvent::PLAY_ERROR) {
+            running = false;
+        }
+    };
+
+    SoundFileHandler handler(file_path);
+    if (!sound.play(handler, callback))
     {
         out << "Error: Could not start playback." << std::endl;
         return;
@@ -188,46 +206,26 @@ void TerminalSession::practice_event_play(std::ostream &out, unsigned int id)
 
     out << "Playing... Press 'q' to stop." << std::endl;
 
-    std::atomic<bool> running{true};
-
-    std::thread timer_thread([&out, &running, &sound]() {
-        char old_fill = out.fill('0');
-        while (running)
-        {
-            if (!sound.isPlaying())
-            {
+    // Run input in a separate thread so it doesn't block the UI updates or the exit condition
+    std::thread input_thread([&]() {
+        char input;
+        while (running) {
+            std::cin >> input;
+            if (input == 'q') {
+                sound.stopPlaying();
                 running = false;
                 break;
             }
-
-            unsigned long long ms = sound.get_playing_timestamp();
-            unsigned long long s = ms / 1000;
-            int mm = s / 60;
-            int ss = s % 60;
-
-            out << "\rTime: "
-                << std::setw(2) << mm << ":"
-                << std::setw(2) << ss
-                << std::flush;
-
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
-        out.fill(old_fill);
     });
 
-    char input;
     while (running)
     {
-        std::cin >> input;
-        if (input == 'q')
-        {
-            sound.stopPlaying();
-            running = false;
-        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
-    if (timer_thread.joinable())
-        timer_thread.join();
+    // Detach because we can't easily cancel the blocking std::cin in the thread if playback ends naturally
+    input_thread.detach();
 
     out << std::endl << "Playback finished." << std::endl;
 }
