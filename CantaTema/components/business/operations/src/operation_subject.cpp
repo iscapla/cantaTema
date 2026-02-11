@@ -144,7 +144,7 @@ rst_code_e OperationSubject::subject_update(const std::shared_ptr<const User> &u
     // Check that the name is not duplicated
     for (const auto &existing : subjects)
     {
-        if(existing->get_id() != subject.get_id()){
+        if(existing->get_id() == subject.get_id()){
             tmp_subject = existing;  // Found operation
         }
 

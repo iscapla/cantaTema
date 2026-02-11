@@ -56,4 +56,18 @@ TEST_F(ToolPathTest, GetPathForLogsReturnsValidDirectory) {
     ExpectValidDirectory(path);
 }
 
+TEST_F(ToolPathTest, GetPathForSubjectReturnsValidDirectory) {
+    unsigned int user_id = 1;
+    unsigned int subject_id = 101;
+    std::filesystem::path path = ToolPath::get_path_for_subject(user_id, subject_id);
+    ExpectValidDirectory(path);
+}
+
+TEST_F(ToolPathTest, GetPathForPracticeEventReturnsValidDirectory) {
+    unsigned int user_id = 1;
+    unsigned int subject_id = 101;
+    std::filesystem::path path = ToolPath::get_path_for_practice_event(user_id, subject_id);
+    ExpectValidDirectory(path);
+}
+
 } // namespace
