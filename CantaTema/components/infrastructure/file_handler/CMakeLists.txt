@@ -4,12 +4,14 @@ create_infra_library(
     TARGET
     "file_handler"
     SRCS
+    src/extension_type_pdf.cpp
+    src/extension_type_txt.cpp
     src/file_handler.cpp
     src/text_handler.cpp
     src/sound_handler.cpp
     INC_PUBLIC
-    mupdf::mupdf
     INC_PRIVATE
+    mupdf::mupdf
     tag #taglib
     SDL3::SDL3
     CORE::PRIMITIVES

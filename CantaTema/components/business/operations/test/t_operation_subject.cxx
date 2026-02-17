@@ -21,7 +21,7 @@ protected:
 
     std::shared_ptr<const User> test_user;
     std::shared_ptr<Category> test_category;
-    const std::string dummy_file_name = "test_audio_subject.mp3";
+    const std::string dummy_file_name = "test_audio_subject.txt";
 
     void SetUp() override {
         // Create dummy file for subjects to simulate source file

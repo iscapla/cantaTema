@@ -27,6 +27,7 @@ protected:
     std::shared_ptr<Category> test_category;
     std::shared_ptr<Subject> test_subject;
     const std::string dummy_file_name = "test_audio_practice.wav";
+    const std::string dummy_subject_file_name = "test_subject_practice.txt";
 
     void SetUp() override {
         // Create dummy file for recorded events
@@ -66,6 +67,11 @@ protected:
         outfile.write(data.data(), sub_chunk2_size);
         
         outfile.close();
+
+        // Create dummy text file for subject
+        std::ofstream text_outfile(dummy_subject_file_name);
+        text_outfile << "dummy subject content";
+        text_outfile.close();
 
         // Initialize dependencies
         operation_metrics = std::make_shared<OperationUserMetrics>();
@@ -114,7 +120,7 @@ protected:
         // Create Subject
         Subject sub(0, "Practice Subject");
         sub.set_category_id(test_category->get_id());
-        ASSERT_EQ(operation_subject->subject_add(test_user, dummy_file_name, sub), RST_OK);
+        ASSERT_EQ(operation_subject->subject_add(test_user, dummy_subject_file_name, sub), RST_OK);
         
         std::vector<std::shared_ptr<Subject>> subjects;
         operation_subject->subject_get_all_by_category(test_user, test_category->get_id(), subjects);
@@ -124,6 +130,7 @@ protected:
 
     void TearDown() override {
         std::remove(dummy_file_name.c_str());
+        std::remove(dummy_subject_file_name.c_str());
         
         operation_practice.reset();
         operation_subject.reset();

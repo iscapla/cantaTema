@@ -2,98 +2,64 @@
 #include "file_handler/text_handler.hpp"
 #include "configuration/configuration_system.hpp"
 
-TextFileHandler::TextFileHandler(const std::string &file_path)
-    : FileHandler(file_path, ConfigurationSystem::getInstance().get_user_default_max_text_file_size_in_mb() * 1024 * 1024),
-      m_ctx(nullptr), m_doc(nullptr), m_page_count(0) {
+#include "file_handler/extension_type_pdf.hpp"
+#include "file_handler/extension_type_txt.hpp"
+
+TextFileHandler::TextFileHandler(const std::string &file_path) : FileHandler(file_path, ConfigurationSystem::getInstance().get_user_default_max_text_file_size_in_mb() * 1024 * 1024)
+{
+    ExtensionType type = get_extension_type(file_path);
+
+    switch (type)
+    {
+    case ExtensionType::TXT:
+        m_pExtensionType = std::make_unique<ExtensionTypeTXT>(*this);
+        break;
+    case ExtensionType::PDF:
+        m_pExtensionType = std::make_unique<ExtensionTypePDF>(*this);
+        break;
+    default:
+        throw std::runtime_error("Unsupported file extension");
+        break;
+    }
 }
 
 TextFileHandler::~TextFileHandler(void){
-    if (m_doc) {
-        fz_drop_document(m_ctx, m_doc);
-    }
-    if (m_ctx) {
-        fz_drop_context(m_ctx);
-    }
+    m_pExtensionType.reset();
 }
 
-void TextFileHandler::parse() {
-    if (m_ctx) return; // Already parsed
-    
-    // Check if the file path is valid
-    if (!is_file_path_valid()) {
-        logger->error("Invalid file path: {}", get_file_path().string());
-        return;
-    }
+TextFileHandler::ExtensionType TextFileHandler::get_extension_type(const std::string &path)
+{
+    if (path.empty())
+        return ExtensionType::UNKNOWN;
+    size_t last_dot = path.find_last_of('.');
+    if (last_dot == std::string::npos)
+        return ExtensionType::UNKNOWN;
 
-    // Initialize MuPDF context
-    m_ctx = fz_new_context(nullptr, nullptr, FZ_STORE_DEFAULT);
-    if (!m_ctx) {
-        logger->error("Failed to create MuPDF context.");
-        return;
-    }
+    std::string ext = path.substr(last_dot + 1);
+    std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c)
+                   { return std::tolower(c); });
 
-    fz_try(m_ctx) {
-        fz_register_document_handlers(m_ctx);
-
-        // Open the PDF document
-        m_doc = fz_open_document(m_ctx, get_file_path().string().c_str());
-        if (!m_doc) {
-            logger->error("Failed to open document: {}", get_file_path().string());
-        } else {
-            m_page_count = fz_count_pages(m_ctx, m_doc);
-        }
-    } fz_catch(m_ctx) {
-        logger->error("MuPDF error in parse: {}", fz_caught_message(m_ctx));
-    }
+    if (ext == "txt")
+        return ExtensionType::TXT;
+    if (ext == "pdf")
+        return ExtensionType::PDF;
+    return ExtensionType::UNKNOWN;
 }
 
-int TextFileHandler::get_number_of_pages() const {
-    return m_page_count;
-}
+void TextFileHandler::parse() { return m_pExtensionType->parse(); }
 
-std::string TextFileHandler::extract_text_content() const {
-    std::string text_content;
+int TextFileHandler::get_number_of_pages() const { return m_pExtensionType->get_number_of_pages(); }
 
-    if (!m_ctx || !m_doc) {
-        logger->error("Document not parsed. Call parse() first.");
-        return "";
-    }
+std::string TextFileHandler::extract_text_content() const { return m_pExtensionType->extract_text_content(); }
 
-    fz_try(m_ctx) {
+std::vector<IExtensionType::TextSpan> TextFileHandler::extract_rich_text() const { return m_pExtensionType->extract_rich_text(); }
 
-        // Iterate through each page
-        for (int page_num = 0; page_num < m_page_count; ++page_num) {
-            fz_page *page = fz_load_page(m_ctx, m_doc, page_num);
-            if (!page) {
-                logger->error("Failed to load page {}.", page_num + 1);
-                continue;
-            }
+std::vector<std::string> TextFileHandler::find_bold() const { return m_pExtensionType->find_bold(); }
 
-            fz_stext_page *text_page = fz_new_stext_page(m_ctx, fz_bound_page(m_ctx, page));
-            fz_device *dev = fz_new_stext_device(m_ctx, text_page, nullptr);
-            fz_run_page(m_ctx, page, dev, fz_identity, nullptr);
-            fz_close_device(m_ctx, dev);
-            fz_drop_device(m_ctx, dev);
+std::vector<std::string> TextFileHandler::find_italic() const { return m_pExtensionType->find_italic(); }
 
-            // Extract text from the text page
-            for (fz_stext_block *block = text_page->first_block; block; block = block->next) {
-                if (block->type == FZ_STEXT_BLOCK_TEXT) {
-                    for (fz_stext_line *line = block->u.t.first_line; line; line = line->next) {
-                        for (fz_stext_char *ch = line->first_char; ch; ch = ch->next) {
-                            char buf[8];
-                            int n = fz_runetochar(buf, ch->c);
-                            text_content.append(buf, n);
-                        }
-                        text_content += "\n";
-                    }
-                }
-            }
-            fz_drop_stext_page(m_ctx, text_page);
-            fz_drop_page(m_ctx, page);
-        }
-    } fz_catch(m_ctx) {
-        logger->error("MuPDF error: {}", fz_caught_message(m_ctx));
-    }
+std::vector<std::string> TextFileHandler::find_highlight(int color_hex) const { return m_pExtensionType->find_highlight(color_hex); }
 
-    return text_content;
-}
+std::vector<float> TextFileHandler::get_font_sizes() const { return m_pExtensionType->get_font_sizes(); }
+
+std::vector<int> TextFileHandler::get_highlighted_colors() const { return m_pExtensionType->get_highlighted_colors(); }
