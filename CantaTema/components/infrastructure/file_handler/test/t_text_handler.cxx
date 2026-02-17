@@ -2,6 +2,7 @@
 #include <filesystem>
 #include <fstream>
 #include <string>
+#include <vector>
 
 #include "file_handler/text_handler.hpp"
 
@@ -22,6 +23,35 @@ protected:
         if (fs::exists(test_dir)) {
             fs::remove_all(test_dir);
         }
+    }
+
+    // Helper to create a minimal valid PDF file containing "Hello World"
+    // This avoids dependency on external files and ensures deterministic content.
+    void create_minimal_pdf(const fs::path& path) {
+        // Minimal PDF 1.4 structure with one page containing "Hello World"
+        // Offsets (xref) are pre-calculated.
+        const std::vector<char> pdf_data = {
+            '%', 'P', 'D', 'F', '-', '1', '.', '4', '\n',
+            '1', ' ', '0', ' ', 'o', 'b', 'j', '\n', '<', '<', '/', 'T', 'y', 'p', 'e', '/', 'C', 'a', 't', 'a', 'l', 'o', 'g', '/', 'P', 'a', 'g', 'e', 's', ' ', '2', ' ', '0', ' ', 'R', '>', '>', '\n', 'e', 'n', 'd', 'o', 'b', 'j', '\n',
+            '2', ' ', '0', ' ', 'o', 'b', 'j', '\n', '<', '<', '/', 'T', 'y', 'p', 'e', '/', 'P', 'a', 'g', 'e', 's', '/', 'K', 'i', 'd', 's', '[', '3', ' ', '0', ' ', 'R', ']', '/', 'C', 'o', 'u', 'n', 't', ' ', '1', '>', '>', '\n', 'e', 'n', 'd', 'o', 'b', 'j', '\n',
+            '3', ' ', '0', ' ', 'o', 'b', 'j', '\n', '<', '<', '/', 'T', 'y', 'p', 'e', '/', 'P', 'a', 'g', 'e', '/', 'P', 'a', 'r', 'e', 'n', 't', ' ', '2', ' ', '0', ' ', 'R', '/', 'M', 'e', 'd', 'i', 'a', 'B', 'o', 'x', '[', '0', ' ', '0', ' ', '5', '0', '0', ' ', '5', '0', '0', ']', '/', 'C', 'o', 'n', 't', 'e', 'n', 't', 's', ' ', '4', ' ', '0', ' ', 'R', '/', 'R', 'e', 's', 'o', 'u', 'r', 'c', 'e', 's', '<', '<', '/', 'F', 'o', 'n', 't', '<', '<', '/', 'F', '1', ' ', '5', ' ', '0', ' ', 'R', '>', '>', '>', '>', '>', '>', '\n', 'e', 'n', 'd', 'o', 'b', 'j', '\n',
+            '4', ' ', '0', ' ', 'o', 'b', 'j', '\n', '<', '<', '/', 'L', 'e', 'n', 'g', 't', 'h', ' ', '4', '4', '>', '>', '\n', 's', 't', 'r', 'e', 'a', 'm', '\n',
+            'B', 'T', ' ', '/', 'F', '1', ' ', '2', '4', ' ', 'T', 'f', ' ', '1', '0', '0', ' ', '1', '0', '0', ' ', 'T', 'd', ' ', '(', 'H', 'e', 'l', 'l', 'o', ' ', 'W', 'o', 'r', 'l', 'd', ')', ' ', 'T', 'j', ' ', 'E', 'T', '\n',
+            'e', 'n', 'd', 's', 't', 'r', 'e', 'a', 'm', '\n', 'e', 'n', 'd', 'o', 'b', 'j', '\n',
+            '5', ' ', '0', ' ', 'o', 'b', 'j', '\n', '<', '<', '/', 'T', 'y', 'p', 'e', '/', 'F', 'o', 'n', 't', '/', 'S', 'u', 'b', 't', 'y', 'p', 'e', '/', 'T', 'y', 'p', 'e', '1', '/', 'B', 'a', 's', 'e', 'F', 'o', 'n', 't', '/', 'H', 'e', 'l', 'v', 'e', 't', 'i', 'c', 'a', '>', '>', '\n', 'e', 'n', 'd', 'o', 'b', 'j', '\n',
+            'x', 'r', 'e', 'f', '\n',
+            '0', ' ', '6', '\n',
+            '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', ' ', '6', '5', '5', '3', '5', ' ', 'f', ' ', '\n',
+            '0', '0', '0', '0', '0', '0', '0', '0', '0', '9', ' ', '0', '0', '0', '0', '0', ' ', 'n', ' ', '\n',
+            '0', '0', '0', '0', '0', '0', '0', '0', '5', '8', ' ', '0', '0', '0', '0', '0', ' ', 'n', ' ', '\n',
+            '0', '0', '0', '0', '0', '0', '0', '1', '1', '5', ' ', '0', '0', '0', '0', '0', ' ', 'n', ' ', '\n',
+            '0', '0', '0', '0', '0', '0', '0', '2', '4', '4', ' ', '0', '0', '0', '0', '0', ' ', 'n', ' ', '\n',
+            '0', '0', '0', '0', '0', '0', '0', '3', '3', '7', ' ', '0', '0', '0', '0', '0', ' ', 'n', ' ', '\n',
+            't', 'r', 'a', 'i', 'l', 'e', 'r', '\n', '<', '<', '/', 'S', 'i', 'z', 'e', ' ', '6', '/', 'R', 'o', 'o', 't', ' ', '1', ' ', '0', ' ', 'R', '>', '>', '\n', 's', 't', 'a', 'r', 't', 'x', 'r', 'e', 'f', '\n', '4', '2', '6', '\n', '%', '%', 'E', 'O', 'F', '\n'
+        };
+
+        std::ofstream ofs(path, std::ios::binary);
+        ofs.write(pdf_data.data(), pdf_data.size());
     }
 
     fs::path test_dir;
@@ -106,4 +136,39 @@ TEST_F(TextHandlerTest, UploadFileHandlesLargeContent) {
     EXPECT_EQ(result, RST_OK);
     EXPECT_EQ(uploaded_bytes, content.size());
     EXPECT_EQ(fs::file_size(dest_path), content.size());
+}
+
+TEST_F(TextHandlerTest, ExtractTextContentFromPdf) {
+    fs::path pdf_path = test_dir / "test.pdf";
+    create_minimal_pdf(pdf_path);
+
+    ASSERT_TRUE(fs::exists(pdf_path));
+
+    TextFileHandler handler(pdf_path.string());
+    handler.parse();
+    std::string extracted = handler.extract_text_content();
+
+    // Verify the extracted text contains the specific words from our generated PDF
+    EXPECT_NE(extracted.find("Hello"), std::string::npos);
+    EXPECT_NE(extracted.find("World"), std::string::npos);
+}
+
+TEST_F(TextHandlerTest, ExtractTextContentFromRealPdf) {
+    fs::path source_file = __FILE__;
+    fs::path project_root = source_file.parent_path().parent_path().parent_path().parent_path().parent_path();
+    fs::path pdf_path = project_root / "example_data" / "subject_es_1.pdf";
+
+    if (fs::exists(pdf_path)) {
+        TextFileHandler handler(pdf_path.string());
+        handler.parse();
+
+        EXPECT_EQ(handler.get_number_of_pages(), 2);
+
+        std::string extracted = handler.extract_text_content();
+        EXPECT_FALSE(extracted.empty());
+        EXPECT_NE(extracted.find("tecnología"), std::string::npos);
+        EXPECT_NE(extracted.find("transformación"), std::string::npos);
+    } else {
+        GTEST_SKIP() << "Test file subject_es_1.pdf not found at " << pdf_path;
+    }
 }

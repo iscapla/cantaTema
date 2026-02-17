@@ -8,6 +8,7 @@ create_infra_library(
     src/text_handler.cpp
     src/sound_handler.cpp
     INC_PUBLIC
+    mupdf::mupdf
     INC_PRIVATE
     tag #taglib
     SDL3::SDL3
@@ -23,6 +24,7 @@ target_include_directories(_infra_FILE_HANDLER PRIVATE
     $<BUILD_INTERFACE:${taglib_SOURCE_DIR}>
     $<BUILD_INTERFACE:${taglib_SOURCE_DIR}>/taglib
     ${TAG_INCLUDE_DIRS}
+    $<BUILD_INTERFACE:${mupdf_SOURCE_DIR}/include>
 )
 
 add_subdirectory(test)

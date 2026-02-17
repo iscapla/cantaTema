@@ -9,9 +9,13 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++23")
 
 # Define UNICODE and _UNICODE for wide-character support
-# add_definitions(-DUNICODE -D_UNICODE)
+add_definitions(-DUNICODE -D_UNICODE)
 # # Ensure wchar_t support is enabled
-# add_definitions(-D_WCHAR_T)
+add_definitions(-D_WCHAR_T)
+# Ensure source files are treated as UTF-8
+if(MSVC)
+    add_compile_options(/utf-8)
+endif()
 
 set(PROJ_MAJOR_VERSION 1)
 set(PROJ_MINOR_VERSION 0)
@@ -316,6 +320,25 @@ if(NOT TARGET simpleini)
   install(FILES ${simpleini_SOURCE_DIR}/SimpleIni.h DESTINATION ${INSTALL_INCLUDE_DIR})
   install(TARGETS simpleini EXPORT configurationTargets)
 endif()
+
+################################
+# mupdf
+################################
+
+# FetchContent_Declare(
+#   mupdf
+#   GIT_REPOSITORY https://github.com/ArtifexSoftware/mupdf.git
+#   GIT_TAG        1.27.1
+#   GIT_SUBMODULES ""
+# )
+# set(MUPDF_BUILD_TESTING OFF CACHE BOOL "" FORCE)
+# set(MUPDF_INSTALL OFF CACHE BOOL "" FORCE)
+# set(HAVE_X11 OFF CACHE BOOL "" FORCE)
+# set(HAVE_GLUT OFF CACHE BOOL "" FORCE)
+# set(HAVE_OPENGL OFF CACHE BOOL "" FORCE)
+# FetchContent_MakeAvailable(mupdf)
+
+include(add_mupdf_library)
 
 
 ################################
