@@ -2,6 +2,56 @@
 #include "file_handler/extension_type_pdf.hpp"
 #include <set>
 #include <cmath>
+#include <algorithm>
+
+namespace {
+    int rgb_to_hex(float r, float g, float b) {
+        int ir = std::clamp(static_cast<int>(r * 255.0f + 0.5f), 0, 255);
+        int ig = std::clamp(static_cast<int>(g * 255.0f + 0.5f), 0, 255);
+        int ib = std::clamp(static_cast<int>(b * 255.0f + 0.5f), 0, 255);
+        return (ir << 16) | (ig << 8) | ib;
+    }
+
+    int cmyk_to_hex(float c, float m, float y, float k) {
+        float r = (1.0f - c) * (1.0f - k);
+        float g = (1.0f - m) * (1.0f - k);
+        float b = (1.0f - y) * (1.0f - k);
+        return rgb_to_hex(r, g, b);
+    }
+
+    struct HighlightInfo {
+        fz_rect rect;
+        int color;
+    };
+
+    struct HighlightDevice {
+        fz_device super;
+        std::vector<HighlightInfo> *highlights;
+    };
+
+    void capture_fill_path(fz_context *ctx, fz_device *dev, const fz_path *path, int even_odd, fz_matrix ctm, fz_colorspace *colorspace, const float *color, float alpha, fz_color_params color_params) {
+        auto *custom_dev = reinterpret_cast<HighlightDevice*>(dev);
+        auto *highlights = custom_dev->highlights;
+        
+        int hex = 0xFFFFFF;
+        int n = colorspace ? fz_colorspace_n(ctx, colorspace) : 0;
+
+        if (n == 3) {
+            hex = rgb_to_hex(color[0], color[1], color[2]);
+        } else if (n == 4) {
+            hex = cmyk_to_hex(color[0], color[1], color[2], color[3]);
+        } else if (n == 1) {
+            hex = rgb_to_hex(color[0], color[0], color[0]);
+        } else {
+            return; 
+        }
+
+        if (hex == 0xFFFFFF || hex == 0x000000) return;
+
+        fz_rect rect = fz_bound_path(ctx, path, nullptr, ctm);
+        highlights->push_back({rect, hex});
+    }
+}
 
 ExtensionTypePDF::ExtensionTypePDF(const FileHandler &handler)
     : FileHandler(handler), m_ctx(nullptr), m_doc(nullptr), m_page_count(0), m_spans_cached(false) {
@@ -114,35 +164,46 @@ std::vector<ExtensionTypePDF::TextSpan> ExtensionTypePDF::extract_rich_text() co
     m_cached_spans.clear();
 
     fz_try(m_ctx) {
+        pdf_document *pdf_doc = pdf_document_from_fz_document(m_ctx, m_doc);
         for (int page_num = 0; page_num < m_page_count; ++page_num) {
-            fz_page *page = fz_load_page(m_ctx, m_doc, page_num);
+            pdf_page *page = pdf_load_page(m_ctx, pdf_doc, page_num);
             if (!page) continue;
 
             // 1. Load Highlights (Annotations)
-            struct HighlightInfo {
-                fz_rect rect;
-                int color;
-            };
             std::vector<HighlightInfo> highlights;
             
-            pdf_page *pdf_pg = pdf_page_from_fz_page(m_ctx, page);
-            if (pdf_pg) {
-                pdf_annot *annot = pdf_first_annot(m_ctx, pdf_pg);
-                while (annot) {
-                    if (pdf_annot_type(m_ctx, annot) == PDF_ANNOT_HIGHLIGHT) {
-                        float color[4] = {1, 1, 0, 1}; // Default yellow
-                        int n = 0;
-                        pdf_annot_color(m_ctx, annot, &n, color);
-                        highlights.push_back({pdf_bound_annot(m_ctx, annot), rgb_to_hex(color[0], color[1], color[2])});
-                    }
-                    annot = pdf_next_annot(m_ctx, annot);
+            pdf_annot *annot = pdf_first_annot(m_ctx, page);
+            while (annot) {
+                enum pdf_annot_type type = pdf_annot_type(m_ctx, annot);
+                if (type == PDF_ANNOT_HIGHLIGHT) {
+                    float color[4] = {1, 1, 0, 1}; // Default yellow
+                    int n = 0;
+                    pdf_annot_color(m_ctx, annot, &n, color);
+                    
+                    int hex_color = 0xFFFF00;
+                    if (n == 1) hex_color = rgb_to_hex(color[0], color[0], color[0]);
+                    else if (n == 3) hex_color = rgb_to_hex(color[0], color[1], color[2]);
+                    else if (n == 4) hex_color = cmyk_to_hex(color[0], color[1], color[2], color[3]);
+                    else if (n > 0) hex_color = rgb_to_hex(color[0], color[1], color[2]);
+
+                    highlights.push_back({pdf_bound_annot(m_ctx, annot), hex_color});
                 }
+                annot = pdf_next_annot(m_ctx, annot);
             }
 
-            // 2. Load Text
-            fz_stext_page *text_page = fz_new_stext_page(m_ctx, fz_bound_page(m_ctx, page));
+            // 2. Load Graphic Highlights (Background rectangles)
+            HighlightDevice *hl_dev = (HighlightDevice*)fz_new_device_of_size(m_ctx, sizeof(HighlightDevice));
+            hl_dev->highlights = &highlights;
+            hl_dev->super.fill_path = capture_fill_path;
+            
+            pdf_run_page(m_ctx, page, (fz_device*)hl_dev, fz_identity, nullptr);
+            fz_close_device(m_ctx, (fz_device*)hl_dev);
+            fz_drop_device(m_ctx, (fz_device*)hl_dev);
+
+            // 3. Load Text
+            fz_stext_page *text_page = fz_new_stext_page(m_ctx, pdf_bound_page(m_ctx, page, FZ_CROP_BOX));
             fz_device *dev = fz_new_stext_device(m_ctx, text_page, nullptr);
-            fz_run_page(m_ctx, page, dev, fz_identity, nullptr);
+            pdf_run_page(m_ctx, page, dev, fz_identity, nullptr);
             fz_close_device(m_ctx, dev);
             fz_drop_device(m_ctx, dev);
 
@@ -213,7 +274,7 @@ std::vector<ExtensionTypePDF::TextSpan> ExtensionTypePDF::extract_rich_text() co
             }
 
             fz_drop_stext_page(m_ctx, text_page);
-            fz_drop_page(m_ctx, page);
+            pdf_drop_page(m_ctx, page);
         }
         m_spans_cached = true;
     } fz_catch(m_ctx) {

@@ -19,9 +19,22 @@ if(NOT mupdf_src_POPULATED)
     # 2. Download ALL submodules
     # ============================================================
     find_package(Git REQUIRED)
-    message(STATUS "Updating all MuPDF submodules...")
+    message(STATUS "Updating specific MuPDF submodules...")
+
+    # Only download submodules required by the configuration
+    set(MUPDF_SUBMODULES
+        thirdparty/freetype
+        thirdparty/harfbuzz
+        thirdparty/zlib
+        thirdparty/libjpeg
+        thirdparty/openjpeg
+        thirdparty/jbig2dec
+        thirdparty/mujs
+        thirdparty/lcms2
+    )
+
     execute_process(
-        COMMAND ${GIT_EXECUTABLE} submodule update --init --recursive
+        COMMAND ${GIT_EXECUTABLE} submodule update --init --recursive -- ${MUPDF_SUBMODULES}
         WORKING_DIRECTORY ${mupdf_src_SOURCE_DIR}
         RESULT_VARIABLE git_result
     )
@@ -37,37 +50,41 @@ set(MUPDF_ROOT ${mupdf_src_SOURCE_DIR})
 # ============================================================
 
 set(MUPDF_DEFINITIONS
-    # -DFZ_ENABLE_PDF=1
-    # -DFZ_ENABLE_ICC=0
-    # -DFZ_ENABLE_XPS=0
-    # -DFZ_ENABLE_SVG=0
-    # -DFZ_ENABLE_HTML=0
-    # -DFZ_ENABLE_EPUB=0
-    # -DFZ_ENABLE_CBZ=0
-    # -DFZ_ENABLE_JPX=0
-    # -DFZ_ENABLE_FREETYPE=1
-    # -DFZ_ENABLE_HARFBUZZ=1
-    # -DFZ_ENABLE_JBIG2DEC=0
-    # -DFZ_ENABLE_JPEG=1
-    # -DFZ_ENABLE_PNG=1
-    # -DFZ_ENABLE_TIFF=1
-    # -DFZ_ENABLE_HTML_ENGINE=0
-    # -DFZ_ENABLE_MOBI=0
-    # -DFZ_ENABLE_FB2=0
-    # -DFZ_ENABLE_TXT=0
-    # -DFZ_ENABLE_OFFICE=0
-    # -DFZ_ENABLE_UNCOMPRESS=0
-    # -DFZ_ENABLE_JS=0
-    # -DFZ_ENABLE_OCR=0
-    # -DFZ_ENABLE_DOCX_OUTPUT=0
-
-
-    # -DFZ_ENABLE_HYPHEN=0
-    # -DFZ_ENABLE_HYPHEN_ALL=0
-    # -DFZ_ENABLE_IMG=1
-    # -DFZ_ENABLE_OCR_OUTPUT=0
-    # -DFZ_ENABLE_ODT_OUTPUT=0
-    # -DFZ_ENABLE_BROTLI=0
+    -DFZ_ENABLE_BARCODE=0
+    -DFZ_ENABLE_BROTLI=0
+    -DFZ_ENABLE_CBZ=0
+    -DFZ_ENABLE_DOCX_OUTPUT=0
+    -DFZ_ENABLE_EPUB=0
+    -DFZ_ENABLE_FB2=0
+    -DFZ_ENABLE_FREETYPE=1
+    -DFZ_ENABLE_HARFBUZZ=1
+    -DFZ_ENABLE_HTML=0
+    -DFZ_ENABLE_HTML_ENGINE=0
+    -DFZ_ENABLE_HYPHEN=0
+    -DFZ_ENABLE_HYPHEN_ALL=0
+    -DFZ_ENABLE_ICC=0
+    -DFZ_ENABLE_IMG=0
+    -DFZ_ENABLE_JBIG2DEC=0
+    -DFZ_ENABLE_JPEG=0
+    -DFZ_ENABLE_JPX=0
+    -DFZ_ENABLE_JS=0
+    -DFZ_ENABLE_MOBI=0
+    -DFZ_ENABLE_OCR=0
+    -DFZ_ENABLE_OCR_OUTPUT=0
+    -DFZ_ENABLE_ODT_OUTPUT=0
+    -DFZ_ENABLE_OFFICE=0
+    -DFZ_ENABLE_PDF=1
+    -DFZ_ENABLE_PNG=0
+    -DFZ_ENABLE_SPOT_RENDERING=0
+    -DFZ_ENABLE_SVG=0
+    -DFZ_ENABLE_TIFF=0
+    -DFZ_ENABLE_TXT=0
+    -DFZ_ENABLE_UNCOMPRESS=0
+    -DFZ_ENABLE_XPS=0
+    -DFZ_PLOTTERS_CMYK=0
+    -DFZ_PLOTTERS_G=0
+    -DFZ_PLOTTERS_N=0
+    -DFZ_PLOTTERS_RGB=0
 )
 string(REPLACE ";" " " MUPDF_DEFINITIONS_STR "${MUPDF_DEFINITIONS}")
 
@@ -79,24 +96,57 @@ foreach(DEF IN LISTS MUPDF_DEFINITIONS)
 endforeach()
 
 set(MUPDF_MAKE_OPTIONS
-    # HAVE_X11=no
-    # HAVE_GLFW=no
-    # HAVE_GLUT=no
-    # HAVE_CURL=no
-    # HAVE_OPENSSL=no
-    # HAVE_LIBCRYPTO=no
-    # HAVE_LCMS2=no
-    # HAVE_GUMBO=no
-    # HAVE_OPENJPEG=no
-    # HAVE_FREETYPE=no
-    # HAVE_HARFBUZZ=no
-    # HAVE_JBIG2DEC=no
-    # HAVE_JPEG=no
-    # HAVE_PNG=no
-    # HAVE_TIFF=no
-    # HAVE_MUJS=no
-    # HAVE_LEPTONICA=no
-    # HAVE_TESSERACT=no
+    HAVE_CURL=no
+    HAVE_FREETYPE=no
+    HAVE_GLFW=no
+    HAVE_GLUT=no
+    HAVE_GUMBO=no
+    HAVE_HARFBUZZ=no
+    HAVE_JBIG2DEC=no
+    HAVE_JPEG=no
+    HAVE_JPEGXR=no
+    HAVE_LCMS2=no
+    HAVE_LEPTONICA=no
+    HAVE_LIBARCHIVE=no
+    HAVE_LIBCRYPTO=no
+    HAVE_LIBDL=no
+    HAVE_MUJS=no
+    HAVE_OBJCOPY=no
+    HAVE_OPENJPEG=no
+    HAVE_OPENSSL=no
+    HAVE_PNG=no
+    HAVE_PTHREAD=no
+    HAVE_SMARTOFFICE=no
+    HAVE_SYS_CURL=no
+    HAVE_SYS_LEPTONICA=no
+    HAVE_SYS_LIBARCHIVE=no
+    HAVE_SYS_TESSERACT=no
+    HAVE_SYS_ZXINGCPP=no
+    HAVE_TESSERACT=no
+    HAVE_TIFF=no
+    HAVE_X11=no
+    HAVE_ZXINGCPP=no
+    USE_BROTLI=no
+    USE_EXTRACT=no
+    USE_GUMBO=no
+    USE_LEPTONICA=no
+    USE_LIBARCHIVE=no
+    USE_MUJS=no
+    USE_SYSTEM_BROTLI=no
+    USE_SYSTEM_CURL=no
+    USE_SYSTEM_FREETYPE=no
+    USE_SYSTEM_GLUT=no
+    USE_SYSTEM_GUMBO=no
+    USE_SYSTEM_JBIG2DEC=no
+    USE_SYSTEM_JPEGXR=no
+    USE_SYSTEM_LCMS2=no
+    USE_SYSTEM_LIBJPEG=no
+    USE_SYSTEM_LIBS=no
+    USE_SYSTEM_MUJS=no
+    USE_SYSTEM_OPENJPEG=no
+    USE_SYSTEM_ZLIB=no
+    USE_TESSERACT=no
+    USE_ZXINGCPP=no
 )
 
 if(MSVC)
@@ -147,7 +197,7 @@ if(NOT "${CURRENT_CONFIG_STR}" STREQUAL "${OLD_CONFIG_STR}")
     if(MSVC)
         execute_process(COMMAND ${NMAKE_EXE} /f platform/win32/NMakefile clean WORKING_DIRECTORY ${MUPDF_ROOT} OUTPUT_QUIET ERROR_QUIET)
     else()
-        execute_process(COMMAND ${MAKE_EXE} clean WORKING_DIRECTORY ${MUPDF_ROOT} OUTPUT_QUIET ERROR_QUIET)
+        execute_process(COMMAND ${MAKE_EXE} clean OUT=build/release-cmake WORKING_DIRECTORY ${MUPDF_ROOT} OUTPUT_QUIET ERROR_QUIET)
     endif()
     file(WRITE "${MUPDF_CONFIG_FILE}" "${CURRENT_CONFIG_STR}")
 endif()
