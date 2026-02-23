@@ -25,7 +25,7 @@ rst_code_e terminal_init_user(std::unique_ptr<cli::Menu> &rootMenu);
 rst_code_e terminal_init_category(std::unique_ptr<cli::Menu> &rootMenu);
 rst_code_e terminal_init_subject(std::unique_ptr<cli::Menu> &rootMenu);
 rst_code_e terminal_init_practice(std::unique_ptr<cli::Menu> &rootMenu);
-
+rst_code_e terminal_init_whisper(std::unique_ptr<cli::Menu> &rootMenu);
 
 
 rst_code_e terminal_cli_start(void)
@@ -77,7 +77,7 @@ rst_code_e terminal_cli_start(void)
         terminal_init_category(rootMenu);
         terminal_init_subject(rootMenu);
         terminal_init_practice(rootMenu);
-
+        terminal_init_whisper(rootMenu);
 
         rootMenu->Insert(
             "user_identify", {"name", "password"},
@@ -380,6 +380,43 @@ rst_code_e terminal_init_category(std::unique_ptr<cli::Menu> &rootMenu)
             "Get all categories for current user");
 
         rootMenu->Insert(std::move(categoryMenu));
+        return RST_OK;
+    }
+    catch (const std::exception &e)
+    {
+        logger->error("Exception caught in category menu: {}", e.what());
+    }
+    catch (...)
+    {
+        logger->critical("Unknown exception caught in category menu.");
+    }
+
+    return CONSOLE_EXP;
+}
+
+rst_code_e terminal_init_whisper(std::unique_ptr<cli::Menu> &rootMenu)
+{
+    try
+    {
+        auto whisperMenu = std::make_unique<cli::Menu>("whisper", "Whisper commands (MENU)");
+
+        whisperMenu->Insert(
+            "models", {},
+            [](std::ostream &out)
+            {
+                terminal_session->whisper_get_available_models(out);
+            },
+            "Get available models");
+        
+        whisperMenu->Insert(
+            "download", {"model_name"},
+            [](std::ostream &out, const std::string &model_name)
+            {
+                terminal_session->whisper_download_model(out, model_name);
+            },
+            "Download a model");
+
+        rootMenu->Insert(std::move(whisperMenu));
         return RST_OK;
     }
     catch (const std::exception &e)

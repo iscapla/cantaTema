@@ -57,6 +57,12 @@ public:
     void practice_event_get_by_subject(std::ostream &out, unsigned int subject_id);
     void practice_event_get_by_user(std::ostream &out);
 
+    //-------------------------------------------------------------------------------------
+
+    void whisper_get_available_models(std::ostream &out);
+    void whisper_download_model(std::ostream &out, const std::string &model_name);
+    
+
 private:
     Session *op;
     ThreadPool *session_thread_pool;

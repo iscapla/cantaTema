@@ -62,6 +62,10 @@ enum rst_code_e
     FILE_READ_ERROR, // File read error
     FILE_UPLOAD_ERROR, // File upload error
 
+    MODELS_FILE_DOWNLOAD_FAIL, // Models download fail
+    MODELS_FILE_NOT_FOUND, // Models not found
+
+
     UNKNOWN // General error. Also used to point to the last value of the table
 };
 
@@ -169,6 +173,13 @@ inline const std::string get_rst_txt(const rst_code_e &rst)
         break;
     case FILE_UPLOAD_ERROR:
         txt = "FILE_UPLOAD_ERROR";
+        break;
+    
+    case MODELS_FILE_DOWNLOAD_FAIL:
+        txt = "MODELS_FILE_DOWNLOAD_FAIL";
+        break;
+    case MODELS_FILE_NOT_FOUND:
+        txt = "MODELS_FILE_NOT_FOUND";
         break;
 
     case UNKNOWN:

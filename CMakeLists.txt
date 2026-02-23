@@ -102,8 +102,6 @@ if(WIN32)
   endif()
 elseif(APPLE)
   set(OS_TAG "mac")
-  # Enable Apple Metal (GPU) support for Whisper
-  set(WHISPER_METAL ON CACHE BOOL "Enable CoreML/Metal support" FORCE)
 elseif(UNIX)
   set(OS_TAG "linux")
 endif()
@@ -322,21 +320,34 @@ if(NOT TARGET simpleini)
 endif()
 
 ################################
-# mupdf
+# libcurl (Minimal / HTTP Only)
 ################################
 
-# FetchContent_Declare(
-#   mupdf
-#   GIT_REPOSITORY https://github.com/ArtifexSoftware/mupdf.git
-#   GIT_TAG        1.27.1
-#   GIT_SUBMODULES ""
-# )
-# set(MUPDF_BUILD_TESTING OFF CACHE BOOL "" FORCE)
-# set(MUPDF_INSTALL OFF CACHE BOOL "" FORCE)
-# set(HAVE_X11 OFF CACHE BOOL "" FORCE)
-# set(HAVE_GLUT OFF CACHE BOOL "" FORCE)
-# set(HAVE_OPENGL OFF CACHE BOOL "" FORCE)
-# FetchContent_MakeAvailable(mupdf)
+# Optimization: Disable unused protocols and tools to save space
+set(BUILD_CURL_EXE OFF CACHE BOOL "" FORCE)
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+set(HTTP_ONLY ON CACHE BOOL "" FORCE) # Disables FTP, LDAP, POP3, IMAP, etc.
+set(CURL_ENABLE_SSL ON CACHE BOOL "" FORCE)
+set(CURL_DISABLE_VERBOSE_STRINGS ON CACHE BOOL "" FORCE) # Strips debug strings
+
+if(WIN32)
+  set(CURL_USE_SCHANNEL ON CACHE BOOL "" FORCE) # Use Windows Native SSL (Small size)
+  set(CURL_USE_OPENSSL OFF CACHE BOOL "" FORCE)
+elseif(APPLE)
+  set(CURL_USE_SECTRANSP ON CACHE BOOL "" FORCE) # Use Apple Native SSL
+  set(CURL_USE_OPENSSL OFF CACHE BOOL "" FORCE)
+endif()
+
+FetchContent_Declare(
+  curl
+  GIT_REPOSITORY https://github.com/curl/curl.git
+  GIT_TAG curl-8_18_0
+)
+FetchContent_MakeAvailable(curl)
+
+################################
+# mupdf
+################################
 
 include(add_mupdf_library)
 
@@ -345,16 +356,23 @@ include(add_mupdf_library)
 # whisper
 ################################
 
-# set(WHISPER_BUILD_TESTS OFF CACHE BOOL "Disable whisper tests" FORCE)
-# set(WHISPER_BUILD_EXAMPLES OFF CACHE BOOL "Disable whisper examples" FORCE)
+set(WHISPER_BUILD_TESTS OFF CACHE BOOL "Disable whisper tests" FORCE)
+set(WHISPER_BUILD_EXAMPLES OFF CACHE BOOL "Disable whisper examples" FORCE)
 
-# FetchContent_Declare(
-#     whisper
-#     GIT_REPOSITORY https://github.com/ggerganov/whisper.cpp.git
-#     GIT_TAG        v1.8.2
-#     OVERRIDE_FIND_PACKAGE 
-# )
-# FetchContent_MakeAvailable(whisper)
+if(APPLE)
+  set(WHISPER_METAL ON CACHE BOOL "Enable CoreML/Metal support" FORCE)
+elseif(WIN32 OR UNIX)
+  # Enable Vulkan for Whisper acceleration on Windows/Linux (Requires Vulkan SDK)
+  set(WHISPER_VULKAN ON CACHE BOOL "Enable Whisper Vulkan support" FORCE)
+endif()
+
+FetchContent_Declare(
+    whisper
+    GIT_REPOSITORY https://github.com/ggerganov/whisper.cpp.git
+    GIT_TAG        v1.8.3
+    OVERRIDE_FIND_PACKAGE 
+)
+FetchContent_MakeAvailable(whisper)
 
 #####################################################################################################
 # PROJECT RULES
