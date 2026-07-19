@@ -1,0 +1,151 @@
+# ============================================================================
+# CantaTema – CI Pipeline
+# ============================================================================
+# Triggers on every push and pull request.
+# Configures, compiles, and runs unit tests on Windows, Linux, and macOS.
+# ============================================================================
+
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+# Cancel in-progress runs for the same branch/PR to save resources
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # ── Windows (MinGW / GCC) ──────────────────────────────
+          - os: windows-latest
+            name: "Windows (MinGW)"
+            cmake_generator: "MinGW Makefiles"
+            build_type: Debug
+            shell: msys2 {0}
+            msys2_env: MINGW64
+            msys2_packages: >-
+              mingw-w64-x86_64-gcc
+              mingw-w64-x86_64-cmake
+              mingw-w64-x86_64-ninja
+              mingw-w64-x86_64-make
+              mingw-w64-x86_64-vulkan-devel
+              git
+              make
+
+          # ── Linux (GCC) ────────────────────────────────────────
+          - os: ubuntu-latest
+            name: "Linux (GCC)"
+            cmake_generator: "Unix Makefiles"
+            build_type: Debug
+            shell: bash
+
+          # ── macOS (AppleClang) ─────────────────────────────────
+          - os: macos-latest
+            name: "macOS (AppleClang)"
+            cmake_generator: "Unix Makefiles"
+            build_type: Debug
+            shell: bash
+
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: ${{ matrix.shell }}
+
+    steps:
+      # ────────────────────────────────────────────────────────────
+      # 1. Checkout
+      # ────────────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # ────────────────────────────────────────────────────────────
+      # 2. Platform-specific setup
+      # ────────────────────────────────────────────────────────────
+
+      # Windows: Install MSYS2 with MinGW toolchain
+      - name: Setup MSYS2 (Windows)
+        if: runner.os == 'Windows'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: ${{ matrix.msys2_packages }}
+
+      # Linux: Install build dependencies
+      - name: Install dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            ninja-build \
+            git \
+            pkg-config \
+            libasound2-dev \
+            libpulse-dev \
+            libx11-dev \
+            libxext-dev \
+            libxrandr-dev \
+            libxcursor-dev \
+            libxi-dev \
+            libxss-dev \
+            libwayland-dev \
+            libdbus-1-dev \
+            libudev-dev \
+            libvulkan-dev \
+            vulkan-validationlayers
+
+      # macOS: Install build dependencies (Xcode CLT is pre-installed)
+      - name: Install dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install cmake ninja
+
+      # ────────────────────────────────────────────────────────────
+      # 3. Cache build dependencies (FetchContent / CPM)
+      # ────────────────────────────────────────────────────────────
+      - name: Cache CMake FetchContent & CPM
+        uses: actions/cache@v4
+        with:
+          path: |
+            build/_deps
+            build/CPM.cmake
+          key: ${{ runner.os }}-cmake-deps-${{ hashFiles('CMakeLists.txt', 'cmake/**') }}
+          restore-keys: |
+            ${{ runner.os }}-cmake-deps-
+
+      # ────────────────────────────────────────────────────────────
+      # 4. Configure
+      # ────────────────────────────────────────────────────────────
+      - name: CMake Configure
+        run: |
+          cmake -B build \
+            -G "${{ matrix.cmake_generator }}" \
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+            -DENABLE_COVERAGE=ON
+
+      # ────────────────────────────────────────────────────────────
+      # 5. Build
+      # ────────────────────────────────────────────────────────────
+      - name: CMake Build
+        run: |
+          cmake --build build --config ${{ matrix.build_type }} --parallel $(nproc 2>/dev/null || sysctl -n hw.logicalcpu 2>/dev/null || echo 2)
+
+      # ────────────────────────────────────────────────────────────
+      # 6. Test
+      # ────────────────────────────────────────────────────────────
+      - name: Run Tests
+        run: |
+          ctest --test-dir build -C ${{ matrix.build_type }} --output-on-failure --timeout 300
