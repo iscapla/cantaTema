@@ -101,13 +101,19 @@ jobs:
             libxcursor-dev \
             libxi-dev \
             libxss-dev \
+            libxtst-dev \
             libwayland-dev \
             libdbus-1-dev \
             libudev-dev \
             libvulkan-dev \
             vulkan-validationlayers
 
-      # macOS: Install build dependencies (Xcode CLT is pre-installed)
+      # macOS: Ensure full Xcode is active (needed for ObjC/Metal in SDL3)
+      - name: Setup Xcode (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer
+
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
         run: |
@@ -131,9 +137,14 @@ jobs:
       # ────────────────────────────────────────────────────────────
       - name: CMake Configure
         run: |
+          CMAKE_EXTRA_FLAGS=""
+          if [ "$(uname)" = "Darwin" ]; then
+            CMAKE_EXTRA_FLAGS="-DCMAKE_OBJC_COMPILER=$(xcrun --find clang) -DCMAKE_OBJCXX_COMPILER=$(xcrun --find clang++)"
+          fi
           cmake -B build \
             -G "${{ matrix.cmake_generator }}" \
             -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+            ${CMAKE_EXTRA_FLAGS} \
             -DENABLE_COVERAGE=ON
 
       # ────────────────────────────────────────────────────────────
