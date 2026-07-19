@@ -70,4 +70,33 @@ TEST_F(ToolPathTest, GetPathForPracticeEventReturnsValidDirectory) {
     ExpectValidDirectory(path);
 }
 
+TEST_F(ToolPathTest, GetPathForModelsWhisperReturnsValidDirectory) {
+    std::filesystem::path path = ToolPath::get_path_for_models_whisper();
+    ExpectValidDirectory(path);
+}
+
+TEST_F(ToolPathTest, GetFilesystemPathSucceeds) {
+    std::string path = ToolPath::get_filesystem_path("CantaTemaTest", "CantaTemaTest");
+    EXPECT_FALSE(path.empty());
+}
+
 } // namespace
+
+#include <primitives/utils_logger.hpp>
+
+TEST(ToolPathGlobalTest, InitializeStandardLogger) {
+    // Save current logger to restore later
+    spdlog::logger* old_logger = logger;
+    
+    // Call normal initialization
+    util_logger_init();
+    
+    // Verify it was initialized
+    EXPECT_NE(logger, nullptr);
+    
+    // Restore
+    if (logger != old_logger) {
+        delete logger;
+        logger = old_logger;
+    }
+}

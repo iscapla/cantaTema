@@ -198,3 +198,58 @@ TEST_F(DBCategoryTest, GetAllCategoriesByUser_Success) {
     EXPECT_EQ(result, RST_OK);
     EXPECT_EQ(categories.size(), 2);
 }
+
+#include "database/db_main.hpp"
+
+TEST_F(DBCategoryTest, DBMainInitializeAndPurge) {
+    // DB_Main is initialized in SetUp. Let's verify we can get the instance.
+    DB_Main* db = DB_Main::getInstance();
+    EXPECT_NE(db, nullptr);
+
+    // Call purge, which resets connection and re-initializes
+    EXPECT_NO_THROW({
+        db->purge();
+    });
+}
+
+TEST_F(DBCategoryTest, DBCategoryErrorsAndConstraints) {
+    DB_Category db_category;
+
+    // 1. Get non-existent category by ID should return DB_FAIL
+    std::shared_ptr<Category> retrieved;
+    EXPECT_EQ(db_category.get_category_by_id(999999, retrieved), DB_FAIL);
+
+    // 2. Checking if non-existent category exists should return RST_OK and exists = false
+    bool exists = true;
+    EXPECT_EQ(db_category.is_category_already_present(999999, "Non Existent Cat", exists), RST_OK);
+    EXPECT_FALSE(exists);
+}
+
+TEST_F(DBCategoryTest, DBCloseDatabaseConnectionErrors) {
+    DB_Category db_category;
+    Category cat(0, "Test Cat");
+    cat.set_user_id(1);
+
+    // 1. Close database connection
+    sqlite3_close(DB_Connection::getConn().get());
+
+    // 2. All operations should return DB_FAIL
+    EXPECT_EQ(db_category.category_tables_create(), DB_FAIL);
+    bool exists_flag = false;
+    EXPECT_EQ(db_category.is_category_already_present(1, "Test Cat", exists_flag), DB_FAIL);
+
+    EXPECT_EQ(db_category.add_new_category(cat), DB_FAIL);
+    EXPECT_EQ(db_category.update_category(cat), DB_FAIL);
+    EXPECT_EQ(db_category.remove_category(1), DB_FAIL);
+    EXPECT_EQ(db_category.remove_all_categories_from_user(1), DB_FAIL);
+    std::shared_ptr<Category> retrieved;
+    EXPECT_EQ(db_category.get_category_by_id(1, retrieved), DB_FAIL);
+
+    // 3. Reset connection to restore database state
+    DB_Connection::reset_connection();
+    // Re-create tables
+    db_category.category_tables_create();
+}
+
+
+

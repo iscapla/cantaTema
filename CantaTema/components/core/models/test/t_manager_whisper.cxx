@@ -112,3 +112,26 @@ TEST_F(ManagerWhisperTest, GetAvailableModelsCombined) {
     EXPECT_TRUE(local_found) << "test_local should be found in combined list (network check)";
     EXPECT_TRUE(tiny_found) << "tiny should be found in combined list (network check)";
 }
+
+TEST_F(ManagerWhisperTest, DownloadModelFailure) {
+    ManagerWhisper manager;
+    
+    // Define a dummy callback to exercise progress callback setup
+    auto dummy_callback = [](const DownloadProgress& progress) {
+        // Do nothing
+    };
+
+    // Attempt to download a non-existent model
+    std::string invalid_model = "invalid_model_xyz_123";
+    std::string expected_file = "ggml-invalid_model_xyz_123.bin";
+    std::filesystem::path expected_path = ToolPath::get_path_for_models_whisper() / expected_file;
+
+    rst_code_e result = manager.network_download_model(invalid_model, dummy_callback);
+    EXPECT_EQ(result, MODELS_FILE_DOWNLOAD_FAIL);
+
+    // Clean up if a partial/failed file was created
+    if (std::filesystem::exists(expected_path)) {
+        std::filesystem::remove(expected_path);
+    }
+}
+

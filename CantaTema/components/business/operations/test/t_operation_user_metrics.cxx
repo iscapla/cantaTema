@@ -91,3 +91,18 @@ TEST_F(OperationUserMetricsTest, CanAcceptFileSize) {
     unsigned int size_kb = 1024;
     EXPECT_EQ(operation_metrics->user_metrics_can_accept_file_size(test_user, size_kb), RST_OK);
 }
+
+TEST_F(OperationUserMetricsTest, ErrorAndBoundaryCases) {
+    // 1. Not enough space check
+    // Set a very large size exceeding default max space limit
+    unsigned int giant_size_kb = 1000 * 1024 * 1024; // 1000 GB
+    EXPECT_EQ(operation_metrics->user_metrics_can_accept_file_size(test_user, giant_size_kb), USER_METRICS_NOT_ENOUGH_SPACE);
+
+    // 2. Null user validations
+    UserMetrics dummy(0);
+    EXPECT_EQ(operation_metrics->user_metrics_add(nullptr, dummy), USER_METRICS_ERROR);
+    EXPECT_EQ(operation_metrics->user_metrics_update(nullptr, dummy), USER_METRICS_ERROR);
+    EXPECT_EQ(operation_metrics->user_metrics_remove(nullptr), USER_METRICS_ERROR);
+    std::shared_ptr<UserMetrics> temp;
+    EXPECT_EQ(operation_metrics->user_metrics_get(nullptr, temp), USER_METRICS_ERROR);
+}

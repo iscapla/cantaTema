@@ -257,6 +257,12 @@ rst_code_e OperationSubject::subject_remove(const std::shared_ptr<const User> &u
 
 rst_code_e OperationSubject::subject_get_by_id(const std::shared_ptr<const User> &user, unsigned int id, std::shared_ptr<Subject> &subject)
 {
+    if (user == nullptr)
+    {
+        logger->error("User is null");
+        return SUBJECT_ERROR;
+    }
+
     DB_Subject db_subject;
 
     rst_code_e rst = db_subject.get_subject_by_id(id, subject);
@@ -278,6 +284,12 @@ rst_code_e OperationSubject::subject_get_by_id(const std::shared_ptr<const User>
 
 rst_code_e OperationSubject::subject_get_all_by_category(const std::shared_ptr<const User> &user, unsigned int category_id, std::vector<std::shared_ptr<Subject>> &subjects)
 {
+    if (user == nullptr)
+    {
+        logger->error("User is null");
+        return SUBJECT_ERROR;
+    }
+
     DB_Subject db_subject;
 
     rst_code_e rst = RST_OK;
@@ -294,6 +306,7 @@ rst_code_e OperationSubject::subject_get_all_by_category(const std::shared_ptr<c
         logger->error("User ID does not match");
         return CATEGORY_NOT_FOUND;
     }
+
 
     rst = db_subject.get_all_subjects_by_category(category_id, subjects);
     if (rst != RST_OK)

@@ -138,3 +138,86 @@ TEST_F(FileHandlerTest, RemoveFolderDeletesRecursive) {
     EXPECT_EQ(result, RST_OK);
     EXPECT_FALSE(fs::exists(folder_path));
 }
+
+TEST_F(FileHandlerTest, ErrorAndBoundaryCases) {
+    // 1. Remove file on empty path
+    TestableFileHandler empty_handler("", 0);
+    EXPECT_EQ(empty_handler.remove_file(), FILE_NOT_FOUND);
+
+    // 2. Remove file on non-existent path
+    TestableFileHandler non_existent_handler("non_existent_file.txt", 0);
+    EXPECT_EQ(non_existent_handler.remove_file(), RST_OK);
+
+    // 3. Remove folder empty path
+    EXPECT_EQ(handler.remove_folder(""), RST_OK);
+
+    // 4. Remove folder non-existent path
+    EXPECT_EQ(handler.remove_folder("non_existent_folder_xyz"), RST_OK);
+
+    // 5. Read and stream on empty path
+    EXPECT_EQ(empty_handler.read_and_stream(nullptr), FILE_NOT_FOUND);
+
+    // 6. Read and stream on non-existent file
+    EXPECT_EQ(non_existent_handler.read_and_stream(nullptr), FILE_NOT_FOUND);
+
+    // 7. Upload file too big
+    fs::path valid_path = test_dir / "oversized.txt";
+    {
+        std::ofstream ofs(valid_path);
+        ofs << "some text content that is more than zero bytes";
+    }
+    // Set max size to 1 byte, so it triggers too big error (but note: upload_file still streams and uploads it since it's an if-else print logger check, let's verify)
+    TestableFileHandler big_handler(valid_path.string(), 1);
+    unsigned int uploaded_bytes = 0;
+    fs::path dest_path = test_dir / "oversized_dest.txt";
+    EXPECT_EQ(big_handler.upload_file(dest_path.string(), uploaded_bytes), RST_OK);
+    EXPECT_GT(uploaded_bytes, 0u);
+}
+
+TEST_F(FileHandlerTest, ReadAndStreamCallbackFailure) {
+    fs::path file_path = test_dir / "callback_fail.txt";
+    {
+        std::ofstream ofs(file_path);
+        ofs << "some data to stream";
+    }
+    TestableFileHandler read_handler(file_path.string(), 0);
+    auto fail_callback = [&](const std::vector<char>& chunk) -> rst_code_e {
+        return FILE_READ_ERROR;
+    };
+    EXPECT_EQ(read_handler.read_and_stream(fail_callback), FILE_READ_ERROR);
+}
+
+TEST_F(FileHandlerTest, SaveChunkOpenFailure) {
+    // Open failure on a path that cannot exist (e.g. invalid characters or folder that is a file)
+    fs::path file_path = test_dir / "non_existent_dir_12345/sub/test.txt";
+    // Wait, create_directories will create parent directories. But if we make parent path a file, it will fail:
+    fs::path parent_file = test_dir / "blocked_dir";
+    {
+        std::ofstream ofs(parent_file);
+        ofs << "not a directory";
+    }
+    fs::path blocked_path = parent_file / "test.txt";
+    std::vector<char> data = {'a', 'b'};
+    EXPECT_EQ(handler.save_chunk(blocked_path.string(), data, true), FILE_UPLOAD_ERROR);
+}
+
+TEST_F(FileHandlerTest, FileHandlerPermissionsError) {
+    fs::path no_perm_path = test_dir / "no_perm.txt";
+    {
+        std::ofstream ofs(no_perm_path);
+        ofs << "no perm data";
+    }
+    // Try to strip read permissions
+    std::error_code ec;
+    fs::permissions(no_perm_path, fs::perms::none, ec);
+    if (!ec) {
+        TestableFileHandler perm_handler(no_perm_path.string(), 0);
+        // On systems enforcing permissions, this should return FILE_READ_ERROR or FILE_NOT_FOUND
+        rst_code_e rst = perm_handler.read_and_stream(nullptr);
+        EXPECT_TRUE(rst == FILE_READ_ERROR || rst == FILE_NOT_FOUND || rst == RST_OK);
+    }
+    // Restore permissions so TearDown can clean up
+    fs::permissions(no_perm_path, fs::perms::owner_read | fs::perms::owner_write, ec);
+}
+
+

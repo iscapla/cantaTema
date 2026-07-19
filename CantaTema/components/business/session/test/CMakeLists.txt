@@ -1,0 +1,16 @@
+include(library_install_test)
+
+create_test_exec(
+    TARGET
+        "t_session"
+    SRCS
+        t_session_main.cxx
+        t_session.cxx
+
+    INC_PRIVATE
+        CORE::PRIMITIVES
+        BUSINESS::OPERATIONS
+        BUSINESS::SESSION
+        INFRASTRUCTURE::DATABASE
+)
+

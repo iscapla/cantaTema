@@ -174,3 +174,37 @@ TEST_F(DBUserMetricsTest, CascadeDelete_Success) {
     auto retrieved = std::make_shared<UserMetrics>(user_id);
     EXPECT_EQ(db_metrics.get_user_metrics(retrieved), DB_NOT_FOUND);
 }
+
+TEST_F(DBUserMetricsTest, InvalidParameters) {
+    DB_UserMetrics db_metrics;
+
+    // 1. Update user metrics with invalid ID
+    UserMetrics metrics(0);
+    EXPECT_EQ(db_metrics.update_user_metrics(metrics), DB_BAD_PARAM);
+
+    // 2. Remove user metrics with invalid ID
+    EXPECT_EQ(db_metrics.remove_user_metrics(0), DB_BAD_PARAM);
+
+    // 3. Get user metrics with null metrics or invalid ID
+    EXPECT_EQ(db_metrics.get_user_metrics(nullptr), DB_BAD_PARAM);
+    auto bad_metrics = std::make_shared<UserMetrics>(0);
+    EXPECT_EQ(db_metrics.get_user_metrics(bad_metrics), DB_BAD_PARAM);
+}
+
+TEST_F(DBUserMetricsTest, DBCloseDatabaseConnectionErrors) {
+    DB_UserMetrics db_metrics;
+    UserMetrics metrics(1);
+
+    sqlite3_close(DB_Connection::getConn().get());
+
+    EXPECT_EQ(db_metrics.user_metrics_tables_create(), DB_FAIL);
+    EXPECT_EQ(db_metrics.update_user_metrics(metrics), DB_FAIL);
+    EXPECT_EQ(db_metrics.remove_user_metrics(1), DB_FAIL);
+    auto temp = std::make_shared<UserMetrics>(1);
+    EXPECT_EQ(db_metrics.get_user_metrics(temp), DB_FAIL);
+
+    DB_Connection::reset_connection();
+    db_metrics.user_metrics_tables_create();
+}
+
+

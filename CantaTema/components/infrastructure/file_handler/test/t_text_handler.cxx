@@ -151,7 +151,18 @@ TEST_F(TextHandlerTest, ExtractTextContentFromPdf) {
     // Verify the extracted text contains the specific words from our generated PDF
     EXPECT_NE(extracted.find("Hello"), std::string::npos);
     EXPECT_NE(extracted.find("World"), std::string::npos);
+
+    // Cover delegates and PDF-specific methods
+    EXPECT_NO_THROW({
+        handler.extract_rich_text();
+        handler.find_bold();
+        handler.find_italic();
+        handler.find_highlight(0);
+        handler.get_font_sizes();
+        handler.get_highlighted_colors();
+    });
 }
+
 
 TEST_F(TextHandlerTest, ExtractTextContentFromRealPdf) {
     fs::path source_file = __FILE__;
@@ -172,3 +183,71 @@ TEST_F(TextHandlerTest, ExtractTextContentFromRealPdf) {
         GTEST_SKIP() << "Test file subject_es_1.pdf not found at " << pdf_path;
     }
 }
+
+TEST_F(TextHandlerTest, TXTFileParsingAndExtraction) {
+    fs::path txt_path = test_dir / "sample.txt";
+    std::string content = "This is a sample TXT content.\nWith another line.";
+    {
+        std::ofstream ofs(txt_path);
+        ofs << content;
+    }
+
+    TextFileHandler handler(txt_path.string());
+    
+    // Test warnings or unparsed behaviour if any
+    EXPECT_EQ(handler.extract_text_content(), "");
+
+    handler.parse();
+    
+    // Parse again to cover early return branch (m_parsed == true)
+    handler.parse();
+
+    EXPECT_EQ(handler.get_number_of_pages(), 1);
+    EXPECT_EQ(handler.extract_text_content(), content);
+    
+    // Check rich text spans
+    auto spans = handler.extract_rich_text();
+    ASSERT_EQ(spans.size(), 1);
+    EXPECT_EQ(spans[0].text, content);
+
+    // TXT file dummy method returns
+    EXPECT_TRUE(handler.find_bold().empty());
+    EXPECT_TRUE(handler.find_italic().empty());
+    EXPECT_TRUE(handler.find_highlight(0).empty());
+    EXPECT_TRUE(handler.get_font_sizes().empty());
+    EXPECT_TRUE(handler.get_highlighted_colors().empty());
+}
+
+TEST_F(TextHandlerTest, TXTFileParsingEmptyFile) {
+    fs::path txt_path = test_dir / "empty.txt";
+    {
+        std::ofstream ofs(txt_path);
+    }
+
+    TextFileHandler handler(txt_path.string());
+    handler.parse();
+    EXPECT_EQ(handler.get_number_of_pages(), 0);
+    EXPECT_TRUE(handler.extract_rich_text().empty());
+}
+
+TEST_F(TextHandlerTest, TXTFileParsingInvalidPaths) {
+    // Non-existent path
+    TextFileHandler handler("does_not_exist_file_12345.txt");
+    handler.parse();
+    EXPECT_EQ(handler.get_number_of_pages(), 0);
+
+    // Invalid extension exception
+    EXPECT_THROW({
+        TextFileHandler bad_handler("bad_extension.dat");
+    }, std::runtime_error);
+
+    EXPECT_THROW({
+        TextFileHandler bad_handler2("no_dot_filename");
+    }, std::runtime_error);
+
+    EXPECT_THROW({
+        TextFileHandler bad_handler3("");
+    }, std::runtime_error);
+}
+
+

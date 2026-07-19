@@ -13,5 +13,6 @@ create_infra_library(
 )
 
 # add_subdirectory(mocks)
-# add_subdirectory(test)
+add_subdirectory(test)
+
 

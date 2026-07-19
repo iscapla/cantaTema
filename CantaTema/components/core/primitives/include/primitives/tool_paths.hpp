@@ -99,19 +99,12 @@ public:
      */
     static std::filesystem::path get_path_for_practice_event(unsigned int user_id, unsigned int subject_id);
 
+    static std::filesystem::path get_base_path(void);
+    static std::string get_filesystem_path(const std::string &org_name, const std::string &app_name);
+
 private:
     static void ensure_directory_exists(const std::filesystem::path& path);
-    static std::filesystem::path get_base_path(void);
-
-    /**
-     * @brief Get the platform specific path for application data using SDL.
-     * The directory is created if it does not exist.
-     * 
-     * @param org_name Organization name
-     * @param app_name Application name
-     * @return std::string Path with trailing separator
-     */
-    static std::string get_filesystem_path(const std::string &org_name, const std::string &app_name);
 };
+
 
 #endif // TOOL_PATH_HPP

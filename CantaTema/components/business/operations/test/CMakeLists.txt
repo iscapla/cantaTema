@@ -14,4 +14,5 @@ create_test_exec(
     INC_PRIVATE
         CORE::PRIMITIVES
         BUSINESS::OPERATIONS
-)
+        INFRASTRUCTURE::DATABASE
+)

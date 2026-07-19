@@ -41,3 +41,5 @@ man/
 # Local folders and files
 build/
 logs/
+data/
+config/

@@ -325,3 +325,29 @@ TEST_F(DBPracticeEventTest, CascadeDelete_Subject) {
     std::shared_ptr<PracticeEvent> temp;
     EXPECT_NE(db_pe.get_practice_event_by_id(event.get_id(), temp), RST_OK);
 }
+
+TEST_F(DBPracticeEventTest, DBCloseDatabaseConnectionErrors) {
+    DB_PracticeEvent db_pe;
+    PracticeEvent ev;
+    ev.set_user_id(1);
+    ev.set_subject_id(1);
+
+    sqlite3_close(DB_Connection::getConn().get());
+
+    EXPECT_EQ(db_pe.practice_event_tables_create(), DB_FAIL);
+    EXPECT_EQ(db_pe.add_new_practice_event(ev), DB_FAIL);
+    EXPECT_EQ(db_pe.update_practice_event(ev), DB_FAIL);
+    EXPECT_EQ(db_pe.remove_practice_event(1), DB_FAIL);
+    EXPECT_EQ(db_pe.remove_all_practice_events_by_user(1), DB_FAIL);
+    EXPECT_EQ(db_pe.remove_all_practice_events_by_subject(1), DB_FAIL);
+    std::shared_ptr<PracticeEvent> retrieved;
+    EXPECT_EQ(db_pe.get_practice_event_by_id(1, retrieved), DB_FAIL);
+    std::vector<std::shared_ptr<PracticeEvent>> events;
+    EXPECT_EQ(db_pe.get_all_practice_events_by_subject(1, events), RST_OK);
+    EXPECT_EQ(db_pe.get_all_practice_events_by_user(1, events), RST_OK);
+
+    DB_Connection::reset_connection();
+    db_pe.practice_event_tables_create();
+}
+
+

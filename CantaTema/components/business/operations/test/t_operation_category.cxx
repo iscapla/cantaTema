@@ -109,3 +109,34 @@ TEST_F(OperationCategoryTest, RemoveCategory) {
     // If the pointer is null, it confirms removal.
     EXPECT_EQ(fetched_category, nullptr);
 }
+
+TEST_F(OperationCategoryTest, EdgeAndErrorCases) {
+    // 1. Add null user
+    Category cat1(0, "Cat 1");
+    EXPECT_EQ(operation_category->category_add(nullptr, cat1), CATEGORY_ERROR);
+
+    // 2. Add duplicate category name
+    Category cat2(0, "Duplicate Cat");
+    ASSERT_EQ(operation_category->category_add(test_user, cat2), RST_OK);
+
+    Category cat3(0, "Duplicate Cat");
+    EXPECT_EQ(operation_category->category_add(test_user, cat3), CATEGORY_DUPLICATED);
+
+    // 3. Update null user
+    EXPECT_EQ(operation_category->category_update(nullptr, cat2), CATEGORY_ERROR);
+
+    // 4. Update duplicate name collision
+    Category cat4(0, "Other Name");
+    ASSERT_EQ(operation_category->category_add(test_user, cat4), RST_OK);
+
+    cat4.set_name("Duplicate Cat"); // collision
+    EXPECT_EQ(operation_category->category_update(test_user, cat4), CATEGORY_DUPLICATED);
+
+    // 5. Get all by user with null user
+    std::vector<std::shared_ptr<Category>> cats;
+    EXPECT_EQ(operation_category->category_get_all_by_user(nullptr, cats), CATEGORY_ERROR);
+
+    // 6. Get by id non-existent
+    std::shared_ptr<Category> non_existent;
+    EXPECT_EQ(operation_category->category_get_by_id(99999, non_existent), CATEGORY_NOT_FOUND);
+}

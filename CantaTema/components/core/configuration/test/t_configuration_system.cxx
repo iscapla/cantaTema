@@ -72,3 +72,71 @@ TEST_F(ConfigurationSystemTest, UserUsageLimit) {
     unsigned int limit = config.get_user_usage_limit_in_mb();
     EXPECT_GT(limit, 0u);
 }
+
+
+// Conforming C++ access control bypass for testing protected IConfigurationBase::set
+template<typename Tag, typename Tag::type M>
+struct Rob {
+  friend typename Tag::type get(Tag) {
+    return M;
+  }
+};
+
+struct IConfigurationBase_set {
+  typedef rst_code_e (IConfigurationBase::*type)(const std::string&, const std::string&, const std::string&);
+  friend type get(IConfigurationBase_set);
+};
+
+template struct Rob<IConfigurationBase_set, &IConfigurationBase::set>;
+
+TEST_F(ConfigurationSystemTest, FallbackOnGarbageValues) {
+    ConfigurationSystem& config = ConfigurationSystem::getInstance();
+    auto set_fn = get(IConfigurationBase_set());
+
+    // 1. Save original values
+    unsigned int orig_text_limit = config.get_user_default_max_text_file_size_in_mb();
+    unsigned int orig_sound_limit = config.get_user_default_max_sound_file_size_in_mb();
+    unsigned int orig_usage_limit = config.get_user_usage_limit_in_mb();
+
+    // 2. Set garbage/non-parseable values
+    (config.*set_fn)("USER_LIMITS", "max_text_file_size_mb", "not_a_number");
+    (config.*set_fn)("USER_LIMITS", "max_sound_file_size_mb", "not_a_number");
+    (config.*set_fn)("USER_LIMITS", "usage_limit_mb", "not_a_number");
+
+    // 3. Verify fallbacks are returned
+    EXPECT_EQ(config.get_user_default_max_text_file_size_in_mb(), 10u);
+    EXPECT_EQ(config.get_user_default_max_sound_file_size_in_mb(), 50u);
+    EXPECT_EQ(config.get_user_usage_limit_in_mb(), 128u);
+
+    // 4. Restore original values
+    (config.*set_fn)("USER_LIMITS", "max_text_file_size_mb", std::to_string(orig_text_limit));
+    (config.*set_fn)("USER_LIMITS", "max_sound_file_size_mb", std::to_string(orig_sound_limit));
+    (config.*set_fn)("USER_LIMITS", "usage_limit_mb", std::to_string(orig_usage_limit));
+}
+
+class TestConfiguration : public IConfigurationBase {
+public:
+    using IConfigurationBase::parse;
+    using IConfigurationBase::update_values_to_file;
+    using IConfigurationBase::set_default_if_not_present;
+    using IConfigurationBase::set_file_path;
+    using IConfigurationBase::get;
+    using IConfigurationBase::set;
+};
+
+TEST_F(ConfigurationSystemTest, BaseConfigurationCoverage) {
+    TestConfiguration test_config;
+    test_config.set_file_path("");
+    EXPECT_EQ(test_config.update_values_to_file(), UNKNOWN);
+
+    std::filesystem::path dummy_ini = "dummy_config.ini";
+    test_config.set_file_path(dummy_ini);
+    EXPECT_EQ(test_config.parse(), RST_OK);
+
+    EXPECT_EQ(test_config.set_default_if_not_present("SEC", "key", "val"), RST_OK);
+    EXPECT_EQ(test_config.get("SEC", "key"), "val");
+    EXPECT_EQ(test_config.set("SEC", "key", "newval"), RST_OK);
+    EXPECT_EQ(test_config.get("SEC", "key"), "newval");
+
+    std::filesystem::remove(dummy_ini);
+}

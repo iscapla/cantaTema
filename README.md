@@ -21,12 +21,11 @@ CantaTema is especially focused on users preparing for public examinations, prof
 
 ## Key Features
 
-- Organization of study topics and reference materials (PDF, Word)
+- Organization of study topics and reference materials (PDF)
 - Voice recording of the user's oral explanation
 - Automated comparison between spoken content and original text
-- Scoring system based on coverage, accuracy, and structure
-- Identification of missing content and improvement points
-- Progress tracking over time
+- Scoring system based on coverage percentage, voice speed, and clarity
+- Identification of missing content weighted by importance
 
 ## Target Audience
 

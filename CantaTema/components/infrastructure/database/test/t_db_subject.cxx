@@ -250,3 +250,27 @@ TEST_F(DBSubjectTest, GetAllSubjectsByUser_Success) {
     EXPECT_EQ(result, RST_OK);
     EXPECT_EQ(subjects.size(), 2);
 }
+
+TEST_F(DBSubjectTest, DBCloseDatabaseConnectionErrors) {
+    DB_Subject db_subject;
+    Subject sub(0, "Test Sub");
+    sub.set_user_id(1);
+
+    sqlite3_close(DB_Connection::getConn().get());
+
+    EXPECT_EQ(db_subject.subject_tables_create(), DB_FAIL);
+    EXPECT_EQ(db_subject.add_new_subject(sub), DB_FAIL);
+    EXPECT_EQ(db_subject.update_subject(sub), DB_FAIL);
+    EXPECT_EQ(db_subject.remove_subject(1), DB_FAIL);
+    EXPECT_EQ(db_subject.remove_all_subjects_from_user(1), DB_FAIL);
+    std::shared_ptr<Subject> retrieved;
+    EXPECT_EQ(db_subject.get_subject_by_id(1, retrieved), DB_FAIL);
+    std::vector<std::shared_ptr<Subject>> subjects;
+    EXPECT_EQ(db_subject.get_all_subjects_by_category(1, subjects), RST_OK);
+    EXPECT_EQ(db_subject.get_all_subjects_by_user(1, subjects), RST_OK);
+
+    DB_Connection::reset_connection();
+    db_subject.subject_tables_create();
+}
+
+

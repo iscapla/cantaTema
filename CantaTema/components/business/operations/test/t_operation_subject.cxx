@@ -143,3 +143,125 @@ TEST_F(OperationSubjectTest, GetAllByCategory) {
     
     EXPECT_GE(subjects.size(), 2u);
 }
+
+TEST_F(OperationSubjectTest, ValidationAndErrorTests) {
+    // Null user cases
+    Subject dummy_sub(0, "Dummy");
+    dummy_sub.set_category_id(test_category->get_id());
+    EXPECT_EQ(operation_subject->subject_add(nullptr, dummy_file_name, dummy_sub), SUBJECT_ERROR);
+    EXPECT_EQ(operation_subject->subject_update(nullptr, dummy_sub), SUBJECT_ERROR);
+    EXPECT_EQ(operation_subject->subject_remove(nullptr, 1), SUBJECT_ERROR);
+    
+    std::shared_ptr<Subject> fetched;
+    EXPECT_EQ(operation_subject->subject_get_by_id(nullptr, 1, fetched), SUBJECT_ERROR);
+
+    std::vector<std::shared_ptr<Subject>> fetched_list;
+    EXPECT_EQ(operation_subject->subject_get_all_by_user(nullptr, fetched_list), SUBJECT_ERROR);
+    EXPECT_EQ(operation_subject->subject_get_all_by_category(nullptr, test_category->get_id(), fetched_list), SUBJECT_ERROR);
+
+    // Empty file path throws exception
+    EXPECT_THROW(operation_subject->subject_add(test_user, "", dummy_sub), std::runtime_error);
+
+    // Missing file path but valid extension returns error
+    EXPECT_EQ(operation_subject->subject_add(test_user, "non_existent_file.pdf", dummy_sub), FILE_NOT_FOUND);
+
+    // Duplicated subject name
+    Subject s1(0, "Unique Name");
+    s1.set_category_id(test_category->get_id());
+    ASSERT_EQ(operation_subject->subject_add(test_user, dummy_file_name, s1), RST_OK);
+
+    Subject s2(0, "Unique Name");
+    s2.set_category_id(test_category->get_id());
+    EXPECT_EQ(operation_subject->subject_add(test_user, dummy_file_name, s2), SUBJECT_DUPLICATED);
+
+    // Attempting duplicate name on update
+    Subject s3(0, "Another Unique Name");
+    s3.set_category_id(test_category->get_id());
+    ASSERT_EQ(operation_subject->subject_add(test_user, dummy_file_name, s3), RST_OK);
+
+    std::shared_ptr<Subject> s3_fetched;
+    ASSERT_EQ(operation_subject->subject_get_by_id(test_user, s3.get_id(), s3_fetched), RST_OK);
+    s3_fetched->set_name("Unique Name"); // already exists
+    EXPECT_EQ(operation_subject->subject_update(test_user, *s3_fetched), SUBJECT_DUPLICATED);
+
+    // Try to update file path
+    std::shared_ptr<Subject> s1_fetched;
+    ASSERT_EQ(operation_subject->subject_get_by_id(test_user, s1.get_id(), s1_fetched), RST_OK);
+    s1_fetched->set_filepath("some_other_path.pdf");
+    EXPECT_EQ(operation_subject->subject_update(test_user, *s1_fetched), SUBJECT_ERROR);
+
+    // Not found cases
+    std::shared_ptr<Subject> not_found_sub;
+    EXPECT_EQ(operation_subject->subject_get_by_id(test_user, 9999, not_found_sub), SUBJECT_NOT_FOUND);
+    EXPECT_EQ(operation_subject->subject_remove(test_user, 9999), SUBJECT_NOT_FOUND);
+}
+
+TEST_F(OperationSubjectTest, CategoryAssociationValidation) {
+    // 1. Create a category belonging to another user
+    std::string user2_name = "SubjectTestUser2";
+    std::string user2_pass = "password";
+    std::shared_ptr<const User> user2;
+    if (operation_user->user_identify(user2_name, user2_pass) == RST_OK) {
+        operation_user->user_remove();
+    }
+    ASSERT_EQ(operation_user->user_add(user2_name, user2_pass), RST_OK);
+    ASSERT_EQ(operation_user->user_identify(user2_name, user2_pass), RST_OK);
+    ASSERT_EQ(operation_user->user_get(user2), RST_OK);
+
+    Category cat2(0, "User 2 Category");
+    ASSERT_EQ(operation_category->category_add(user2, cat2), RST_OK);
+    std::vector<std::shared_ptr<Category>> categories;
+    operation_category->category_get_all_by_user(user2, categories);
+    ASSERT_FALSE(categories.empty());
+    unsigned int cat2_id = categories.front()->get_id();
+
+    // Switch back to test_user
+    std::string username = "SubjectTestUser";
+    std::string password = "password";
+    ASSERT_EQ(operation_user->user_identify(username, password), RST_OK);
+
+    // 2. Subject add with category not belonging to test_user
+    Subject sub_wrong_cat(0, "Wrong Cat Subject");
+    sub_wrong_cat.set_category_id(cat2_id);
+    EXPECT_EQ(operation_subject->subject_add(test_user, dummy_file_name, sub_wrong_cat), SUBJECT_ERROR);
+
+    // 3. Subject add with non-existent category
+    Subject sub_non_existent_cat(0, "Non Existent Cat");
+    sub_non_existent_cat.set_category_id(99999);
+    EXPECT_EQ(operation_subject->subject_add(test_user, dummy_file_name, sub_non_existent_cat), SUBJECT_ERROR);
+
+    // 4. Subject update with wrong category or non-existent category
+    Subject sub_ok(0, "OK Subject");
+    sub_ok.set_category_id(test_category->get_id());
+    ASSERT_EQ(operation_subject->subject_add(test_user, dummy_file_name, sub_ok), RST_OK);
+
+    std::shared_ptr<Subject> sub_ok_fetched;
+    ASSERT_EQ(operation_subject->subject_get_by_id(test_user, sub_ok.get_id(), sub_ok_fetched), RST_OK);
+    
+    // Set non-existent category
+    sub_ok_fetched->set_category_id(99999);
+    EXPECT_EQ(operation_subject->subject_update(test_user, *sub_ok_fetched), SUBJECT_ERROR);
+
+    // Set wrong category
+    sub_ok_fetched->set_category_id(cat2_id);
+    EXPECT_EQ(operation_subject->subject_update(test_user, *sub_ok_fetched), SUBJECT_ERROR);
+
+    // 5. subject_get_all_by_category wrong category or non-existent category
+    std::vector<std::shared_ptr<Subject>> subjects_list;
+    EXPECT_EQ(operation_subject->subject_get_all_by_category(test_user, cat2_id, subjects_list), CATEGORY_NOT_FOUND);
+    EXPECT_EQ(operation_subject->subject_get_all_by_category(test_user, 99999, subjects_list), CATEGORY_NOT_FOUND);
+
+    // 6. Test null category_op/user_metrics_op constructors
+    OperationSubject null_deps(operation_metrics, nullptr);
+    Subject sub_null_deps(0, "Null Deps");
+    sub_null_deps.set_category_id(test_category->get_id());
+    EXPECT_EQ(null_deps.subject_add(test_user, dummy_file_name, sub_null_deps), SUBJECT_ERROR);
+    EXPECT_EQ(null_deps.subject_update(test_user, sub_null_deps), SUBJECT_ERROR);
+
+
+    // Clean up user2
+    ASSERT_EQ(operation_user->user_identify(user2_name, user2_pass), RST_OK);
+    EXPECT_EQ(operation_user->user_remove(), RST_OK);
+}
+
+
