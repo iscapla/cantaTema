@@ -10,3 +10,5 @@ create_infra_library(
     curl
     CORE::LOGGER
 )
+
+add_subdirectory(test)

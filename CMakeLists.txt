@@ -30,6 +30,33 @@ project(
   LANGUAGES CXX C
 )
 
+option(ENABLE_COVERAGE "Enable code coverage compilation flags" ON)
+if(ENABLE_COVERAGE)
+    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        add_compile_options(--coverage)
+        add_link_options(--coverage)
+        message(STATUS "Code coverage instrumentation enabled")
+        find_program(GCOV_PATH NAMES gcov gcov.exe)
+        if(GCOV_PATH)
+            set(CTEST_COVERAGE_COMMAND "${GCOV_PATH}")
+            message(STATUS "CTest coverage command set to: ${GCOV_PATH}")
+            file(WRITE "${CMAKE_BINARY_DIR}/CTestCustom.cmake" "
+                set(CTEST_CUSTOM_COVERAGE_EXCLUDE
+                    \"/usr/.*\"
+                    \".*/_deps/.*\"
+                    \".*/test/.*\"
+                    \".*/mocks/.*\"
+                    \".*/build/.*\"
+                )
+            ")
+        else()
+            message(WARNING "gcov tool not found. CTest coverage reports might fail to generate.")
+        endif()
+    else()
+        message(WARNING "Code coverage is only supported for GCC/Clang. Ignored. Compiler ID: ${CMAKE_CXX_COMPILER_ID}")
+    endif()
+endif()
+
 set(CMAKE_MAIN_PROJECT_NAME ${PROJECT_NAME})
 
 add_compile_definitions(MAIN_PROJECT_NAME=${PROJECT_NAME})
@@ -119,7 +146,9 @@ message(STATUS "Configuring for: ${OS_TAG}-${ARCH_TAG}")
 # EXTERNAL DEPENDENCIES INSTALLATION
 #####################################################################################################
 
-# include(CTest)
+set(BUILD_TESTING ON CACHE BOOL "" FORCE)
+include(CTest)
+set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
 include(FetchContent)
 # include(ExternalProject)
 # include(CMakePrintHelpers)
