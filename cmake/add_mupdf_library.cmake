@@ -170,7 +170,13 @@ else()
     find_program(MAKE_EXE make REQUIRED)
     
     cmake_host_system_information(RESULT N_CORES QUERY NUMBER_OF_PHYSICAL_CORES)
-    set(BUILD_CMD ${MAKE_EXE} -j${N_CORES} "XCFLAGS=-msse4.1 ${MUPDF_DEFINITIONS_STR}" ${MUPDF_MAKE_OPTIONS} extract=no OUT=build/release-cmake)
+    
+    set(MUPDF_ARCH_FLAGS "")
+    if(NOT CMAKE_SYSTEM_PROCESSOR MATCHES "arm|aarch64|ARM64")
+        set(MUPDF_ARCH_FLAGS "-msse4.1")
+    endif()
+
+    set(BUILD_CMD ${MAKE_EXE} -j${N_CORES} "XCFLAGS=${MUPDF_ARCH_FLAGS} ${MUPDF_DEFINITIONS_STR}" ${MUPDF_MAKE_OPTIONS} extract=no OUT=build/release-cmake)
     
     # Standard Makefile builds into build/release/
     set(LIB_MUPDF "${MUPDF_ROOT}/build/release-cmake/libmupdf.a")
