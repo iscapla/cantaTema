@@ -30,6 +30,13 @@ project(
   LANGUAGES CXX C
 )
 
+# SDL3 uses Objective-C (.m) for Cocoa/Metal backends on Apple platforms.
+# The language must be enabled at the top level so CMake initialises its
+# compiler rules before FetchContent brings in SDL3.
+if(APPLE)
+  enable_language(OBJC)
+endif()
+
 option(ENABLE_COVERAGE "Enable code coverage compilation flags" ON)
 if(ENABLE_COVERAGE)
     if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")

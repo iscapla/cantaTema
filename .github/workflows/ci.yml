@@ -102,6 +102,7 @@ jobs:
             libxi-dev \
             libxss-dev \
             libxtst-dev \
+            libpsl-dev \
             libwayland-dev \
             libdbus-1-dev \
             libudev-dev \
@@ -137,14 +138,9 @@ jobs:
       # ────────────────────────────────────────────────────────────
       - name: CMake Configure
         run: |
-          CMAKE_EXTRA_FLAGS=""
-          if [ "$(uname)" = "Darwin" ]; then
-            CMAKE_EXTRA_FLAGS="-DCMAKE_OBJC_COMPILER=$(xcrun --find clang) -DCMAKE_OBJCXX_COMPILER=$(xcrun --find clang++)"
-          fi
           cmake -B build \
             -G "${{ matrix.cmake_generator }}" \
             -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
-            ${CMAKE_EXTRA_FLAGS} \
             -DENABLE_COVERAGE=ON
 
       # ────────────────────────────────────────────────────────────
