@@ -311,7 +311,9 @@ bool SoundSystem::play(const SoundFileHandler& fileHandler, PlaybackCallback cal
         duration = get_encrypted_file_duration(fileHandler.get_file_path().string());
     }
 
-    if (duration == 0) {
+    std::error_code ec;
+    auto fsize = std::filesystem::file_size(fileHandler.get_file_path(), ec);
+    if (duration == 0 && (ec || fsize < 27)) {
         logger->error("[SoundSystem] Audio file has no duration. Playback aborted.");
         if (m_playbackCallback) m_playbackCallback(PlaybackEvent::PLAY_ERROR, 0);
         return false;
