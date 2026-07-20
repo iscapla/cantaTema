@@ -8,13 +8,14 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++23")
 
-# Define UNICODE and _UNICODE for wide-character support
-add_definitions(-DUNICODE -D_UNICODE)
-# # Ensure wchar_t support is enabled
-add_definitions(-D_WCHAR_T)
-# Ensure source files are treated as UTF-8
-if(MSVC)
-    add_compile_options(/utf-8)
+# Define UNICODE and _UNICODE for wide-character support on Windows
+if(WIN32)
+    add_definitions(-DUNICODE -D_UNICODE)
+    # Ensure wchar_t support is enabled
+    add_definitions(-D_WCHAR_T)
+    if(MSVC)
+        add_compile_options(/utf-8)
+    endif()
 endif()
 
 set(PROJ_MAJOR_VERSION 1)
