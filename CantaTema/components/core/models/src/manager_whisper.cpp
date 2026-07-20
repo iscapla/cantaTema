@@ -70,6 +70,7 @@ rst_code_e ManagerWhisper::network_get_available_models(std::vector<std::string>
     std::string url = WHISPER_BASE_URL;
 
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_USERAGENT, "CantaTema/1.0");
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_to_string);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &html_content);
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
@@ -165,6 +166,7 @@ rst_code_e ManagerWhisper::network_download_model(const std::string model_name, 
 
         // Set curl options
         curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+        curl_easy_setopt(curl, CURLOPT_USERAGENT, "CantaTema/1.0");
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
         curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L); // Follow redirects (HuggingFace uses redirects)
@@ -200,6 +202,7 @@ rst_code_e ManagerWhisper::network_is_model_available(const std::string model_na
         std::string url = fmt::format("{}/{}/{}", WHISPER_BASE_URL, WHISPER_URL_PREFIX, file_name);
 
         curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+        curl_easy_setopt(curl, CURLOPT_USERAGENT, "CantaTema/1.0");
         curl_easy_setopt(curl, CURLOPT_NOBODY, 1L); // Perform a HEAD request
         curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
         curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L); // Return error on 404
