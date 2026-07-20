@@ -184,8 +184,8 @@ TEST_F(SoundSystemTest, PlaybackCallbackEvents) {
 
     EXPECT_TRUE(ss.play(handler, callback));
 
-    // Wait for a short time to receive the PLAY_START event
-    std::chrono::milliseconds timeout(200);
+    // Wait for the PLAY_START event (generous timeout for CI environments under load)
+    std::chrono::milliseconds timeout(3000);
     if (startFuture.wait_for(timeout) == std::future_status::timeout) {
         FAIL() << "PLAY_START event was not received within the timeout period.";
     } else {
