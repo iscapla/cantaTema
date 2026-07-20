@@ -154,5 +154,7 @@ jobs:
       # 6. Test
       # ────────────────────────────────────────────────────────────
       - name: Run Tests
+        env:
+          SDL_AUDIO_DRIVER: dummy
         run: |
           ctest --test-dir build -C ${{ matrix.build_type }} --output-on-failure --timeout 300

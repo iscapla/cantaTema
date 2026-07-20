@@ -71,6 +71,7 @@ rst_code_e ManagerWhisper::network_get_available_models(std::vector<std::string>
 
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curl, CURLOPT_USERAGENT, "CantaTema/1.0");
+    curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "");
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_to_string);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &html_content);
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
@@ -167,6 +168,7 @@ rst_code_e ManagerWhisper::network_download_model(const std::string model_name, 
         // Set curl options
         curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
         curl_easy_setopt(curl, CURLOPT_USERAGENT, "CantaTema/1.0");
+        curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "");
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
         curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L); // Follow redirects (HuggingFace uses redirects)
@@ -203,14 +205,20 @@ rst_code_e ManagerWhisper::network_is_model_available(const std::string model_na
 
         curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
         curl_easy_setopt(curl, CURLOPT_USERAGENT, "CantaTema/1.0");
+        curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "");
         curl_easy_setopt(curl, CURLOPT_NOBODY, 1L); // Perform a HEAD request
         curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-        curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L); // Return error on 404
 
         logger->debug("Checking availability for model: {}", model_name);
         CURLcode res = curl_easy_perform(curl);
         logger->debug("Availability check finished for model: {}", model_name);
-        if (res == CURLE_OK) ret = RST_OK;
+        if (res == CURLE_OK) {
+            long response_code = 0;
+            curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+            if (response_code >= 200 && response_code < 400) {
+                ret = RST_OK;
+            }
+        }
 
         curl_easy_cleanup(curl);
     }
