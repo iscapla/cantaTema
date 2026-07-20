@@ -217,7 +217,11 @@ rst_code_e ManagerWhisper::network_is_model_available(const std::string model_na
             curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
             if (response_code >= 200 && response_code < 400) {
                 ret = RST_OK;
+            } else {
+                logger->warn("Availability check HTTP status {} for model: {}", response_code, model_name);
             }
+        } else {
+            logger->error("Availability check failed for model {}: {} (code {})", model_name, curl_easy_strerror(res), static_cast<int>(res));
         }
 
         curl_easy_cleanup(curl);

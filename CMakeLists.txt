@@ -373,6 +373,7 @@ if(WIN32)
 elseif(APPLE)
   set(CURL_USE_SECTRANSP ON CACHE BOOL "" FORCE) # Use Apple Native SSL
   set(CURL_USE_OPENSSL OFF CACHE BOOL "" FORCE)
+  set(CURL_CA_FALLBACK ON CACHE BOOL "" FORCE)
 endif()
 
 FetchContent_Declare(
