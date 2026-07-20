@@ -7,7 +7,7 @@ create_infra_library(
     src/manager_whisper.cpp
     INC_PUBLIC
     INC_PRIVATE
-    curl
+    libcurl
     CORE::LOGGER
 )
 
