@@ -390,6 +390,21 @@ include(add_mupdf_library)
 
 
 ################################
+# llama.cpp
+################################
+
+set(LLAMA_BUILD_TESTS OFF CACHE BOOL "Disable llama tests" FORCE)
+set(LLAMA_BUILD_EXAMPLES OFF CACHE BOOL "Disable llama examples" FORCE)
+set(LLAMA_BUILD_SERVER OFF CACHE BOOL "Disable llama server" FORCE)
+
+FetchContent_Declare(
+    llama
+    GIT_REPOSITORY https://github.com/ggerganov/llama.cpp.git
+    GIT_TAG        b3600
+)
+FetchContent_MakeAvailable(llama)
+
+################################
 # whisper
 ################################
 
@@ -410,6 +425,12 @@ FetchContent_Declare(
     OVERRIDE_FIND_PACKAGE 
 )
 FetchContent_MakeAvailable(whisper)
+
+# Workaround: whisper v1.8.3 whisper.h includes ggml-cpu.h but the whisper
+# src/CMakeLists.txt omits ggml/include/ from the target include paths.
+target_include_directories(whisper PUBLIC
+    $<BUILD_INTERFACE:${whisper_SOURCE_DIR}/ggml/include>
+)
 
 #####################################################################################################
 # PROJECT RULES
