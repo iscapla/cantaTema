@@ -7,6 +7,8 @@
 #include "operations/i_operation_subject.hpp"
 #include "operations/i_operation_user_metrics.hpp"
 #include "operations/i_operation_practice_event.hpp"
+#include "operations/i_operation_coverage.hpp"
+#include "database/i_database.hpp"
 
 
 class Session : public IOperationUser
@@ -18,7 +20,9 @@ public:
         std::shared_ptr<IOperationCategory> &&_category_op,
         std::shared_ptr<IOperationSubject> &&_subject_op,
         std::shared_ptr<IOperationUserMetrics> &&_user_metrics_op,
-        std::shared_ptr<IOperationPracticeEvent> &&_practice_event_op
+        std::shared_ptr<IOperationPracticeEvent> &&_practice_event_op,
+        std::shared_ptr<IOperationCoverage> &&_coverage_op = nullptr,
+        std::shared_ptr<IDatabase> &&_db_op = nullptr
     );
     Session(void);
     ~Session(void);
@@ -50,6 +54,7 @@ public:
     rst_code_e subject_get_by_id(unsigned int subject_id, std::shared_ptr<Subject> &subject);
     rst_code_e subject_get_by_category(unsigned int category_id, std::vector<std::shared_ptr<Subject>> &subjects);
     rst_code_e subject_get_by_user(std::vector<std::shared_ptr<Subject>> &subjects);
+    rst_code_e set_subject_language(int subject_id, const std::string &language);
 
     //-------------------------------------------------------------------------------------
 
@@ -67,7 +72,16 @@ public:
 
     //-------------------------------------------------------------------------------------
 
-    
+    rst_code_e analyze_practice_coverage(
+        int practice_id,
+        std::string &out_execution_id,
+        const std::string &whisper_model = "",
+        const std::string &llama_model = "",
+        float similarity_threshold = 0.0f,
+        const std::string &language = ""
+    );
+    rst_code_e get_analysis_executions_for_practice(int practice_id, std::string &executions_list_json);
+    rst_code_e get_analysis_execution_details(const std::string &execution_id, std::string &report_json, std::string &config_json);
 
 private:
     std::shared_ptr<IOperationUser> user_op{nullptr};
@@ -75,6 +89,8 @@ private:
     std::shared_ptr<IOperationSubject> subject_op{nullptr};
     std::shared_ptr<IOperationUserMetrics> user_metrics_op{nullptr};
     std::shared_ptr<IOperationPracticeEvent> practice_event_op{nullptr};
+    std::shared_ptr<IOperationCoverage> coverage_op{nullptr};
+    std::shared_ptr<IDatabase> db_coverage_op{nullptr};
 
     //-------------------------------------------------------------------------------------
 

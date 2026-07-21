@@ -13,6 +13,16 @@
 #include "speech_recognition/voice_quality_analyzer.hpp"
 #include "primitives/utils_logger.hpp"
 
+#include "database/db_coverage.hpp"
+#include "file_handler/file_handler.hpp"
+#include "speech_recognition/whisper_speech_recognition.hpp"
+#include "embeddings/llama_embedding_engine.hpp"
+#include "similarity/faiss_similarity_search.hpp"
+#include "operations/operation_subject.hpp"
+#include "operations/operation_practice_event.hpp"
+#include "operations/operation_user_metrics.hpp"
+#include "operations/operation_category.hpp"
+
 OperationCoverage::OperationCoverage(
     std::shared_ptr<IDatabase> db,
     std::shared_ptr<IOperationSubject> subject_op,
@@ -30,6 +40,12 @@ OperationCoverage::OperationCoverage(
       m_embedding_engine(std::move(embedding_engine)),
       m_similarity_search(std::move(similarity_search))
 {
+    if (m_db && m_subject_op && m_practice_op) {
+        if (!m_file_handler) m_file_handler = std::make_shared<FileHandler>();
+        if (!m_speech_recognition) m_speech_recognition = std::make_shared<WhisperSpeechRecognition>();
+        if (!m_embedding_engine) m_embedding_engine = std::make_shared<LlamaEmbeddingEngine>();
+        if (!m_similarity_search) m_similarity_search = std::make_shared<FaissSimilaritySearch>();
+    }
 }
 
 std::string OperationCoverage::generate_execution_uuid() const

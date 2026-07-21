@@ -18,11 +18,14 @@ message(STATUS "Building ${PROJECT_NAME}...")
 
 add_executable(${PROJECT_NAME} main_terminal.cpp)
 
+if(MINGW OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    target_link_options(${PROJECT_NAME} PRIVATE -Wl,--allow-multiple-definition)
+endif()
+
 # link
 target_link_libraries(${PROJECT_NAME} PRIVATE
     CORE::PRIMITIVES
     CORE::CONFIGURATION
-    CORE::PRIMITIVES
     APPS::TERMINAL
 )
 

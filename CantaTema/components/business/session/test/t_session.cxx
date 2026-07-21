@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include <gmock/gmock.h>
 #include "session/Session.hpp"
 #include "database/db_main.hpp"
 #include "primitives/user.hpp"
@@ -6,10 +7,20 @@
 #include "primitives/subject.hpp"
 #include "primitives/practice_event.hpp"
 #include "primitives/user_metrics.hpp"
+#include "operations/operation_user.hpp"
+#include "operations/operation_category.hpp"
+#include "operations/operation_user_metrics.hpp"
+#include "operations/mocks/mock_operation_subject.hpp"
+#include "operations/mocks/mock_operation_practice_event.hpp"
+#include "operations/mocks/mock_operation_coverage.hpp"
+#include "database/mocks/mock_database.hpp"
 #include <memory>
 #include <vector>
 #include <filesystem>
 #include <fstream>
+
+using ::testing::Return;
+using ::testing::_;
 
 class SessionTest : public ::testing::Test {
 protected:
@@ -97,6 +108,10 @@ TEST_F(SessionTest, CompleteUserSessionFlow) {
 
     EXPECT_EQ(session.subject_update(sub_id, "Linear Algebra", cat_id, fetched_subject->get_filepath()), RST_OK);
 
+    // Subject Language Management
+    EXPECT_EQ(session.set_subject_language(sub_id, "es"), RST_OK);
+    EXPECT_EQ(session.subject_get_by_id(sub_id, fetched_subject), RST_OK);
+    EXPECT_EQ(fetched_subject->get_language(), "es");
 
     // 5. User Metrics
     std::shared_ptr<const UserMetrics> metrics;
@@ -125,10 +140,8 @@ TEST_F(SessionTest, CompleteUserSessionFlow) {
     practice.set_description("Updated description");
     EXPECT_EQ(session.practice_event_update(practice), RST_OK);
 
-
     std::string sound_file = "dummy_practice.wav";
     {
-        // Simple RIFF header for recorded event
         std::ofstream outfile(sound_file, std::ios::binary);
         outfile.write("RIFF", 4);
         int32_t chunk_size = 36 + 44100 * 2;
@@ -193,6 +206,7 @@ TEST_F(SessionTest, UnauthenticatedAccessReturnsNoAuth) {
     std::shared_ptr<Subject> sub;
     EXPECT_EQ(session.subject_get_by_id(1, sub), USER_NO_AUTH);
     EXPECT_EQ(session.subject_get_by_category(1, subs), USER_NO_AUTH);
+    EXPECT_EQ(session.set_subject_language(1, "es"), USER_NO_AUTH);
 
     std::shared_ptr<const UserMetrics> metrics;
     EXPECT_EQ(session.user_metrics_get(metrics), USER_NO_AUTH);
@@ -207,6 +221,11 @@ TEST_F(SessionTest, UnauthenticatedAccessReturnsNoAuth) {
     std::vector<std::shared_ptr<PracticeEvent>> pes;
     EXPECT_EQ(session.practice_event_get_by_subject(1, pes), USER_NO_AUTH);
     EXPECT_EQ(session.practice_event_get_by_user(pes), USER_NO_AUTH);
+
+    std::string exec_id, list_json, report_json, config_json;
+    EXPECT_EQ(session.analyze_practice_coverage(1, exec_id), USER_NO_AUTH);
+    EXPECT_EQ(session.get_analysis_executions_for_practice(1, list_json), USER_NO_AUTH);
+    EXPECT_EQ(session.get_analysis_execution_details("exec-123", report_json, config_json), USER_NO_AUTH);
 }
 
 TEST_F(SessionTest, EdgeAndErrorCases) {
@@ -220,15 +239,43 @@ TEST_F(SessionTest, EdgeAndErrorCases) {
     EXPECT_EQ(session.category_update(9999, "New Name"), CATEGORY_NOT_FOUND);
     EXPECT_EQ(session.category_remove(9999), CATEGORY_NOT_FOUND);
 
-    // 2. Subject update not found
+    // 2. Subject update / language set not found
     EXPECT_EQ(session.subject_update(9999, "New Name", 1, "some_path.pdf"), SUBJECT_NOT_FOUND);
+    EXPECT_EQ(session.set_subject_language(9999, "es"), SUBJECT_NOT_FOUND);
 
     // 3. Subject get by category not found
     std::vector<std::shared_ptr<Subject>> subjects;
     EXPECT_EQ(session.subject_get_by_category(9999, subjects), CATEGORY_NOT_FOUND);
 
+    // 4. Practice event get for historic executions not found
+    std::string list_json;
+    EXPECT_EQ(session.get_analysis_executions_for_practice(9999, list_json), PRACTICE_EVENT_NOT_FOUND);
+
     // Clean up user
     EXPECT_EQ(session.user_remove(), RST_OK);
 }
+
+TEST_F(SessionTest, InjectedCoverageAndHistoryQueries) {
+    auto user_metrics_op = std::make_shared<OperationUserMetrics>();
+    auto category_op = std::make_shared<OperationCategory>();
+    auto user_op = std::make_shared<OperationUser>(user_metrics_op);
+    auto mock_sub_op = std::make_shared<MockOperationSubject>();
+    auto mock_practice_op = std::make_shared<MockOperationPracticeEvent>();
+    auto mock_coverage_op = std::make_shared<MockOperationCoverage>();
+    auto mock_db_op = std::make_shared<MockDatabase>();
+
+    // Test constructor with injected mocks and concrete operations
+    Session session(
+        std::move(user_op),
+        std::move(category_op),
+        std::move(mock_sub_op),
+        std::move(user_metrics_op),
+        std::move(mock_practice_op),
+        std::move(mock_coverage_op),
+        std::move(mock_db_op)
+    );
+    EXPECT_FALSE(session.user_is_authenticated());
+}
+
 
 

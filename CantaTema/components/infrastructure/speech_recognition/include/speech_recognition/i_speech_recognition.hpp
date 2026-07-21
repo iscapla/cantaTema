@@ -22,6 +22,9 @@ struct TranscriptSegment {
 
 class ISpeechRecognition {
 public:
+#ifdef ERROR
+#undef ERROR
+#endif
     enum class speech_recognition_status_e {
         IDLE,
         PROCESSING,

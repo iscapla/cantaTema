@@ -8,19 +8,36 @@
 #include "operations/operation_subject.hpp"
 #include "operations/operation_user_metrics.hpp"
 #include "operations/operation_practice_event.hpp"
+#include "operations/operation_coverage.hpp"
+#include "database/db_coverage.hpp"
 
 Session::Session(
     std::shared_ptr<IOperationUser> &&_user_op,
     std::shared_ptr<IOperationCategory> &&_category_op,
     std::shared_ptr<IOperationSubject> &&_subject_op,
     std::shared_ptr<IOperationUserMetrics> &&_user_metrics_op,
-    std::shared_ptr<IOperationPracticeEvent> &&_practice_event_op
-) : user_op(std::move(_user_op)), category_op(std::move(_category_op)), subject_op(std::move(_subject_op)), user_metrics_op(std::move(_user_metrics_op)), practice_event_op(std::move(_practice_event_op))
-
+    std::shared_ptr<IOperationPracticeEvent> &&_practice_event_op,
+    std::shared_ptr<IOperationCoverage> &&_coverage_op,
+    std::shared_ptr<IDatabase> &&_db_op
+) : user_op(std::move(_user_op)),
+    category_op(std::move(_category_op)),
+    subject_op(std::move(_subject_op)),
+    user_metrics_op(std::move(_user_metrics_op)),
+    practice_event_op(std::move(_practice_event_op)),
+    coverage_op(std::move(_coverage_op)),
+    db_coverage_op(std::move(_db_op))
 {
     if (user_op == nullptr || category_op == nullptr || subject_op == nullptr || user_metrics_op == nullptr || practice_event_op == nullptr)
     {
         throw std::runtime_error("Operation session received wrong operation instances.");
+    }
+    if (db_coverage_op == nullptr)
+    {
+        db_coverage_op = std::make_shared<DB_Coverage>();
+    }
+    if (coverage_op == nullptr)
+    {
+        coverage_op = std::make_shared<OperationCoverage>(db_coverage_op, subject_op, practice_event_op);
     }
     initialize();
 }
@@ -32,8 +49,10 @@ Session::Session(void)
     user_op = std::make_shared<OperationUser>(std::shared_ptr<IOperationUserMetrics>(user_metrics_op));
     subject_op = std::make_shared<OperationSubject>(std::shared_ptr<IOperationUserMetrics>(user_metrics_op), std::shared_ptr<IOperationCategory>(category_op));
     practice_event_op = std::make_shared<OperationPracticeEvent>(std::shared_ptr<IOperationUserMetrics>(user_metrics_op), std::shared_ptr<IOperationSubject>(subject_op));
+    db_coverage_op = std::make_shared<DB_Coverage>();
+    coverage_op = std::make_shared<OperationCoverage>(db_coverage_op, subject_op, practice_event_op);
 
-    if (user_op == nullptr || category_op == nullptr || subject_op == nullptr || user_metrics_op == nullptr || practice_event_op == nullptr)
+    if (user_op == nullptr || category_op == nullptr || subject_op == nullptr || user_metrics_op == nullptr || practice_event_op == nullptr || coverage_op == nullptr || db_coverage_op == nullptr)
     {
         throw std::runtime_error("Operation session received wrong operation instances. (2)");
     }
@@ -300,6 +319,20 @@ rst_code_e Session::subject_get_by_user(std::vector<std::shared_ptr<Subject>> &s
     return RST_OK;
 }
 
+rst_code_e Session::set_subject_language(int subject_id, const std::string &language)
+{
+    if (session_user == nullptr || !user_op->user_is_authenticated())
+        return USER_NO_AUTH;
+
+    std::shared_ptr<Subject> subject;
+    rst_code_e rst = subject_op->subject_get_by_id(session_user, subject_id, subject);
+    if (rst != RST_OK)
+        return rst;
+
+    subject->set_language(language);
+    return subject_op->subject_update(session_user, *subject);
+}
+
 rst_code_e Session::user_metrics_get(std::shared_ptr<const UserMetrics> &user_metrics)
 {
     if (session_user == nullptr || !user_op->user_is_authenticated())
@@ -366,4 +399,57 @@ rst_code_e Session::practice_event_get_by_user(std::vector<std::shared_ptr<Pract
         return USER_NO_AUTH;
 
     return practice_event_op->practice_event_get_all_by_user(session_user, practices);
+}
+
+rst_code_e Session::analyze_practice_coverage(
+    int practice_id,
+    std::string &out_execution_id,
+    const std::string &whisper_model,
+    const std::string &llama_model,
+    float similarity_threshold,
+    const std::string &language
+)
+{
+    if (session_user == nullptr || !user_op->user_is_authenticated())
+        return USER_NO_AUTH;
+
+    if (!coverage_op)
+        return UNKNOWN;
+
+    return coverage_op->analyze_practice_coverage(
+        session_user,
+        practice_id,
+        whisper_model,
+        llama_model,
+        similarity_threshold,
+        language,
+        out_execution_id
+    );
+}
+
+rst_code_e Session::get_analysis_executions_for_practice(int practice_id, std::string &executions_list_json)
+{
+    if (session_user == nullptr || !user_op->user_is_authenticated())
+        return USER_NO_AUTH;
+
+    std::shared_ptr<PracticeEvent> practice;
+    rst_code_e rst = practice_event_op->practice_event_get_by_id(session_user, practice_id, practice);
+    if (rst != RST_OK)
+        return rst;
+
+    if (!db_coverage_op)
+        return UNKNOWN;
+
+    return db_coverage_op->get_analysis_executions_for_practice(practice_id, executions_list_json);
+}
+
+rst_code_e Session::get_analysis_execution_details(const std::string &execution_id, std::string &report_json, std::string &config_json)
+{
+    if (session_user == nullptr || !user_op->user_is_authenticated())
+        return USER_NO_AUTH;
+
+    if (!db_coverage_op)
+        return UNKNOWN;
+
+    return db_coverage_op->get_analysis_execution_details(execution_id, report_json, config_json);
 }

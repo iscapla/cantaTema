@@ -25,13 +25,13 @@ public:
      * @brief Constructs OperationCoverage with injected infrastructure & operation dependencies.
      */
     OperationCoverage(
-        std::shared_ptr<IDatabase> db,
-        std::shared_ptr<IOperationSubject> subject_op,
-        std::shared_ptr<IOperationPracticeEvent> practice_op,
-        std::shared_ptr<IFileHandler> file_handler,
-        std::shared_ptr<ISpeechRecognition> speech_recognition,
-        std::shared_ptr<IEmbeddingEngine> embedding_engine,
-        std::shared_ptr<ISimilaritySearch> similarity_search
+        std::shared_ptr<IDatabase> db = nullptr,
+        std::shared_ptr<IOperationSubject> subject_op = nullptr,
+        std::shared_ptr<IOperationPracticeEvent> practice_op = nullptr,
+        std::shared_ptr<IFileHandler> file_handler = nullptr,
+        std::shared_ptr<ISpeechRecognition> speech_recognition = nullptr,
+        std::shared_ptr<IEmbeddingEngine> embedding_engine = nullptr,
+        std::shared_ptr<ISimilaritySearch> similarity_search = nullptr
     );
 
     ~OperationCoverage() override = default;

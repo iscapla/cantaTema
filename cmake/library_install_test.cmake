@@ -29,6 +29,10 @@ function(create_test_exec)
         PRIVATE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include_priv>
     )
 
+    if(MINGW OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        target_link_options(${PARSED_ARGS_TARGET} PRIVATE -Wl,--allow-multiple-definition)
+    endif()
+
     # Set the runtime output directory for each executable
     set_target_properties(${PARSED_ARGS_TARGET} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin/Test)
 
