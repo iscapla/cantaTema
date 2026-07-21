@@ -1,0 +1,73 @@
+/**
+ * @file i_similarity_search.hpp
+ * @brief Defines the abstract interface for the similarity search subsystem.
+ */
+
+#ifndef I_SIMILARITY_SEARCH_HPP
+#define I_SIMILARITY_SEARCH_HPP
+
+#include <vector>
+#include <cstddef>
+
+/**
+ * @brief Struct representing the match result for a single PDF chunk.
+ */
+struct SimilarityResult {
+    /// Index of the PDF reference chunk.
+    size_t pdf_chunk_index = 0;
+    
+    /// Index of the best matching transcript chunk in the index. -1 if no match.
+    int best_transcript_chunk_index = -1;
+    
+    /// The cosine/inner product similarity score between the two chunks.
+    float similarity_score = 0.0f;
+    
+    /// True if similarity_score >= similarity_threshold.
+    bool is_mentioned = false;
+    
+    /// Weighted score calculated as: importance_weight * (1.0 - similarity_score) if not mentioned, or 0.0 if mentioned.
+    float weighted_missed_score = 0.0f;
+};
+
+/**
+ * @brief Abstract interface for similarity search operations.
+ */
+class ISimilaritySearch {
+public:
+    virtual ~ISimilaritySearch() = default;
+
+    /**
+     * @brief Indexes a list of transcript embedding vectors.
+     * 
+     * @param transcript_embeddings The list of embedding vectors to index.
+     * @return true if indexing succeeded, false otherwise.
+     */
+    virtual bool index_transcript_embeddings(const std::vector<std::vector<float>>& transcript_embeddings) = 0;
+
+    /**
+     * @brief Queries the indexed transcript embeddings for each PDF chunk embedding to find the best match.
+     * 
+     * @param pdf_embeddings The list of PDF chunk embedding vectors.
+     * @param importance_weights The importance weight for each PDF chunk.
+     * @param similarity_threshold The cosine similarity threshold to classify a chunk as "mentioned".
+     * @return std::vector<SimilarityResult> List of similarity results corresponding to each PDF chunk.
+     */
+    virtual std::vector<SimilarityResult> search_pdf_matches(
+        const std::vector<std::vector<float>>& pdf_embeddings,
+        const std::vector<float>& importance_weights,
+        float similarity_threshold) = 0;
+
+    /**
+     * @brief Clears the current indexed transcript embeddings.
+     */
+    virtual void reset() = 0;
+
+    /**
+     * @brief Gets the number of currently indexed transcript embeddings.
+     * 
+     * @return size_t Number of indexed vectors.
+     */
+    virtual size_t get_indexed_count() const = 0;
+};
+
+#endif // I_SIMILARITY_SEARCH_HPP
