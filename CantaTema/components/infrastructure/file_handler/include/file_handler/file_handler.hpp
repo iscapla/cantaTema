@@ -8,8 +8,9 @@
 
 #include "primitives/utils_logger.hpp"
 #include "primitives/definitions.hpp"
+#include "file_handler/i_file_handler.hpp"
 
-class FileHandler {
+class FileHandler : public IFileHandler {
 
 public:
     FileHandler(void);
