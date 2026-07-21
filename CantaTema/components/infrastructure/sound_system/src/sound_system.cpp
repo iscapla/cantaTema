@@ -5,6 +5,7 @@
 #include "primitives/utils_logger.hpp"
 #include "sound_system/sound_system.hpp"
 #include "file_handler/sound_handler.hpp"
+#include "configuration/configuration_system.hpp"
 
 namespace {
     const uint32_t kOggCrcPoly = 0x04c11db7;
@@ -93,6 +94,19 @@ void SDLCALL SoundSystem::data_callback_record(void *userdata, SDL_AudioStream *
         pSystem->m_recordBuffer.erase(pSystem->m_recordBuffer.begin(), pSystem->m_recordBuffer.begin() + frameSize);
     }
     pSystem->m_recordedFrames += samplesRead;
+
+    unsigned int max_minutes = ConfigurationSystem::getInstance().get_max_recording_duration_minutes();
+    if (max_minutes > 0) {
+        uint64_t current_ms = (pSystem->m_recordedFrames * 1000ULL) / pSystem->m_config.sampleRate;
+        uint64_t max_ms = static_cast<uint64_t>(max_minutes) * 60ULL * 1000ULL;
+        if (current_ms >= max_ms) {
+            logger->warn("[SoundSystem] Max recording duration limit of {} minutes reached. Stopping capture stream.", max_minutes);
+            if (stream) {
+                SDL_PauseAudioStreamDevice(stream);
+            }
+            pSystem->m_isRecording = false;
+        }
+    }
 }
 
 bool SoundSystem::startRecording(const SoundFileHandler& fileHandler, int deviceIndex) {
@@ -200,7 +214,7 @@ void SoundSystem::stopRecording() {
         m_captureStream = nullptr;
         m_captureDeviceId = 0;
     }
-    if (m_isRecording) {
+    if (m_opusEncoder || m_recordFile || m_isRecording) {
         if (m_opusEncoder) {
             opus_encoder_destroy(m_opusEncoder);
             m_opusEncoder = nullptr;

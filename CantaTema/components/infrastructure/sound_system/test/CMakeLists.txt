@@ -8,5 +8,6 @@ create_test_exec(
         t_sound_system.cxx
     INC_PRIVATE
         CORE::PRIMITIVES
+        CORE::CONFIGURATION
         INFRASTRUCTURE::SOUND_SYSTEM
 )

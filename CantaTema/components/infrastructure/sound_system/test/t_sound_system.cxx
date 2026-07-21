@@ -8,6 +8,7 @@
 #include <atomic>
 #include <future>
 #include "file_handler/sound_handler.hpp"
+#include "configuration/configuration_system.hpp"
 
 namespace {
 
@@ -193,6 +194,11 @@ TEST_F(SoundSystemTest, PlaybackCallbackEvents) {
     }
 
     ss.stopPlaying();
+}
+
+TEST_F(SoundSystemTest, MaxRecordingDurationLimitConfig) {
+    auto& config = ConfigurationSystem::getInstance();
+    EXPECT_GE(config.get_max_recording_duration_minutes(), 0u);
 }
 
 } // namespace

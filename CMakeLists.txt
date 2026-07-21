@@ -430,6 +430,20 @@ FetchContent_MakeAvailable(whisper)
 # src/CMakeLists.txt omits ggml/include/ from the target include paths.
 target_include_directories(whisper PUBLIC
     $<BUILD_INTERFACE:${whisper_SOURCE_DIR}/ggml/include>
+    $<BUILD_INTERFACE:${whisper_SOURCE_DIR}/ggml/src>
+)
+target_compile_definitions(whisper PRIVATE
+    GGML_VERSION="1.8.3"
+    GGML_COMMIT="unknown"
+)
+target_sources(whisper PRIVATE
+    ${whisper_SOURCE_DIR}/ggml/src/ggml.c
+    ${whisper_SOURCE_DIR}/ggml/src/ggml-alloc.c
+    ${whisper_SOURCE_DIR}/ggml/src/ggml-quants.c
+    ${whisper_SOURCE_DIR}/ggml/src/ggml-backend.cpp
+    ${whisper_SOURCE_DIR}/ggml/src/ggml-backend-reg.cpp
+    ${whisper_SOURCE_DIR}/ggml/src/ggml-threading.cpp
+    ${whisper_SOURCE_DIR}/ggml/src/gguf.cpp
 )
 
 #####################################################################################################

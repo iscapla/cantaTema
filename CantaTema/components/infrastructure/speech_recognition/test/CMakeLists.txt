@@ -1,0 +1,17 @@
+include(library_install_test)
+
+create_test_exec(
+    TARGET
+        "t_speech_recognition"
+    SRCS
+        t_speech_recognition_main.cxx
+        t_whisper_speech_recognition.cxx
+        t_voice_quality_analyzer.cxx
+    INC_PRIVATE
+        CORE::PRIMITIVES
+        CORE::CONFIGURATION
+        INFRASTRUCTURE::SOUND_SYSTEM
+        INFRASTRUCTURE::SPEECH_RECOGNITION
+        whisper
+        ggml
+)

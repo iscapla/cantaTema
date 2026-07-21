@@ -2,13 +2,14 @@ include(library_install_infra)
 
 create_infra_library(
     TARGET
-    "sound_system"
+    "speech_recognition"
     SRCS
-    src/sound_system.cpp
+    src/whisper_speech_recognition.cpp
+    src/voice_quality_analyzer.cpp
     INC_PUBLIC
-    INFRASTRUCTURE::FILE_HANDLER
-    SDL3::SDL3
-    opus
+    INFRASTRUCTURE::SOUND_SYSTEM
+    whisper
+    ggml
     INC_PRIVATE
     CORE::PRIMITIVES
     CORE::CONFIGURATION
