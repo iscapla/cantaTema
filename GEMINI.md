@@ -286,3 +286,10 @@ To run the interactive shell of the CantaTema project:
 
 ## 📝 Documentation Guidelines
 - **Interface & Schema Changes:** If database schemas, configuration files, or core component interfaces change, update the documentation in the `docs` folder or add relevant annotations.
+
+## 📱 Future GUI & Mobile Packaging Vision (Planned Post-v1.0)
+- **Framework Choice:** Flutter (Dart) for cross-platform UI (Windows, macOS, Linux, Android, iOS).
+- **C++ Integration:** Flutter communicates via `dart:ffi` calling a lightweight C-wrapper (`c_session.cpp`) over the C++ `Session` facade.
+- **Single-Package Deployment:** A single installer file per OS (e.g., `.exe`/`.msi` for Windows, `.dmg` for macOS, `.apk` for Android, `.ipa` for iOS) embedding the Flutter GUI, C++ binaries, and AI engine dependencies.
+- **Core Reuse:** 95%+ C++ logic reuse without changing underlying business, AI, or database layers.
+
