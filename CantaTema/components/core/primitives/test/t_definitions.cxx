@@ -46,3 +46,30 @@ TEST(DefinitionsTest, CodeToTextMapping) {
     // Test default case with cast to invalid enum value
     EXPECT_EQ(get_rst_txt(static_cast<rst_code_e>(999)), "UNKNOWN");
 }
+
+#include "primitives/subject.hpp"
+
+TEST(PrimitivesTest, SubjectPrimitive) {
+    Subject subject(123u, "Physics");
+    EXPECT_EQ(subject.get_id(), 123u);
+    EXPECT_EQ(subject.get_name(), "Physics");
+    EXPECT_EQ(subject.get_language(), "es"); // default value
+
+    subject.set_language("en");
+    EXPECT_EQ(subject.get_language(), "en");
+
+    subject.set_filepath("/path/to/physics.pdf");
+    EXPECT_EQ(subject.get_filepath(), "/path/to/physics.pdf");
+
+    subject.set_user_id(1u);
+    EXPECT_EQ(subject.get_user_id(), 1u);
+
+    subject.set_category_id(2u);
+    EXPECT_EQ(subject.get_category_id(), 2u);
+
+    subject.set_name("Advanced Physics");
+    EXPECT_EQ(subject.get_name(), "Advanced Physics");
+
+    subject.set_id(456u);
+    EXPECT_EQ(subject.get_id(), 456u);
+}

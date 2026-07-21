@@ -56,6 +56,12 @@ std::filesystem::path ToolPath::get_path_for_models_whisper(void) {
     return path;
 }
 
+std::filesystem::path ToolPath::get_path_for_models_llama(void) {
+    std::filesystem::path path = get_base_path() / "data" / "models" / "llama";
+    ensure_directory_exists(path);
+    return path;
+}
+
 std::filesystem::path ToolPath::get_path_for_subject(unsigned int user_id, unsigned int subject_id) {
     std::filesystem::path path = get_path_for_files() / std::to_string(user_id) / std::to_string(subject_id);
     ensure_directory_exists(path);

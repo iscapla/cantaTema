@@ -23,6 +23,20 @@ ConfigurationSystem::ConfigurationSystem() : IConfigurationBase() {
     set_default_if_not_present("USER_LIMITS", "max_text_file_size_mb", "25");
     set_default_if_not_present("USER_LIMITS", "max_sound_file_size_mb", "25");
     set_default_if_not_present("USER_LIMITS", "usage_limit_mb", "512");
+    set_default_if_not_present("USER_LIMITS", "max_pdf_page_count", "100");
+    set_default_if_not_present("USER_LIMITS", "max_recording_duration_minutes", "30");
+
+    set_default_if_not_present("WHISPER", "default_model", "AUTO");
+
+    set_default_if_not_present("EMBEDDINGS", "default_model", "AUTO");
+    set_default_if_not_present("EMBEDDINGS", "gpu_offload_layers", "0");
+
+    set_default_if_not_present("COVERAGE", "similarity_threshold", "0.75");
+    set_default_if_not_present("COVERAGE", "importance_weight_bold", "1.5");
+    set_default_if_not_present("COVERAGE", "importance_weight_italic", "1.2");
+    set_default_if_not_present("COVERAGE", "importance_weight_underline", "1.3");
+    set_default_if_not_present("COVERAGE", "importance_weight_bg_color", "1.4");
+
     update_values_to_file();
 }
 
@@ -114,5 +128,85 @@ unsigned int ConfigurationSystem::get_user_usage_limit_in_mb(void) const {
         return std::stoul(value);
     } catch (...) {
         return 128; // Default fallback
+    }
+}
+
+std::string ConfigurationSystem::get_whisper_default_model() const {
+    return const_cast<ConfigurationSystem*>(this)->get("WHISPER", "default_model");
+}
+
+std::string ConfigurationSystem::get_embeddings_default_model() const {
+    return const_cast<ConfigurationSystem*>(this)->get("EMBEDDINGS", "default_model");
+}
+
+int ConfigurationSystem::get_embeddings_gpu_offload_layers() const {
+    std::string value = const_cast<ConfigurationSystem*>(this)->get("EMBEDDINGS", "gpu_offload_layers");
+    try {
+        return std::stoi(value);
+    } catch (...) {
+        return 0; // Default fallback
+    }
+}
+
+float ConfigurationSystem::get_coverage_similarity_threshold() const {
+    std::string value = const_cast<ConfigurationSystem*>(this)->get("COVERAGE", "similarity_threshold");
+    try {
+        return std::stof(value);
+    } catch (...) {
+        return 0.75f; // Default fallback
+    }
+}
+
+float ConfigurationSystem::get_importance_weight_bold() const {
+    std::string value = const_cast<ConfigurationSystem*>(this)->get("COVERAGE", "importance_weight_bold");
+    try {
+        return std::stof(value);
+    } catch (...) {
+        return 1.5f; // Default fallback
+    }
+}
+
+float ConfigurationSystem::get_importance_weight_italic() const {
+    std::string value = const_cast<ConfigurationSystem*>(this)->get("COVERAGE", "importance_weight_italic");
+    try {
+        return std::stof(value);
+    } catch (...) {
+        return 1.2f; // Default fallback
+    }
+}
+
+float ConfigurationSystem::get_importance_weight_underline() const {
+    std::string value = const_cast<ConfigurationSystem*>(this)->get("COVERAGE", "importance_weight_underline");
+    try {
+        return std::stof(value);
+    } catch (...) {
+        return 1.3f; // Default fallback
+    }
+}
+
+float ConfigurationSystem::get_importance_weight_bg_color() const {
+    std::string value = const_cast<ConfigurationSystem*>(this)->get("COVERAGE", "importance_weight_bg_color");
+    try {
+        return std::stof(value);
+    } catch (...) {
+        return 1.4f; // Default fallback
+    }
+}
+
+unsigned int ConfigurationSystem::get_max_pdf_page_count() const {
+    std::string value = const_cast<ConfigurationSystem*>(this)->get("USER_LIMITS", "max_pdf_page_count");
+    try {
+        return std::stoul(value);
+    } catch (...) {
+        return 100u; // Default fallback
+    }
+}
+
+unsigned int ConfigurationSystem::get_max_recording_duration_minutes() const {
+    std::string value = const_cast<ConfigurationSystem*>(this)->get("USER_LIMITS", "max_recording_duration_minutes");
+    try {
+        return std::stoul(value);
+    } catch (...) {
+        return 30u; // Default fallback
     }
 }

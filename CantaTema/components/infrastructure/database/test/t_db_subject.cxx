@@ -109,6 +109,7 @@ TEST_F(DBSubjectTest, AddNewSubject_Success) {
     // Verify results
     EXPECT_EQ(result, RST_OK);
     EXPECT_NE(subject.get_id(), 0) << "Subject ID should be auto-generated";
+    EXPECT_EQ(subject.get_language(), "es");
 }
 
 TEST_F(DBSubjectTest, GetSubjectById_Success) {
@@ -119,6 +120,7 @@ TEST_F(DBSubjectTest, GetSubjectById_Success) {
     Subject original_sub(0, "Retrieval Subject");
     original_sub.set_user_id(user_id);
     original_sub.set_category_id(cat_id);
+    original_sub.set_language("en");
 
     ASSERT_EQ(db_subject.add_new_subject(original_sub), RST_OK);
 
@@ -131,6 +133,7 @@ TEST_F(DBSubjectTest, GetSubjectById_Success) {
     EXPECT_EQ(retrieved_sub->get_id(), original_sub.get_id());
     EXPECT_EQ(retrieved_sub->get_name(), "Retrieval Subject");
     EXPECT_EQ(retrieved_sub->get_category_id(), cat_id);
+    EXPECT_EQ(retrieved_sub->get_language(), "en");
 }
 
 TEST_F(DBSubjectTest, UpdateSubject_Success) {
@@ -146,6 +149,7 @@ TEST_F(DBSubjectTest, UpdateSubject_Success) {
 
     // Modify fields
     subject.set_name("Updated Subject Name");
+    subject.set_language("fr");
 
     // Update
     rst_code_e result = db_subject.update_subject(subject);
@@ -155,6 +159,7 @@ TEST_F(DBSubjectTest, UpdateSubject_Success) {
     std::shared_ptr<Subject> retrieved;
     ASSERT_EQ(db_subject.get_subject_by_id(subject.get_id(), retrieved), RST_OK);
     EXPECT_EQ(retrieved->get_name(), "Updated Subject Name");
+    EXPECT_EQ(retrieved->get_language(), "fr");
 }
 
 TEST_F(DBSubjectTest, RemoveSubject_Success) {

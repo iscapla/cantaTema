@@ -4,7 +4,8 @@ Subject::Subject(unsigned int new_id, std::string new_name) : id(new_id),
                                                             user_id(0),
                                                             category_id(0),
                                                             name(new_name),
-                                                            filepath("")
+                                                            filepath(""),
+                                                            language("es")
 {
 }
 
@@ -24,3 +25,6 @@ void Subject::set_name(std::string new_name) { name = new_name; }
 
 std::string Subject::get_filepath(void) const { return filepath; }
 void Subject::set_filepath(std::string new_filepath) { filepath = new_filepath; }
+
+std::string Subject::get_language(void) const { return language; }
+void Subject::set_language(std::string new_language) { language = new_language; }

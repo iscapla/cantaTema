@@ -57,6 +57,56 @@ public:
      */
     unsigned int get_user_usage_limit_in_mb(void) const;
 
+    /**
+     * @brief Retrieves the default whisper model name (e.g. "AUTO").
+     */
+    std::string get_whisper_default_model() const;
+
+    /**
+     * @brief Retrieves the default embedding model name (e.g. "AUTO").
+     */
+    std::string get_embeddings_default_model() const;
+
+    /**
+     * @brief Retrieves the number of layers to offload to the GPU for llama embeddings.
+     */
+    int get_embeddings_gpu_offload_layers() const;
+
+    /**
+     * @brief Retrieves the threshold score for cosine similarity.
+     */
+    float get_coverage_similarity_threshold() const;
+
+    /**
+     * @brief Retrieves the weight multiplier for bold formatted text.
+     */
+    float get_importance_weight_bold() const;
+
+    /**
+     * @brief Retrieves the weight multiplier for italic formatted text.
+     */
+    float get_importance_weight_italic() const;
+
+    /**
+     * @brief Retrieves the weight multiplier for underlined text.
+     */
+    float get_importance_weight_underline() const;
+
+    /**
+     * @brief Retrieves the weight multiplier for background colored text.
+     */
+    float get_importance_weight_bg_color() const;
+
+    /**
+     * @brief Retrieves the maximum PDF page limit for ingestion.
+     */
+    unsigned int get_max_pdf_page_count() const;
+
+    /**
+     * @brief Retrieves the maximum recording duration in minutes.
+     */
+    unsigned int get_max_recording_duration_minutes() const;
+
 
 private:
     ConfigurationSystem();

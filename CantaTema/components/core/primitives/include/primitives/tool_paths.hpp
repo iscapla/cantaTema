@@ -80,6 +80,14 @@ public:
     static std::filesystem::path get_path_for_models_whisper(void);
 
     /**
+     * @brief Returns the path where llama models should be stored.
+     * Creates the directory if it does not exist.
+     * 
+     * @return std::filesystem::path Absolute path to the models/llama folder.
+     */
+    static std::filesystem::path get_path_for_models_llama(void);
+
+    /**
      * @brief Returns the path where subject files should be stored.
      * Creates the directory if it does not exist.
      * 

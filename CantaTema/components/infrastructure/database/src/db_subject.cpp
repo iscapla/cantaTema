@@ -14,6 +14,7 @@ rst_code_e DB_Subject::subject_tables_create(void) const
                       "category_id INTEGER,"
                       "name TEXT NOT NULL,"
                       "filepath TEXT NOT NULL,"
+                      "language TEXT NOT NULL DEFAULT 'es',"
                       "FOREIGN KEY(user_id) REFERENCES useraccount(useraccountid) ON DELETE CASCADE,"
                       "FOREIGN KEY(category_id) REFERENCES categories(category_id) ON DELETE SET NULL);";
 
@@ -25,6 +26,36 @@ rst_code_e DB_Subject::subject_tables_create(void) const
         sqlite3_free(zErrMsg);
         return rst_code_e::DB_FAIL;
     }
+
+    // Dynamic schema migration: add 'language' column if it's missing from existing DB
+    sqlite3_stmt *stmt;
+    bool has_language = false;
+    if (sqlite3_prepare_v2(db.get(), "PRAGMA table_info(subjects);", -1, &stmt, 0) == SQLITE_OK)
+    {
+        while (sqlite3_step(stmt) == SQLITE_ROW)
+        {
+            const char *col_name = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+            if (col_name && std::string(col_name) == "language")
+            {
+                has_language = true;
+                break;
+            }
+        }
+        sqlite3_finalize(stmt);
+    }
+
+    if (!has_language)
+    {
+        rc = sqlite3_exec(db.get(), "ALTER TABLE subjects ADD COLUMN language TEXT NOT NULL DEFAULT 'es';", 0, 0, &zErrMsg);
+        if (rc != SQLITE_OK)
+        {
+            logger->error("SQL error migrating subjects table: {}", zErrMsg);
+            sqlite3_free(zErrMsg);
+            return rst_code_e::DB_FAIL;
+        }
+        logger->info("Migrated 'subjects' table with 'language' column.");
+    }
+
     return rst_code_e::RST_OK;
 }
 
@@ -32,7 +63,7 @@ rst_code_e DB_Subject::add_new_subject(Subject &subject) const
 {
     std::shared_ptr<sqlite3> db = DB_Connection::getConn();
     sqlite3_stmt *stmt;
-    const char *sql = "INSERT INTO subjects (user_id, category_id, name, filepath) VALUES (?, ?, ?, ?);";
+    const char *sql = "INSERT INTO subjects (user_id, category_id, name, filepath, language) VALUES (?, ?, ?, ?, ?);";
 
     if (sqlite3_prepare_v2(db.get(), sql, -1, &stmt, 0) != SQLITE_OK)
     {
@@ -53,6 +84,7 @@ rst_code_e DB_Subject::add_new_subject(Subject &subject) const
 
     sqlite3_bind_text(stmt, 3, subject.get_name().c_str(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_text(stmt, 4, subject.get_filepath().c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 5, subject.get_language().c_str(), -1, SQLITE_TRANSIENT);
 
     if (sqlite3_step(stmt) != SQLITE_DONE)
     {
@@ -70,7 +102,7 @@ rst_code_e DB_Subject::update_subject(const Subject &subject) const
 {
     std::shared_ptr<sqlite3> db = DB_Connection::getConn();
     sqlite3_stmt *stmt;
-    const char *sql = "UPDATE subjects SET user_id = ?, category_id = ?, name = ?, filepath = ? WHERE subjects_id = ?;";
+    const char *sql = "UPDATE subjects SET user_id = ?, category_id = ?, name = ?, filepath = ?, language = ? WHERE subjects_id = ?;";
 
     if (sqlite3_prepare_v2(db.get(), sql, -1, &stmt, 0) != SQLITE_OK)
     {
@@ -91,7 +123,8 @@ rst_code_e DB_Subject::update_subject(const Subject &subject) const
 
     sqlite3_bind_text(stmt, 3, subject.get_name().c_str(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_text(stmt, 4, subject.get_filepath().c_str(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_int(stmt, 5, subject.get_id());
+    sqlite3_bind_text(stmt, 5, subject.get_language().c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int(stmt, 6, subject.get_id());
 
     if (sqlite3_step(stmt) != SQLITE_DONE)
     {
@@ -158,7 +191,7 @@ rst_code_e DB_Subject::get_subject_by_id(unsigned int id, std::shared_ptr<Subjec
 {
     std::shared_ptr<sqlite3> db = DB_Connection::getConn();
     sqlite3_stmt *stmt;
-    const char *sql = "SELECT subjects_id, user_id, category_id, name, filepath FROM subjects WHERE subjects_id = ?;";
+    const char *sql = "SELECT subjects_id, user_id, category_id, name, filepath, language FROM subjects WHERE subjects_id = ?;";
     rst_code_e result = rst_code_e::DB_FAIL;
 
     if (sqlite3_prepare_v2(db.get(), sql, -1, &stmt, 0) == SQLITE_OK)
@@ -178,11 +211,13 @@ rst_code_e DB_Subject::get_subject_by_id(unsigned int id, std::shared_ptr<Subjec
 
             std::string name = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 3));
             std::string filepath = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 4));
+            std::string language = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 5));
 
             subject = std::make_shared<Subject>(sub_id, name);
             subject->set_user_id(user_id);
             subject->set_filepath(filepath);
             subject->set_category_id(category_id);
+            subject->set_language(language);
             
             result = rst_code_e::RST_OK;
         }
@@ -195,7 +230,7 @@ rst_code_e DB_Subject::get_all_subjects_by_category(unsigned int category_id, st
 {
     std::shared_ptr<sqlite3> db = DB_Connection::getConn();
     sqlite3_stmt *stmt;
-    const char *sql = "SELECT subjects_id, user_id, name, filepath "
+    const char *sql = "SELECT subjects_id, user_id, name, filepath, language "
                       "FROM subjects "
                       "WHERE category_id = ?;";
 
@@ -209,11 +244,13 @@ rst_code_e DB_Subject::get_all_subjects_by_category(unsigned int category_id, st
             unsigned int user_id = sqlite3_column_int(stmt, 1);
             std::string name = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 2));
             std::string filepath = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 3));
+            std::string language = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 4));
 
             auto subject = std::make_shared<Subject>(sub_id, name);
             subject->set_user_id(user_id);
             subject->set_filepath(filepath);
             subject->set_category_id(category_id);
+            subject->set_language(language);
 
             subjects.push_back(subject);
         }
@@ -226,7 +263,7 @@ rst_code_e DB_Subject::get_all_subjects_by_user(unsigned int user_id, std::vecto
 {
     std::shared_ptr<sqlite3> db = DB_Connection::getConn();
     sqlite3_stmt *stmt;
-    const char *sql = "SELECT subjects_id, user_id, category_id, name, filepath "
+    const char *sql = "SELECT subjects_id, user_id, category_id, name, filepath, language "
                       "FROM subjects "
                       "WHERE user_id = ?;";
 
@@ -247,11 +284,13 @@ rst_code_e DB_Subject::get_all_subjects_by_user(unsigned int user_id, std::vecto
 
             std::string name = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 3));
             std::string filepath = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 4));
+            std::string language = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 5));
 
             auto subject = std::make_shared<Subject>(sub_id, name);
             subject->set_user_id(u_id);
             subject->set_filepath(filepath);
             subject->set_category_id(category_id);
+            subject->set_language(language);
 
             subjects.push_back(subject);
         }

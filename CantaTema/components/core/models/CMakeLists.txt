@@ -4,7 +4,7 @@ create_infra_library(
     TARGET
     "models"
     SRCS
-    src/manager_whisper.cpp
+    src/manager_models.cpp
     INC_PUBLIC
     INC_PRIVATE
     libcurl

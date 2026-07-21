@@ -5,7 +5,7 @@ create_test_exec(
         "t_models"
     SRCS
         t_models_main.cxx
-        t_manager_whisper.cxx
+        t_manager_models.cxx
     INC_PRIVATE
         CORE::PRIMITIVES
         CORE::MODELS

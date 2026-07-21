@@ -7,6 +7,7 @@
 #include "database/db_subject.hpp"
 #include "database/db_user_metrics.hpp"
 #include "database/db_practice_event.hpp"
+#include "database/db_coverage.hpp"
 
 
 // initializing instancePtr with NULL
@@ -26,6 +27,8 @@ DB_Main::DB_Main(void)
         user_metrics.user_metrics_tables_create();
         DB_PracticeEvent practice_event;
         practice_event.practice_event_tables_create();
+        DB_Coverage coverage;
+        coverage.create_coverage_tables();
         DB_Main::initialized = true;
         logger->info("Database initialized");
     }

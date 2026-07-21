@@ -28,12 +28,16 @@ public:
     std::string get_filepath(void) const;
     void set_filepath(std::string new_filepath);
 
+    std::string get_language(void) const;
+    void set_language(std::string new_language);
+
 private:
     unsigned int id;
     unsigned int user_id;
     unsigned int category_id;
     std::string name;
     std::string filepath;
+    std::string language;
 };
 
 #endif //__SUBJECT_HPP

@@ -97,21 +97,67 @@ TEST_F(ConfigurationSystemTest, FallbackOnGarbageValues) {
     unsigned int orig_text_limit = config.get_user_default_max_text_file_size_in_mb();
     unsigned int orig_sound_limit = config.get_user_default_max_sound_file_size_in_mb();
     unsigned int orig_usage_limit = config.get_user_usage_limit_in_mb();
+    unsigned int orig_pdf_page_limit = config.get_max_pdf_page_count();
+    unsigned int orig_duration_limit = config.get_max_recording_duration_minutes();
+    int orig_gpu_layers = config.get_embeddings_gpu_offload_layers();
+    float orig_sim_thresh = config.get_coverage_similarity_threshold();
+    float orig_bold_w = config.get_importance_weight_bold();
+    float orig_italic_w = config.get_importance_weight_italic();
+    float orig_underline_w = config.get_importance_weight_underline();
+    float orig_bg_color_w = config.get_importance_weight_bg_color();
 
     // 2. Set garbage/non-parseable values
     (config.*set_fn)("USER_LIMITS", "max_text_file_size_mb", "not_a_number");
     (config.*set_fn)("USER_LIMITS", "max_sound_file_size_mb", "not_a_number");
     (config.*set_fn)("USER_LIMITS", "usage_limit_mb", "not_a_number");
+    (config.*set_fn)("USER_LIMITS", "max_pdf_page_count", "not_a_number");
+    (config.*set_fn)("USER_LIMITS", "max_recording_duration_minutes", "not_a_number");
+    (config.*set_fn)("EMBEDDINGS", "gpu_offload_layers", "not_a_number");
+    (config.*set_fn)("COVERAGE", "similarity_threshold", "not_a_number");
+    (config.*set_fn)("COVERAGE", "importance_weight_bold", "not_a_number");
+    (config.*set_fn)("COVERAGE", "importance_weight_italic", "not_a_number");
+    (config.*set_fn)("COVERAGE", "importance_weight_underline", "not_a_number");
+    (config.*set_fn)("COVERAGE", "importance_weight_bg_color", "not_a_number");
 
     // 3. Verify fallbacks are returned
     EXPECT_EQ(config.get_user_default_max_text_file_size_in_mb(), 10u);
     EXPECT_EQ(config.get_user_default_max_sound_file_size_in_mb(), 50u);
     EXPECT_EQ(config.get_user_usage_limit_in_mb(), 128u);
+    EXPECT_EQ(config.get_max_pdf_page_count(), 100u);
+    EXPECT_EQ(config.get_max_recording_duration_minutes(), 30u);
+    EXPECT_EQ(config.get_embeddings_gpu_offload_layers(), 0);
+    EXPECT_FLOAT_EQ(config.get_coverage_similarity_threshold(), 0.75f);
+    EXPECT_FLOAT_EQ(config.get_importance_weight_bold(), 1.5f);
+    EXPECT_FLOAT_EQ(config.get_importance_weight_italic(), 1.2f);
+    EXPECT_FLOAT_EQ(config.get_importance_weight_underline(), 1.3f);
+    EXPECT_FLOAT_EQ(config.get_importance_weight_bg_color(), 1.4f);
 
     // 4. Restore original values
     (config.*set_fn)("USER_LIMITS", "max_text_file_size_mb", std::to_string(orig_text_limit));
     (config.*set_fn)("USER_LIMITS", "max_sound_file_size_mb", std::to_string(orig_sound_limit));
     (config.*set_fn)("USER_LIMITS", "usage_limit_mb", std::to_string(orig_usage_limit));
+    (config.*set_fn)("USER_LIMITS", "max_pdf_page_count", std::to_string(orig_pdf_page_limit));
+    (config.*set_fn)("USER_LIMITS", "max_recording_duration_minutes", std::to_string(orig_duration_limit));
+    (config.*set_fn)("EMBEDDINGS", "gpu_offload_layers", std::to_string(orig_gpu_layers));
+    (config.*set_fn)("COVERAGE", "similarity_threshold", std::to_string(orig_sim_thresh));
+    (config.*set_fn)("COVERAGE", "importance_weight_bold", std::to_string(orig_bold_w));
+    (config.*set_fn)("COVERAGE", "importance_weight_italic", std::to_string(orig_italic_w));
+    (config.*set_fn)("COVERAGE", "importance_weight_underline", std::to_string(orig_underline_w));
+    (config.*set_fn)("COVERAGE", "importance_weight_bg_color", std::to_string(orig_bg_color_w));
+}
+
+TEST_F(ConfigurationSystemTest, NewGettersValues) {
+    ConfigurationSystem& config = ConfigurationSystem::getInstance();
+    EXPECT_STRNE(config.get_whisper_default_model().c_str(), "");
+    EXPECT_STRNE(config.get_embeddings_default_model().c_str(), "");
+    EXPECT_GE(config.get_embeddings_gpu_offload_layers(), 0);
+    EXPECT_GT(config.get_coverage_similarity_threshold(), 0.0f);
+    EXPECT_GT(config.get_importance_weight_bold(), 0.0f);
+    EXPECT_GT(config.get_importance_weight_italic(), 0.0f);
+    EXPECT_GT(config.get_importance_weight_underline(), 0.0f);
+    EXPECT_GT(config.get_importance_weight_bg_color(), 0.0f);
+    EXPECT_GT(config.get_max_pdf_page_count(), 0u);
+    EXPECT_GT(config.get_max_recording_duration_minutes(), 0u);
 }
 
 class TestConfiguration : public IConfigurationBase {
