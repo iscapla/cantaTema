@@ -210,3 +210,7 @@ unsigned int ConfigurationSystem::get_max_recording_duration_minutes() const {
         return 30u; // Default fallback
     }
 }
+
+rst_code_e ConfigurationSystem::set_value(const std::string& section, const std::string& field, const std::string& value) {
+    return set(section, field, value);
+}

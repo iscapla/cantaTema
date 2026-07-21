@@ -61,6 +61,8 @@ enum rst_code_e
     FILE_NOT_FOUND, // File not found
     FILE_READ_ERROR, // File read error
     FILE_UPLOAD_ERROR, // File upload error
+    FILE_EXCEEDS_PAGE_LIMIT, // File exceeds max page limit
+    FILE_EMPTY_OR_INVALID, // File is empty or has no text content
 
     MODELS_FILE_DOWNLOAD_FAIL, // Models download fail
     MODELS_FILE_NOT_FOUND, // Models not found
@@ -173,6 +175,12 @@ inline const std::string get_rst_txt(const rst_code_e &rst)
         break;
     case FILE_UPLOAD_ERROR:
         txt = "FILE_UPLOAD_ERROR";
+        break;
+    case FILE_EXCEEDS_PAGE_LIMIT:
+        txt = "FILE_EXCEEDS_PAGE_LIMIT";
+        break;
+    case FILE_EMPTY_OR_INVALID:
+        txt = "FILE_EMPTY_OR_INVALID";
         break;
     
     case MODELS_FILE_DOWNLOAD_FAIL:

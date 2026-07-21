@@ -107,6 +107,11 @@ public:
      */
     unsigned int get_max_recording_duration_minutes() const;
 
+    /**
+     * @brief Sets a configuration value at runtime (primarily for testing).
+     */
+    rst_code_e set_value(const std::string& section, const std::string& field, const std::string& value);
+
 
 private:
     ConfigurationSystem();

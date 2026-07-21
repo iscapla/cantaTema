@@ -32,6 +32,8 @@ TEST(DefinitionsTest, CodeToTextMapping) {
         FILE_NOT_FOUND,
         FILE_READ_ERROR,
         FILE_UPLOAD_ERROR,
+        FILE_EXCEEDS_PAGE_LIMIT,
+        FILE_EMPTY_OR_INVALID,
         MODELS_FILE_DOWNLOAD_FAIL,
         MODELS_FILE_NOT_FOUND,
         UNKNOWN

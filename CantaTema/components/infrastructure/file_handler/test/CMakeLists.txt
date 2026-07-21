@@ -9,8 +9,10 @@ create_test_exec(
         t_text_handler.cxx
         t_sound_handler.cxx
         t_extension_type_pdf.cxx
+        t_text_chunk_extractor.cxx
     INC_PRIVATE
         CORE::PRIMITIVES
+        CORE::CONFIGURATION
         INFRASTRUCTURE::FILE_HANDLER
 )
 

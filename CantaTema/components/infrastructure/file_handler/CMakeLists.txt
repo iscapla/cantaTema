@@ -9,6 +9,7 @@ create_infra_library(
     src/file_handler.cpp
     src/text_handler.cpp
     src/sound_handler.cpp
+    src/text_chunk_extractor.cpp
     INC_PUBLIC
     INC_PRIVATE
     mupdf::mupdf
