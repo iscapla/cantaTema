@@ -149,6 +149,7 @@ TEST_F(ConfigurationSystemTest, FallbackOnGarbageValues) {
 TEST_F(ConfigurationSystemTest, NewGettersValues) {
     ConfigurationSystem& config = ConfigurationSystem::getInstance();
     EXPECT_STRNE(config.get_whisper_default_model().c_str(), "");
+    EXPECT_FALSE(config.get_whisper_use_gpu());
     EXPECT_STRNE(config.get_embeddings_default_model().c_str(), "");
     EXPECT_GE(config.get_embeddings_gpu_offload_layers(), 0);
     EXPECT_GT(config.get_coverage_similarity_threshold(), 0.0f);

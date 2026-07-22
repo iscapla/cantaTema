@@ -63,6 +63,11 @@ public:
     std::string get_whisper_default_model() const;
 
     /**
+     * @brief Retrieves whether GPU acceleration is enabled for Whisper (default false).
+     */
+    bool get_whisper_use_gpu() const;
+
+    /**
      * @brief Retrieves the default embedding model name (e.g. "AUTO").
      */
     std::string get_embeddings_default_model() const;

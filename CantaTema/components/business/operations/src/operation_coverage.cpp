@@ -158,6 +158,7 @@ rst_code_e OperationCoverage::analyze_practice_coverage(
     ISpeechRecognition::speech_recognition_config_t speech_config;
     speech_config.model_name = resolved_whisper_model;
     speech_config.language = resolved_language;
+    speech_config.use_gpu = ConfigurationSystem::getInstance().get_whisper_use_gpu();
     
     res = m_speech_recognition->initialize(speech_config);
     if (res != RST_OK) {

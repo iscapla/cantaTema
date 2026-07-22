@@ -51,7 +51,16 @@ rst_code_e WhisperSpeechRecognition::initialize(const speech_recognition_config_
     }
 
     struct whisper_context_params cparams = whisper_context_default_params();
+    cparams.use_gpu = config.use_gpu;
+    if (logger) logger->info("[WhisperSpeechRecognition] Initializing whisper context (GPU acceleration: {})", cparams.use_gpu ? "ON" : "OFF");
+
     m_whisperCtx = whisper_init_from_file_with_params(model_path.string().c_str(), cparams);
+    if (!m_whisperCtx && cparams.use_gpu) {
+        if (logger) logger->warn("[WhisperSpeechRecognition] GPU initialization failed. Retrying with CPU mode...");
+        cparams.use_gpu = false;
+        m_whisperCtx = whisper_init_from_file_with_params(model_path.string().c_str(), cparams);
+    }
+
     if (!m_whisperCtx) {
         if (logger) logger->error("[WhisperSpeechRecognition] Failed to initialize whisper context from: {}", model_path.string());
         m_status = speech_recognition_status_e::ERROR;

@@ -38,6 +38,7 @@ public:
         std::string model_name;
         std::string language{"es"};
         StatusCallback status_callback;
+        bool use_gpu{false};
     };
 
     virtual ~ISpeechRecognition() = default;

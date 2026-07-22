@@ -135,6 +135,14 @@ std::string ConfigurationSystem::get_whisper_default_model() const {
     return const_cast<ConfigurationSystem*>(this)->get("WHISPER", "default_model");
 }
 
+bool ConfigurationSystem::get_whisper_use_gpu() const {
+    std::string value = const_cast<ConfigurationSystem*>(this)->get("WHISPER", "use_gpu");
+    if (value == "true" || value == "1" || value == "TRUE") {
+        return true;
+    }
+    return false;
+}
+
 std::string ConfigurationSystem::get_embeddings_default_model() const {
     return const_cast<ConfigurationSystem*>(this)->get("EMBEDDINGS", "default_model");
 }
