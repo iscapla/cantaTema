@@ -25,7 +25,7 @@ rst_code_e terminal_init_user(std::unique_ptr<cli::Menu> &rootMenu);
 rst_code_e terminal_init_category(std::unique_ptr<cli::Menu> &rootMenu);
 rst_code_e terminal_init_subject(std::unique_ptr<cli::Menu> &rootMenu);
 rst_code_e terminal_init_practice(std::unique_ptr<cli::Menu> &rootMenu);
-rst_code_e terminal_init_whisper(std::unique_ptr<cli::Menu> &rootMenu);
+rst_code_e terminal_init_models(std::unique_ptr<cli::Menu> &rootMenu);
 rst_code_e terminal_init_coverage(std::unique_ptr<cli::Menu> &rootMenu);
 
 
@@ -78,7 +78,7 @@ rst_code_e terminal_cli_start(void)
         terminal_init_category(rootMenu);
         terminal_init_subject(rootMenu);
         terminal_init_practice(rootMenu);
-        terminal_init_whisper(rootMenu);
+        terminal_init_models(rootMenu);
         terminal_init_coverage(rootMenu);
 
         rootMenu->Insert(
@@ -404,38 +404,62 @@ rst_code_e terminal_init_category(std::unique_ptr<cli::Menu> &rootMenu)
     return CONSOLE_EXP;
 }
 
-rst_code_e terminal_init_whisper(std::unique_ptr<cli::Menu> &rootMenu)
+rst_code_e terminal_init_models(std::unique_ptr<cli::Menu> &rootMenu)
 {
     try
     {
-        auto whisperMenu = std::make_unique<cli::Menu>("whisper", "Whisper commands (MENU)");
+        auto modelsMenu = std::make_unique<cli::Menu>("models", "Model management commands (MENU)");
 
-        whisperMenu->Insert(
-            "models", {},
+        modelsMenu->Insert(
+            "list", {},
             [](std::ostream &out)
             {
-                terminal_session->whisper_get_available_models(out);
+                terminal_session->models_list(out);
             },
-            "Get available models");
-        
-        whisperMenu->Insert(
-            "download", {"model_name"},
+            "List all available Whisper and Llama models");
+
+        modelsMenu->Insert(
+            "download_whisper", {"model_name"},
             [](std::ostream &out, const std::string &model_name)
             {
-                terminal_session->whisper_download_model(out, model_name);
+                terminal_session->models_download_whisper(out, model_name);
             },
-            "Download a model");
+            "Download a Whisper speech recognition model");
 
-        rootMenu->Insert(std::move(whisperMenu));
+        modelsMenu->Insert(
+            "download_llama", {"model_name"},
+            [](std::ostream &out, const std::string &model_name)
+            {
+                terminal_session->models_download_llama(out, model_name);
+            },
+            "Download a Llama embedding model");
+
+        modelsMenu->Insert(
+            "remove_whisper", {"model_name"},
+            [](std::ostream &out, const std::string &model_name)
+            {
+                terminal_session->models_remove_whisper(out, model_name);
+            },
+            "Remove a local Whisper model file from disk");
+
+        modelsMenu->Insert(
+            "remove_llama", {"model_name"},
+            [](std::ostream &out, const std::string &model_name)
+            {
+                terminal_session->models_remove_llama(out, model_name);
+            },
+            "Remove a local Llama model file from disk");
+
+        rootMenu->Insert(std::move(modelsMenu));
         return RST_OK;
     }
     catch (const std::exception &e)
     {
-        logger->error("Exception caught in category menu: {}", e.what());
+        logger->error("Exception caught in models menu: {}", e.what());
     }
     catch (...)
     {
-        logger->critical("Unknown exception caught in category menu.");
+        logger->critical("Unknown exception caught in models menu.");
     }
 
     return CONSOLE_EXP;
@@ -454,14 +478,6 @@ rst_code_e terminal_init_coverage(std::unique_ptr<cli::Menu> &rootMenu)
                 terminal_session->coverage_analyze(out, practice_id);
             },
             "Analyze coverage for practice session using default configuration");
-
-        coverageMenu->Insert(
-            "history", {"practice_id"},
-            [](std::ostream &out, unsigned int practice_id)
-            {
-                terminal_session->coverage_history(out, practice_id);
-            },
-            "View past analysis execution history for a practice session");
 
         coverageMenu->Insert(
             "report", {"execution_id"},

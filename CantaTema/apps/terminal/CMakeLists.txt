@@ -8,7 +8,6 @@ create_infra_library(
     src/terminal_session.cpp
     src/terminal_test.cpp
     src/terminal_practice_record.cpp
-    src/terminal_whisper.cpp
     src/terminal_coverage.cpp
     INC_PUBLIC
     INC_PRIVATE

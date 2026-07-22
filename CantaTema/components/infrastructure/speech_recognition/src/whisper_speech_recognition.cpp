@@ -36,6 +36,12 @@ rst_code_e WhisperSpeechRecognition::initialize(const speech_recognition_config_
         model_path = config.model_name;
     } else {
         model_path = ToolPath::get_path_for_models_whisper() / config.model_name;
+        if (!std::filesystem::exists(model_path)) {
+            std::filesystem::path alt_path = ToolPath::get_path_for_models_whisper() / ("ggml-" + config.model_name + ".bin");
+            if (std::filesystem::exists(alt_path)) {
+                model_path = alt_path;
+            }
+        }
     }
 
     if (!std::filesystem::exists(model_path)) {

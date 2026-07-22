@@ -71,6 +71,16 @@ public:
     rst_code_e local_is_llama_model_available(const std::string& model_name) const;
 
     /**
+     * @brief Remove a Whisper model from local disk
+     */
+    rst_code_e local_remove_whisper_model(const std::string& model_name) const;
+
+    /**
+     * @brief Remove a Llama model from local disk
+     */
+    rst_code_e local_remove_llama_model(const std::string& model_name) const;
+
+    /**
      * @brief Download a model from Hugging Face
      * 
      * @param type Model type (Whisper or Llama)

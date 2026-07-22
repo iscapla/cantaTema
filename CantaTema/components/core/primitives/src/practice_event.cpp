@@ -42,6 +42,7 @@ PracticeEvent::PracticeEvent(void) : id(0),
                                     duration(0),
                                     filepath(""),
                                     description(""),
+                                    analysis_execution_id(""),
                                     status(PracticeEvent_status::UNKNOWN)
 {
 }
@@ -71,6 +72,9 @@ void PracticeEvent::set_filepath(std::string new_filepath) { filepath = new_file
 
 std::string PracticeEvent::get_description(void) const { return description; }
 void PracticeEvent::set_description(std::string new_description) { description = new_description; }
+
+std::string PracticeEvent::get_analysis_execution_id(void) const { return analysis_execution_id; }
+void PracticeEvent::set_analysis_execution_id(const std::string &new_analysis_execution_id) { analysis_execution_id = new_analysis_execution_id; }
 
 PracticeEvent::PracticeEvent_status PracticeEvent::get_status(void) const { return status; }
 void PracticeEvent::set_status(PracticeEvent_status new_status) { status = new_status; }

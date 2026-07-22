@@ -60,16 +60,17 @@ public:
 
     //-------------------------------------------------------------------------------------
 
-    void whisper_get_available_models(std::ostream &out);
-    void whisper_download_model(std::ostream &out, const std::string &model_name);
-    void models_get_available(std::ostream &out);
-    void models_download(std::ostream &out, const std::string &model_type_str, const std::string &model_name);
+    void models_list(std::ostream &out);
+    void models_download_whisper(std::ostream &out, const std::string &model_name);
+    void models_download_llama(std::ostream &out, const std::string &model_name);
+    void models_remove_whisper(std::ostream &out, const std::string &model_name);
+    void models_remove_llama(std::ostream &out, const std::string &model_name);
 
     //-------------------------------------------------------------------------------------
 
     void coverage_analyze(std::ostream &out, unsigned int practice_id, const std::string &whisper_model = "", const std::string &llama_model = "", float similarity_threshold = 0.0f, const std::string &language = "");
-    void coverage_history(std::ostream &out, unsigned int practice_id);
     void coverage_report(std::ostream &out, const std::string &execution_id);
+    void coverage_report_by_practice(std::ostream &out, unsigned int practice_id);
     
 
 private:

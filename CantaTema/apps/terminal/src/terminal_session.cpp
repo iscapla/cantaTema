@@ -226,7 +226,7 @@ void TerminalSession::subject_get_by_category(std::ostream &out, unsigned int ca
         for (const auto &sub : subjects)
         {
             std::string category_info = sub->get_category_id() == 0 ? "None" : std::to_string(sub->get_category_id());
-            out << std::left << std::setw(10) << sub->get_id() << std::setw(30) << sub->get_name() << std::setw(30) << category_info << std::setw(50) << sub->get_filepath() << std::endl;
+            out << std::left << std::setw(10) << sub->get_id() << std::setw(30) << sub->get_name() << std::setw(30) << category_info << std::setw(50) << UtilsPrints::format_path_for_display(sub->get_filepath()) << std::endl;
         }
     }
 }

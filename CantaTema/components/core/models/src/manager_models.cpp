@@ -190,6 +190,34 @@ rst_code_e ManagerModels::local_is_llama_model_available(const std::string& mode
     return std::filesystem::exists(file_path) ? RST_OK : MODELS_FILE_NOT_FOUND;
 }
 
+rst_code_e ManagerModels::local_remove_whisper_model(const std::string& model_name) const {
+    std::string filename = model_name;
+    if (filename.find("ggml-") == std::string::npos) {
+        filename = fmt::format("{}{}{}", WHISPER_FILE_PREFIX, model_name, WHISPER_FILE_EXT);
+    }
+    std::filesystem::path file_path = ToolPath::get_path_for_models_whisper() / filename;
+    if (std::filesystem::exists(file_path)) {
+        std::error_code ec;
+        std::filesystem::remove(file_path, ec);
+        return ec ? MODELS_FILE_NOT_FOUND : RST_OK;
+    }
+    return MODELS_FILE_NOT_FOUND;
+}
+
+rst_code_e ManagerModels::local_remove_llama_model(const std::string& model_name) const {
+    std::string filename = model_name;
+    if (filename.find(".gguf") == std::string::npos) {
+        filename += ".gguf";
+    }
+    std::filesystem::path file_path = ToolPath::get_path_for_models_llama() / filename;
+    if (std::filesystem::exists(file_path)) {
+        std::error_code ec;
+        std::filesystem::remove(file_path, ec);
+        return ec ? MODELS_FILE_NOT_FOUND : RST_OK;
+    }
+    return MODELS_FILE_NOT_FOUND;
+}
+
 rst_code_e ManagerModels::network_is_model_available(ModelType type, const std::string& model_name) const {
     std::string url, filename;
     if (get_model_download_info(type, model_name, url, filename) != RST_OK) {

@@ -18,6 +18,7 @@ rst_code_e DB_PracticeEvent::practice_event_tables_create(void) const
                       "duration INTEGER,"
                       "filepath TEXT,"
                       "description TEXT,"
+                      "analysis_execution_id TEXT,"
                       "status TEXT NOT NULL,"
                       "FOREIGN KEY(user_id) REFERENCES useraccount(useraccountid) ON DELETE CASCADE,"
                       "FOREIGN KEY(subject_id) REFERENCES subjects(subjects_id) ON DELETE CASCADE);";
@@ -30,6 +31,10 @@ rst_code_e DB_PracticeEvent::practice_event_tables_create(void) const
         sqlite3_free(zErrMsg);
         return rst_code_e::DB_FAIL;
     }
+
+    const char *alter_sql = "ALTER TABLE practice_events ADD COLUMN analysis_execution_id TEXT;";
+    sqlite3_exec(db.get(), alter_sql, 0, 0, nullptr);
+
     return rst_code_e::RST_OK;
 }
 
@@ -37,7 +42,7 @@ rst_code_e DB_PracticeEvent::add_new_practice_event(PracticeEvent &event) const
 {
     std::shared_ptr<sqlite3> db = DB_Connection::getConn();
     sqlite3_stmt *stmt;
-    const char *sql = "INSERT INTO practice_events (user_id, subject_id, date, recorded_date, duration, filepath, description, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?);";
+    const char *sql = "INSERT INTO practice_events (user_id, subject_id, date, recorded_date, duration, filepath, description, analysis_execution_id, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);";
 
     if (sqlite3_prepare_v2(db.get(), sql, -1, &stmt, 0) != SQLITE_OK)
     {
@@ -61,9 +66,10 @@ rst_code_e DB_PracticeEvent::add_new_practice_event(PracticeEvent &event) const
     sqlite3_bind_int(stmt, 5, event.get_duration());
     sqlite3_bind_text(stmt, 6, event.get_filepath().c_str(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_text(stmt, 7, event.get_description().c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 8, event.get_analysis_execution_id().c_str(), -1, SQLITE_TRANSIENT);
 
     std::string status_str = PracticeEvent::get_status_as_string(event.get_status());
-    sqlite3_bind_text(stmt, 8, status_str.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 9, status_str.c_str(), -1, SQLITE_TRANSIENT);
 
     if (sqlite3_step(stmt) != SQLITE_DONE)
     {
@@ -81,7 +87,7 @@ rst_code_e DB_PracticeEvent::update_practice_event(const PracticeEvent &event) c
 {
     std::shared_ptr<sqlite3> db = DB_Connection::getConn();
     sqlite3_stmt *stmt;
-    const char *sql = "UPDATE practice_events SET user_id = ?, subject_id = ?, date = ?, recorded_date = ?, duration = ?, filepath = ?, description = ?, status = ? WHERE practice_event_id = ?;";
+    const char *sql = "UPDATE practice_events SET user_id = ?, subject_id = ?, date = ?, recorded_date = ?, duration = ?, filepath = ?, description = ?, analysis_execution_id = ?, status = ? WHERE practice_event_id = ?;";
 
     if (sqlite3_prepare_v2(db.get(), sql, -1, &stmt, 0) != SQLITE_OK)
     {
@@ -105,11 +111,12 @@ rst_code_e DB_PracticeEvent::update_practice_event(const PracticeEvent &event) c
     sqlite3_bind_int(stmt, 5, event.get_duration());
     sqlite3_bind_text(stmt, 6, event.get_filepath().c_str(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_text(stmt, 7, event.get_description().c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 8, event.get_analysis_execution_id().c_str(), -1, SQLITE_TRANSIENT);
 
     std::string status_str = PracticeEvent::get_status_as_string(event.get_status());
-    sqlite3_bind_text(stmt, 8, status_str.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 9, status_str.c_str(), -1, SQLITE_TRANSIENT);
 
-    sqlite3_bind_int(stmt, 9, event.get_id());
+    sqlite3_bind_int(stmt, 10, event.get_id());
 
     if (sqlite3_step(stmt) != SQLITE_DONE)
     {
@@ -201,7 +208,7 @@ rst_code_e DB_PracticeEvent::get_practice_event_by_id(unsigned int id, std::shar
 {
     std::shared_ptr<sqlite3> db = DB_Connection::getConn();
     sqlite3_stmt *stmt;
-    const char *sql = "SELECT practice_event_id, user_id, subject_id, date, recorded_date, duration, filepath, description, status FROM practice_events WHERE practice_event_id = ?;";
+    const char *sql = "SELECT practice_event_id, user_id, subject_id, date, recorded_date, duration, filepath, description, analysis_execution_id, status FROM practice_events WHERE practice_event_id = ?;";
     rst_code_e result = rst_code_e::DB_FAIL;
 
     if (sqlite3_prepare_v2(db.get(), sql, -1, &stmt, 0) == SQLITE_OK)
@@ -237,9 +244,14 @@ rst_code_e DB_PracticeEvent::get_practice_event_by_id(unsigned int id, std::shar
                 description = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 7));
             }
 
-            std::string status_str = "";
+            std::string analysis_exec_id = "";
             if (sqlite3_column_type(stmt, 8) != SQLITE_NULL) {
-                status_str = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 8));
+                analysis_exec_id = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 8));
+            }
+
+            std::string status_str = "";
+            if (sqlite3_column_type(stmt, 9) != SQLITE_NULL) {
+                status_str = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 9));
             }
 
             event = std::make_shared<PracticeEvent>();
@@ -252,6 +264,7 @@ rst_code_e DB_PracticeEvent::get_practice_event_by_id(unsigned int id, std::shar
             event->set_duration(duration);
             event->set_filepath(filepath);
             event->set_description(description);
+            event->set_analysis_execution_id(analysis_exec_id);
             
             result = rst_code_e::RST_OK;
         }
@@ -264,7 +277,7 @@ rst_code_e DB_PracticeEvent::get_all_practice_events_by_user(unsigned int user_i
 {
     std::shared_ptr<sqlite3> db = DB_Connection::getConn();
     sqlite3_stmt *stmt;
-    const char *sql = "SELECT practice_event_id, user_id, subject_id, date, recorded_date, duration, filepath, description, status FROM practice_events WHERE user_id = ?;";
+    const char *sql = "SELECT practice_event_id, user_id, subject_id, date, recorded_date, duration, filepath, description, analysis_execution_id, status FROM practice_events WHERE user_id = ?;";
 
     if (sqlite3_prepare_v2(db.get(), sql, -1, &stmt, 0) == SQLITE_OK)
     {
@@ -298,9 +311,14 @@ rst_code_e DB_PracticeEvent::get_all_practice_events_by_user(unsigned int user_i
                 description = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 7));
             }
 
-            std::string status_str = "";
+            std::string analysis_exec_id = "";
             if (sqlite3_column_type(stmt, 8) != SQLITE_NULL) {
-                status_str = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 8));
+                analysis_exec_id = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 8));
+            }
+
+            std::string status_str = "";
+            if (sqlite3_column_type(stmt, 9) != SQLITE_NULL) {
+                status_str = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 9));
             }
 
             auto event = std::make_shared<PracticeEvent>();
@@ -313,6 +331,7 @@ rst_code_e DB_PracticeEvent::get_all_practice_events_by_user(unsigned int user_i
             event->set_recorded_date(recorded_date);
             event->set_filepath(filepath);
             event->set_description(description);
+            event->set_analysis_execution_id(analysis_exec_id);
 
             events.push_back(event);
         }
@@ -325,7 +344,7 @@ rst_code_e DB_PracticeEvent::get_all_practice_events_by_subject(unsigned int sub
 {
     std::shared_ptr<sqlite3> db = DB_Connection::getConn();
     sqlite3_stmt *stmt;
-    const char *sql = "SELECT practice_event_id, user_id, subject_id, date, recorded_date, duration, filepath, description, status FROM practice_events WHERE subject_id = ?;";
+    const char *sql = "SELECT practice_event_id, user_id, subject_id, date, recorded_date, duration, filepath, description, analysis_execution_id, status FROM practice_events WHERE subject_id = ?;";
 
     if (sqlite3_prepare_v2(db.get(), sql, -1, &stmt, 0) == SQLITE_OK)
     {
@@ -359,9 +378,14 @@ rst_code_e DB_PracticeEvent::get_all_practice_events_by_subject(unsigned int sub
                 description = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 7));
             }
 
-            std::string status_str = "";
+            std::string analysis_exec_id = "";
             if (sqlite3_column_type(stmt, 8) != SQLITE_NULL) {
-                status_str = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 8));
+                analysis_exec_id = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 8));
+            }
+
+            std::string status_str = "";
+            if (sqlite3_column_type(stmt, 9) != SQLITE_NULL) {
+                status_str = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 9));
             }
 
             auto event = std::make_shared<PracticeEvent>();
@@ -374,6 +398,7 @@ rst_code_e DB_PracticeEvent::get_all_practice_events_by_subject(unsigned int sub
             event->set_recorded_date(recorded_date);
             event->set_filepath(filepath);
             event->set_description(description);
+            event->set_analysis_execution_id(analysis_exec_id);
 
             events.push_back(event);
         }

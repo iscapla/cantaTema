@@ -51,6 +51,9 @@ public:
     std::string get_description(void) const;
     void set_description(std::string new_description);
 
+    std::string get_analysis_execution_id(void) const;
+    void set_analysis_execution_id(const std::string &new_analysis_execution_id);
+
 private:
     unsigned int id;
     unsigned int user_id;
@@ -60,6 +63,7 @@ private:
     unsigned int duration;
     std::string filepath;
     std::string description;
+    std::string analysis_execution_id;
     PracticeEvent_status status;
 };
 

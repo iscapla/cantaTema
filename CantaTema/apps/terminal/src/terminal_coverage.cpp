@@ -4,8 +4,9 @@
 #include "terminal/terminal_session.hpp"
 #include "models/manager_models.hpp"
 #include "primitives/utils_logger.hpp"
+#include "primitives/utils_prints.hpp"
 
-void TerminalSession::models_get_available(std::ostream &out)
+void TerminalSession::models_list(std::ostream &out)
 {
     ManagerModels manager;
     std::vector<ManagerModels::ModelInfo> whisper_models;
@@ -19,7 +20,7 @@ void TerminalSession::models_get_available(std::ostream &out)
     out << std::string(100, '-') << std::endl;
 
     for (const auto &model : whisper_models) {
-        out << std::left << std::setw(25) << model.name << std::setw(10) << (model.available_local ? "YES" : "NO") << std::setw(10) << (model.available_network ? "YES" : "NO") << model.path << std::endl;
+        out << std::left << std::setw(25) << model.name << std::setw(10) << (model.available_local ? "YES" : "NO") << std::setw(10) << (model.available_network ? "YES" : "NO") << UtilsPrints::format_path_for_display(model.path) << std::endl;
     }
 
     out << std::endl << "--- Llama Embedding Models ---" << std::endl;
@@ -27,25 +28,74 @@ void TerminalSession::models_get_available(std::ostream &out)
     out << std::string(100, '-') << std::endl;
 
     for (const auto &model : llama_models) {
-        out << std::left << std::setw(25) << model.name << std::setw(10) << (model.available_local ? "YES" : "NO") << std::setw(10) << (model.available_network ? "YES" : "NO") << model.path << std::endl;
+        out << std::left << std::setw(25) << model.name << std::setw(10) << (model.available_local ? "YES" : "NO") << std::setw(10) << (model.available_network ? "YES" : "NO") << UtilsPrints::format_path_for_display(model.path) << std::endl;
     }
 }
 
-void TerminalSession::models_download(std::ostream &out, const std::string &model_type_str, const std::string &model_name)
+void TerminalSession::models_download_whisper(std::ostream &out, const std::string &model_name)
 {
     ManagerModels manager;
-    ModelType type = ModelType::Whisper;
-    if (model_type_str == "llama" || model_type_str == "embedding" || model_type_str == "embeddings") {
-        type = ModelType::Llama;
-    }
-
-    manager.network_download_model(type, model_name, [&out](const DownloadProgress &progress) {
+    out << "Downloading Whisper model '" << model_name << "'..." << std::endl;
+    rst_code_e rst = manager.network_download_model(ModelType::Whisper, model_name, [&out](const DownloadProgress &progress) {
         if (progress.total_bytes > 0) {
             float percent = (float)progress.downloaded_bytes / (float)progress.total_bytes * 100.0f;
             out << "\rDownloading " << progress.file_name << ": " << (int)percent << "%" << std::flush;
         }
     });
     out << std::endl;
+    if (rst != RST_OK) {
+        logger->error("Failed to download Whisper model: {}", get_rst_txt(rst));
+        out << "Failed to download Whisper model: " << get_rst_txt(rst) << std::endl;
+    } else {
+        logger->info("Whisper model '{}' downloaded successfully", model_name);
+        out << "Whisper model '" << model_name << "' downloaded successfully." << std::endl;
+    }
+}
+
+void TerminalSession::models_download_llama(std::ostream &out, const std::string &model_name)
+{
+    ManagerModels manager;
+    out << "Downloading Llama embedding model '" << model_name << "'..." << std::endl;
+    rst_code_e rst = manager.network_download_model(ModelType::Llama, model_name, [&out](const DownloadProgress &progress) {
+        if (progress.total_bytes > 0) {
+            float percent = (float)progress.downloaded_bytes / (float)progress.total_bytes * 100.0f;
+            out << "\rDownloading " << progress.file_name << ": " << (int)percent << "%" << std::flush;
+        }
+    });
+    out << std::endl;
+    if (rst != RST_OK) {
+        logger->error("Failed to download Llama model: {}", get_rst_txt(rst));
+        out << "Failed to download Llama model: " << get_rst_txt(rst) << std::endl;
+    } else {
+        logger->info("Llama model '{}' downloaded successfully", model_name);
+        out << "Llama model '" << model_name << "' downloaded successfully." << std::endl;
+    }
+}
+
+void TerminalSession::models_remove_whisper(std::ostream &out, const std::string &model_name)
+{
+    ManagerModels manager;
+    rst_code_e rst = manager.local_remove_whisper_model(model_name);
+    if (rst != RST_OK) {
+        logger->error("Failed to remove Whisper model '{}': {}", model_name, get_rst_txt(rst));
+        out << "Failed to remove Whisper model: " << get_rst_txt(rst) << std::endl;
+    } else {
+        logger->info("Whisper model '{}' removed successfully", model_name);
+        out << "Whisper model '" << model_name << "' removed successfully." << std::endl;
+    }
+}
+
+void TerminalSession::models_remove_llama(std::ostream &out, const std::string &model_name)
+{
+    ManagerModels manager;
+    rst_code_e rst = manager.local_remove_llama_model(model_name);
+    if (rst != RST_OK) {
+        logger->error("Failed to remove Llama model '{}': {}", model_name, get_rst_txt(rst));
+        out << "Failed to remove Llama model: " << get_rst_txt(rst) << std::endl;
+    } else {
+        logger->info("Llama model '{}' removed successfully", model_name);
+        out << "Llama model '" << model_name << "' removed successfully." << std::endl;
+    }
 }
 
 void TerminalSession::coverage_analyze(
@@ -75,21 +125,8 @@ void TerminalSession::coverage_analyze(
     } else {
         logger->info("Coverage analysis completed successfully. Execution ID: {}", out_execution_id);
         out << "Coverage analysis completed! Analysis Execution ID: " << out_execution_id << std::endl;
+        out << "Practice ID " << practice_id << " is now linked to analysis execution: " << out_execution_id << std::endl;
         out << "Use 'coverage report " << out_execution_id << "' to view detailed report." << std::endl;
-    }
-}
-
-void TerminalSession::coverage_history(std::ostream &out, unsigned int practice_id)
-{
-    std::string json_list;
-    rst_code_e rst = op->get_analysis_executions_for_practice(practice_id, json_list);
-
-    if (rst != RST_OK) {
-        logger->error("Failed to retrieve analysis history: {}", get_rst_txt(rst));
-        out << "Error retrieving history: " << get_rst_txt(rst) << std::endl;
-    } else {
-        out << "Analysis History for Practice ID " << practice_id << ":" << std::endl;
-        out << json_list << std::endl;
     }
 }
 
@@ -109,4 +146,23 @@ void TerminalSession::coverage_report(std::ostream &out, const std::string &exec
         out << "--- Configuration Snapshot ---" << std::endl;
         out << config_json << std::endl;
     }
+}
+
+void TerminalSession::coverage_report_by_practice(std::ostream &out, unsigned int practice_id)
+{
+    std::shared_ptr<PracticeEvent> practice;
+    rst_code_e rst = op->practice_event_get_by_id(practice_id, practice);
+
+    if (rst != RST_OK || !practice) {
+        out << "Practice ID " << practice_id << " not found." << std::endl;
+        return;
+    }
+
+    std::string exec_id = practice->get_analysis_execution_id();
+    if (exec_id.empty()) {
+        out << "No analysis has been executed for practice ID " << practice_id << "." << std::endl;
+        return;
+    }
+
+    coverage_report(out, exec_id);
 }

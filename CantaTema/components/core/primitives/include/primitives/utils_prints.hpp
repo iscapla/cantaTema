@@ -101,6 +101,14 @@ public:
      */
     static const std::string get_user_metrics_body(const UserMetrics &user_metrics);
 
+    /**
+     * @brief Format a file path for CLI table display, starting from "\data" or "/data" if present.
+     * 
+     * @param path 
+     * @return const std::string 
+     */
+    static const std::string format_path_for_display(const std::string &path);
+
 };
 
 #endif //__UTILS_PRINTS_HPP

@@ -264,6 +264,10 @@ rst_code_e OperationCoverage::analyze_practice_coverage(
 
     if (res == RST_OK) {
         out_analysis_execution_id = execution_id;
+        practice_event->set_analysis_execution_id(execution_id);
+        if (m_practice_op) {
+            m_practice_op->practice_event_update(user, *practice_event);
+        }
         if (logger) logger->info("OperationCoverage::analyze_practice_coverage - Analysis execution saved successfully with ID: {}", execution_id);
     } else {
         if (logger) logger->error("OperationCoverage::analyze_practice_coverage - Failed to persist analysis execution to DB");
