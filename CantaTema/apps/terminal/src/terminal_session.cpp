@@ -401,3 +401,16 @@ void TerminalSession::practice_event_get_by_user(std::ostream &out)
         }
     }
 }
+
+void TerminalSession::subject_set_language(std::ostream &out, unsigned int subject_id, const std::string &language)
+{
+    rst_code_e rst = op->set_subject_language(subject_id, language);
+    if (rst)
+    {
+        logger->error("Operation error: {}", get_rst_txt(rst));
+    }
+    else
+    {
+        logger->info("Subject language set to '{}'", language);
+    }
+}

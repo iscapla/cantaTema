@@ -40,6 +40,7 @@ public:
     void subject_remove(std::ostream &out, unsigned int id);
     void subject_get_by_category(std::ostream &out, unsigned int category_id);
     void subject_get_by_user(std::ostream &out);
+    void subject_set_language(std::ostream &out, unsigned int subject_id, const std::string &language);
 
     //-------------------------------------------------------------------------------------
 
@@ -61,6 +62,14 @@ public:
 
     void whisper_get_available_models(std::ostream &out);
     void whisper_download_model(std::ostream &out, const std::string &model_name);
+    void models_get_available(std::ostream &out);
+    void models_download(std::ostream &out, const std::string &model_type_str, const std::string &model_name);
+
+    //-------------------------------------------------------------------------------------
+
+    void coverage_analyze(std::ostream &out, unsigned int practice_id, const std::string &whisper_model = "", const std::string &llama_model = "", float similarity_threshold = 0.0f, const std::string &language = "");
+    void coverage_history(std::ostream &out, unsigned int practice_id);
+    void coverage_report(std::ostream &out, const std::string &execution_id);
     
 
 private:

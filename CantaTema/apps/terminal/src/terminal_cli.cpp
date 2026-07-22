@@ -26,6 +26,7 @@ rst_code_e terminal_init_category(std::unique_ptr<cli::Menu> &rootMenu);
 rst_code_e terminal_init_subject(std::unique_ptr<cli::Menu> &rootMenu);
 rst_code_e terminal_init_practice(std::unique_ptr<cli::Menu> &rootMenu);
 rst_code_e terminal_init_whisper(std::unique_ptr<cli::Menu> &rootMenu);
+rst_code_e terminal_init_coverage(std::unique_ptr<cli::Menu> &rootMenu);
 
 
 rst_code_e terminal_cli_start(void)
@@ -78,6 +79,7 @@ rst_code_e terminal_cli_start(void)
         terminal_init_subject(rootMenu);
         terminal_init_practice(rootMenu);
         terminal_init_whisper(rootMenu);
+        terminal_init_coverage(rootMenu);
 
         rootMenu->Insert(
             "user_identify", {"name", "password"},
@@ -281,6 +283,14 @@ rst_code_e terminal_init_subject(std::unique_ptr<cli::Menu> &rootMenu)
             },
             "Get all subjects for current user");
 
+        subjectMenu->Insert(
+            "set_language", {"subject_id", "language"},
+            [](std::ostream &out, unsigned int subject_id, const std::string &language)
+            {
+                terminal_session->subject_set_language(out, subject_id, language);
+            },
+            "Set language for subject (e.g. es, en)");
+
         rootMenu->Insert(std::move(subjectMenu));
         return RST_OK;
     }
@@ -426,6 +436,51 @@ rst_code_e terminal_init_whisper(std::unique_ptr<cli::Menu> &rootMenu)
     catch (...)
     {
         logger->critical("Unknown exception caught in category menu.");
+    }
+
+    return CONSOLE_EXP;
+}
+
+rst_code_e terminal_init_coverage(std::unique_ptr<cli::Menu> &rootMenu)
+{
+    try
+    {
+        auto coverageMenu = std::make_unique<cli::Menu>("coverage", "Coverage analysis commands (MENU)");
+
+        coverageMenu->Insert(
+            "analyze", {"practice_id"},
+            [](std::ostream &out, unsigned int practice_id)
+            {
+                terminal_session->coverage_analyze(out, practice_id);
+            },
+            "Analyze coverage for practice session using default configuration");
+
+        coverageMenu->Insert(
+            "history", {"practice_id"},
+            [](std::ostream &out, unsigned int practice_id)
+            {
+                terminal_session->coverage_history(out, practice_id);
+            },
+            "View past analysis execution history for a practice session");
+
+        coverageMenu->Insert(
+            "report", {"execution_id"},
+            [](std::ostream &out, const std::string &execution_id)
+            {
+                terminal_session->coverage_report(out, execution_id);
+            },
+            "View detailed coverage analysis report by execution ID");
+
+        rootMenu->Insert(std::move(coverageMenu));
+        return RST_OK;
+    }
+    catch (const std::exception &e)
+    {
+        logger->error("Exception caught in coverage menu: {}", e.what());
+    }
+    catch (...)
+    {
+        logger->critical("Unknown exception caught in coverage menu.");
     }
 
     return CONSOLE_EXP;
