@@ -404,6 +404,15 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(llama)
 
+# Workaround for macOS CI (C++23 libc++ / Apple Clang):
+# llama.cpp tag b3600 src/unicode.cpp omits #include <algorithm>, causing std::upper_bound to fail.
+if(EXISTS "${llama_SOURCE_DIR}/src/unicode.cpp")
+    file(READ "${llama_SOURCE_DIR}/src/unicode.cpp" LLAMA_UNICODE_CPP)
+    if(NOT LLAMA_UNICODE_CPP MATCHES "#include <algorithm>")
+        file(WRITE "${llama_SOURCE_DIR}/src/unicode.cpp" "#include <algorithm>\n${LLAMA_UNICODE_CPP}")
+    endif()
+endif()
+
 ################################
 # whisper
 ################################
