@@ -247,24 +247,13 @@ add_custom_command(
 add_custom_target(mupdf_make ALL DEPENDS ${LIB_MUPDF} ${LIB_THIRD})
 
 # ============================================================
-# 5. Import Library
+# 5. Export Interface Library
 # ============================================================
 
-# Helper to import the thirdparty lib
-add_library(mupdf_third STATIC IMPORTED GLOBAL)
-add_dependencies(mupdf_third mupdf_make)
-set_target_properties(mupdf_third PROPERTIES
-    IMPORTED_LOCATION "${LIB_THIRD}"
-)
-
-# Main mupdf library
-add_library(mupdf STATIC IMPORTED GLOBAL)
+add_library(mupdf INTERFACE)
 add_library(mupdf::mupdf ALIAS mupdf)
 add_dependencies(mupdf mupdf_make)
 
-set_target_properties(mupdf PROPERTIES
-    IMPORTED_LOCATION "${LIB_MUPDF}"
-    INTERFACE_INCLUDE_DIRECTORIES "${MUPDF_ROOT}/include"
-    INTERFACE_LINK_LIBRARIES mupdf_third
-    INTERFACE_COMPILE_DEFINITIONS "${MUPDF_EXPORT_DEFINITIONS}"
-)
+target_link_libraries(mupdf INTERFACE "${LIB_MUPDF}" "${LIB_THIRD}")
+target_include_directories(mupdf INTERFACE "${MUPDF_ROOT}/include")
+target_compile_definitions(mupdf INTERFACE ${MUPDF_EXPORT_DEFINITIONS})
