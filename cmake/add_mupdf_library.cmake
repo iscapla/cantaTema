@@ -35,6 +35,7 @@ if(NOT mupdf_src_POPULATED)
         thirdparty/jbig2dec
         thirdparty/mujs
         thirdparty/lcms2
+        thirdparty/gumbo-parser
     )
 
     execute_process(
@@ -100,6 +101,8 @@ foreach(DEF IN LISTS MUPDF_DEFINITIONS)
 endforeach()
 
 set(MUPDF_MAKE_OPTIONS
+    "CC=${CMAKE_C_COMPILER}"
+    "CXX=${CMAKE_CXX_COMPILER}"
     HAVE_CURL=no
     HAVE_FREETYPE=no
     HAVE_GLFW=no
@@ -130,9 +133,17 @@ set(MUPDF_MAKE_OPTIONS
     HAVE_TIFF=no
     HAVE_X11=no
     HAVE_ZXINGCPP=no
+    HAVE_CJK=no
+    HAVE_CJK_FULL=no
+    HAVE_CJK_SINGLE=no
+    "FONT_FLAGS="
+    "TOFU_FLAGS="
+    FONT_CJK=no
+    FONT_SMALL=yes
+    TOFU_CJK_LANG=no
+    TOFU_CJK_EXT=no
     USE_BROTLI=no
     USE_EXTRACT=no
-    USE_GUMBO=no
     USE_LEPTONICA=no
     USE_LIBARCHIVE=no
     USE_MUJS=no
@@ -180,11 +191,21 @@ else()
         set(MUPDF_ARCH_FLAGS "-msse4.1")
     endif()
 
-    set(BUILD_CMD ${MAKE_EXE} -j${N_CORES} "XCFLAGS=${MUPDF_ARCH_FLAGS} ${MUPDF_DEFINITIONS_STR}" ${MUPDF_MAKE_OPTIONS} extract=no OUT=build/release-cmake)
+    if(WIN32)
+        find_program(SH_EXE sh PATHS C:/msys64/usr/bin C:/msys64/ucrt64/bin "C:/Program Files/Git/bin")
+        if(SH_EXE)
+            string(REPLACE ";" " " MUPDF_MAKE_OPTIONS_STR "${MUPDF_MAKE_OPTIONS}")
+            set(BUILD_CMD ${SH_EXE} -c "export PATH=/usr/bin:/ucrt64/bin:C:/msys64/usr/bin:C:/msys64/ucrt64/bin:\$PATH; ${MAKE_EXE} -j${N_CORES} XCFLAGS=\"${MUPDF_ARCH_FLAGS} ${MUPDF_DEFINITIONS_STR}\" ${MUPDF_MAKE_OPTIONS_STR} extract=no build=release libs")
+        else()
+            set(BUILD_CMD ${MAKE_EXE} -j${N_CORES} "XCFLAGS=${MUPDF_ARCH_FLAGS} ${MUPDF_DEFINITIONS_STR}" ${MUPDF_MAKE_OPTIONS} extract=no build=release libs)
+        endif()
+    else()
+        set(BUILD_CMD ${MAKE_EXE} -j${N_CORES} "XCFLAGS=${MUPDF_ARCH_FLAGS} ${MUPDF_DEFINITIONS_STR}" ${MUPDF_MAKE_OPTIONS} extract=no build=release libs)
+    endif()
     
     # Standard Makefile builds into build/release/
-    set(LIB_MUPDF "${MUPDF_ROOT}/build/release-cmake/libmupdf.a")
-    set(LIB_THIRD "${MUPDF_ROOT}/build/release-cmake/libmupdf-third.a")
+    set(LIB_MUPDF "${MUPDF_ROOT}/build/release/libmupdf.a")
+    set(LIB_THIRD "${MUPDF_ROOT}/build/release/libmupdf-third.a")
 endif()
 
 # ============================================================
@@ -221,8 +242,11 @@ add_custom_target(mupdf_make
     WORKING_DIRECTORY ${MUPDF_ROOT}
     COMMENT "Building MuPDF using native make..."
     BYPRODUCTS ${LIB_MUPDF} ${LIB_THIRD}
-    VERBATIM
 )
+
+if(WIN32)
+    set_property(TARGET mupdf_make PROPERTY ENVIRONMENT "PATH=C:/msys64/usr/bin;C:/msys64/ucrt64/bin;$ENV{PATH}")
+endif()
 
 # ============================================================
 # 5. Import Library

@@ -9,14 +9,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++23")
 set(CMAKE_CXX_SCAN_FOR_MODULES OFF CACHE BOOL "Disable C++ modules scanning for MinGW" FORCE)
 
-# Define UNICODE and _UNICODE for wide-character support on Windows
-if(WIN32)
-    add_definitions(-DUNICODE -D_UNICODE)
-    # Ensure wchar_t support is enabled
-    add_definitions(-D_WCHAR_T)
-    if(MSVC)
-        add_compile_options(/utf-8)
-    endif()
+if(WIN32 AND MSVC)
+    add_compile_options(/utf-8)
 endif()
 
 set(PROJ_MAJOR_VERSION 1)
@@ -390,6 +384,22 @@ FetchContent_MakeAvailable(curl)
 include(add_mupdf_library)
 
 
+################################################################
+# llama.cpp
+################################
+
+set(LLAMA_BUILD_TESTS OFF CACHE BOOL "Disable llama tests" FORCE)
+set(LLAMA_BUILD_EXAMPLES OFF CACHE BOOL "Disable llama examples" FORCE)
+set(LLAMA_BUILD_SERVER OFF CACHE BOOL "Disable llama server" FORCE)
+
+FetchContent_Declare(
+    llama
+    GIT_REPOSITORY https://github.com/ggerganov/llama.cpp.git
+    GIT_TAG        b4400
+)
+
+FetchContent_MakeAvailable(llama)
+
 ################################
 # whisper
 ################################
@@ -460,88 +470,18 @@ target_link_libraries(whisper PUBLIC ggml)
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(whisper PRIVATE -O3)
-    target_compile_options(ggml-cpu PRIVATE -O3)
+    if(TARGET ggml-cpu)
+        target_compile_options(ggml-cpu PRIVATE -O3)
+    endif()
 elseif(MSVC)
     target_compile_options(whisper PRIVATE /O2)
-    target_compile_options(ggml-cpu PRIVATE /O2)
-endif()
-
-################################
-# llama.cpp
-################################
-
-set(LLAMA_BUILD_TESTS OFF CACHE BOOL "Disable llama tests" FORCE)
-set(LLAMA_BUILD_EXAMPLES OFF CACHE BOOL "Disable llama examples" FORCE)
-set(LLAMA_BUILD_SERVER OFF CACHE BOOL "Disable llama server" FORCE)
-
-FetchContent_Declare(
-    llama
-    GIT_REPOSITORY https://github.com/ggerganov/llama.cpp.git
-    GIT_TAG        b3600
-)
-
-FetchContent_GetProperties(llama)
-if(NOT llama_POPULATED)
-    FetchContent_Populate(llama)
-
-    # Workaround for macOS CI (C++23 libc++ / Apple Clang):
-    if(EXISTS "${llama_SOURCE_DIR}/src/unicode.cpp")
-        file(READ "${llama_SOURCE_DIR}/src/unicode.cpp" LLAMA_UNICODE_CPP)
-        if(NOT LLAMA_UNICODE_CPP MATCHES "#include <algorithm>")
-            file(WRITE "${llama_SOURCE_DIR}/src/unicode.cpp" "#include <algorithm>\n${LLAMA_UNICODE_CPP}")
-        endif()
+    if(TARGET ggml-cpu)
+        target_compile_options(ggml-cpu PRIVATE /O2)
     endif()
-
-    # Isolate llama's ggml target into ggml_llama so it uses its matching ggml headers and code
-    if(EXISTS "${llama_SOURCE_DIR}/CMakeLists.txt")
-        file(READ "${llama_SOURCE_DIR}/CMakeLists.txt" LLAMA_ROOT_CMAKE)
-        if(NOT LLAMA_ROOT_CMAKE MATCHES "ggml_llama")
-            string(REPLACE "if (NOT TARGET ggml)" "if (NOT TARGET ggml_llama)" LLAMA_ROOT_CMAKE "${LLAMA_ROOT_CMAKE}")
-            string(REPLACE "get_target_property(GGML_DIRECTORY ggml" "get_target_property(GGML_DIRECTORY ggml_llama" LLAMA_ROOT_CMAKE "${LLAMA_ROOT_CMAKE}")
-            string(REPLACE "get_target_property(GGML_TARGET_DEFINES ggml" "get_target_property(GGML_TARGET_DEFINES ggml_llama" LLAMA_ROOT_CMAKE "${LLAMA_ROOT_CMAKE}")
-            string(REPLACE "get_target_property(GGML_LINK_LIBRARIES ggml" "get_target_property(GGML_LINK_LIBRARIES ggml_llama" LLAMA_ROOT_CMAKE "${LLAMA_ROOT_CMAKE}")
-            file(WRITE "${llama_SOURCE_DIR}/CMakeLists.txt" "${LLAMA_ROOT_CMAKE}")
-        endif()
-    endif()
-    if(EXISTS "${llama_SOURCE_DIR}/ggml/src/CMakeLists.txt")
-        file(READ "${llama_SOURCE_DIR}/ggml/src/CMakeLists.txt" LLAMA_GGML_CMAKE)
-        if(NOT LLAMA_GGML_CMAKE MATCHES "ggml_llama")
-            string(REPLACE "add_library(ggml\n" "add_library(ggml_llama\n" LLAMA_GGML_CMAKE "${LLAMA_GGML_CMAKE}")
-            string(REPLACE "add_library(ggml " "add_library(ggml_llama " LLAMA_GGML_CMAKE "${LLAMA_GGML_CMAKE}")
-            string(REPLACE "(ggml PUBLIC" "(ggml_llama PUBLIC" LLAMA_GGML_CMAKE "${LLAMA_GGML_CMAKE}")
-            string(REPLACE "(ggml PRIVATE" "(ggml_llama PRIVATE" LLAMA_GGML_CMAKE "${LLAMA_GGML_CMAKE}")
-            string(REPLACE "(ggml PROPERTIES" "(ggml_llama PROPERTIES" LLAMA_GGML_CMAKE "${LLAMA_GGML_CMAKE}")
-            string(REPLACE "ALIAS ggml)" "ALIAS ggml_llama)" LLAMA_GGML_CMAKE "${LLAMA_GGML_CMAKE}")
-            string(REPLACE "_ggml_vk_genshaders_cmd vulkan-shaders-gen" "_ggml_vk_genshaders_cmd vulkan-shaders-gen-llama" LLAMA_GGML_CMAKE "${LLAMA_GGML_CMAKE}")
-            file(WRITE "${llama_SOURCE_DIR}/ggml/src/CMakeLists.txt" "${LLAMA_GGML_CMAKE}")
-        endif()
-    endif()
-    if(EXISTS "${llama_SOURCE_DIR}/src/CMakeLists.txt")
-        file(READ "${llama_SOURCE_DIR}/src/CMakeLists.txt" LLAMA_SRC_CMAKE)
-        if(NOT LLAMA_SRC_CMAKE MATCHES "ggml_llama")
-            string(REPLACE "target_link_libraries(llama PUBLIC ggml)" "target_link_libraries(llama PUBLIC ggml_llama)" LLAMA_SRC_CMAKE "${LLAMA_SRC_CMAKE}")
-            file(WRITE "${llama_SOURCE_DIR}/src/CMakeLists.txt" "${LLAMA_SRC_CMAKE}")
-        endif()
-    endif()
-    if(EXISTS "${llama_SOURCE_DIR}/ggml/src/vulkan-shaders/CMakeLists.txt")
-        file(READ "${llama_SOURCE_DIR}/ggml/src/vulkan-shaders/CMakeLists.txt" LLAMA_VK_SHADERS_CMAKE)
-        string(REPLACE "set(TARGET vulkan-shaders-gen)" "set(TARGET vulkan-shaders-gen-llama)" LLAMA_VK_SHADERS_CMAKE "${LLAMA_VK_SHADERS_CMAKE}")
-        string(REPLACE "target_link_libraries(vulkan-shaders-gen " "target_link_libraries(vulkan-shaders-gen-llama " LLAMA_VK_SHADERS_CMAKE "${LLAMA_VK_SHADERS_CMAKE}")
-        string(REPLACE "vulkan-shaders-gen-llama.cpp" "vulkan-shaders-gen.cpp" LLAMA_VK_SHADERS_CMAKE "${LLAMA_VK_SHADERS_CMAKE}")
-        file(WRITE "${llama_SOURCE_DIR}/ggml/src/vulkan-shaders/CMakeLists.txt" "${LLAMA_VK_SHADERS_CMAKE}")
-    endif()
-    if(EXISTS "${llama_SOURCE_DIR}/ggml/src/ggml-vulkan/CMakeLists.txt")
-        file(READ "${llama_SOURCE_DIR}/ggml/src/ggml-vulkan/CMakeLists.txt" LLAMA_GGML_VK_CMAKE)
-        string(REPLACE "vulkan-shaders-gen" "vulkan-shaders-gen-llama" LLAMA_GGML_VK_CMAKE "${LLAMA_GGML_VK_CMAKE}")
-        string(REPLACE "vulkan-shaders-gen-llama-llama" "vulkan-shaders-gen-llama" LLAMA_GGML_VK_CMAKE "${LLAMA_GGML_VK_CMAKE}")
-        file(WRITE "${llama_SOURCE_DIR}/ggml/src/ggml-vulkan/CMakeLists.txt" "${LLAMA_GGML_VK_CMAKE}")
-    endif()
-
-    add_subdirectory(${llama_SOURCE_DIR} ${llama_BINARY_DIR})
 endif()
 
 # Set hidden visibility on ggml targets to avoid symbol collisions when linking static libraries on macOS/Linux
-foreach(target_name ggml ggml-base ggml-cpu ggml-vulkan ggml_llama)
+foreach(target_name ggml ggml-base ggml-cpu ggml-vulkan)
     if(TARGET ${target_name})
         set_target_properties(${target_name} PROPERTIES
             C_VISIBILITY_PRESET hidden

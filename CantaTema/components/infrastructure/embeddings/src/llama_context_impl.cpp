@@ -172,7 +172,7 @@ std::vector<float> LlamaContextImpl::decode_and_get_embedding(const std::vector<
 
     llama_batch batch = llama_batch_get_one(
         const_cast<llama_token*>(reinterpret_cast<const llama_token*>(tokens.data())),
-        static_cast<int32_t>(tokens.size()), 0, 0);
+        static_cast<int32_t>(tokens.size()));
 
     fn_llama_kv_cache_clear(m_ctx);
 
