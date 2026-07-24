@@ -244,7 +244,7 @@ add_custom_command(
     COMMENT "Building MuPDF using native make..."
 )
 
-add_custom_target(mupdf_make DEPENDS ${LIB_MUPDF} ${LIB_THIRD})
+add_custom_target(mupdf_make ALL DEPENDS ${LIB_MUPDF} ${LIB_THIRD})
 
 # ============================================================
 # 5. Import Library
