@@ -234,42 +234,36 @@ if(NOT "${CURRENT_CONFIG_STR}" STREQUAL "${OLD_CONFIG_STR}")
 endif()
 
 # ============================================================
-# 3.6. Ensure Initial Build of MuPDF on Configure (Fixes MinGW Makefiles)
-# ============================================================
-
-if(NOT EXISTS "${LIB_MUPDF}" OR NOT EXISTS "${LIB_THIRD}")
-    message(STATUS "Initial MuPDF build starting...")
-    execute_process(
-        COMMAND ${BUILD_CMD}
-        WORKING_DIRECTORY ${MUPDF_ROOT}
-        RESULT_VARIABLE MUPDF_INIT_RESULT
-    )
-    if(NOT MUPDF_INIT_RESULT EQUAL 0)
-        message(FATAL_ERROR "Initial MuPDF build failed with exit code ${MUPDF_INIT_RESULT}")
-    endif()
-endif()
-
-# ============================================================
 # 4. Build Target
 # ============================================================
 
-add_custom_command(
-    OUTPUT ${LIB_MUPDF} ${LIB_THIRD}
+add_custom_target(mupdf_make
     COMMAND ${BUILD_CMD}
     WORKING_DIRECTORY ${MUPDF_ROOT}
     COMMENT "Building MuPDF using native make..."
+    BYPRODUCTS ${LIB_MUPDF} ${LIB_THIRD}
+    VERBATIM
 )
 
-add_custom_target(mupdf_make ALL DEPENDS ${LIB_MUPDF} ${LIB_THIRD})
-
 # ============================================================
-# 5. Export Interface Library
+# 5. Import Library
 # ============================================================
 
-add_library(mupdf INTERFACE)
+# Helper to import the thirdparty lib
+add_library(mupdf_third STATIC IMPORTED GLOBAL)
+add_dependencies(mupdf_third mupdf_make)
+set_target_properties(mupdf_third PROPERTIES
+    IMPORTED_LOCATION "${LIB_THIRD}"
+)
+
+# Main mupdf library
+add_library(mupdf STATIC IMPORTED GLOBAL)
 add_library(mupdf::mupdf ALIAS mupdf)
 add_dependencies(mupdf mupdf_make)
 
-target_link_libraries(mupdf INTERFACE "${LIB_MUPDF}" "${LIB_THIRD}")
-target_include_directories(mupdf INTERFACE "${MUPDF_ROOT}/include")
-target_compile_definitions(mupdf INTERFACE ${MUPDF_EXPORT_DEFINITIONS})
+set_target_properties(mupdf PROPERTIES
+    IMPORTED_LOCATION "${LIB_MUPDF}"
+    INTERFACE_INCLUDE_DIRECTORIES "${MUPDF_ROOT}/include"
+    INTERFACE_LINK_LIBRARIES mupdf_third
+    INTERFACE_COMPILE_DEFINITIONS "${MUPDF_EXPORT_DEFINITIONS}"
+)
