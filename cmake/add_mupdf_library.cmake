@@ -210,6 +210,22 @@ else()
 endif()
 
 # ============================================================
+# 3.6. Ensure Initial Build of MuPDF on Configure (Fixes MinGW Makefiles)
+# ============================================================
+
+if(NOT EXISTS "${LIB_MUPDF}" OR NOT EXISTS "${LIB_THIRD}")
+    message(STATUS "Initial MuPDF build starting at configure time...")
+    execute_process(
+        COMMAND ${BUILD_CMD}
+        WORKING_DIRECTORY ${MUPDF_ROOT}
+        RESULT_VARIABLE MUPDF_INIT_RESULT
+    )
+    if(NOT MUPDF_INIT_RESULT EQUAL 0)
+        message(FATAL_ERROR "Initial MuPDF build failed with exit code ${MUPDF_INIT_RESULT}")
+    endif()
+endif()
+
+# ============================================================
 # 4. External Build Target using ExternalProject
 # ============================================================
 
