@@ -396,6 +396,9 @@ FetchContent_Declare(
     llama
     GIT_REPOSITORY https://github.com/ggerganov/llama.cpp.git
     GIT_TAG        b4400
+    GIT_SHALLOW    TRUE
+    GIT_SUBMODULES ""
+    UPDATE_DISCONNECTED TRUE
 )
 
 FetchContent_MakeAvailable(llama)
@@ -447,6 +450,9 @@ FetchContent_Declare(
     whisper
     GIT_REPOSITORY https://github.com/ggerganov/whisper.cpp.git
     GIT_TAG        v1.8.3
+    GIT_SHALLOW    TRUE
+    GIT_SUBMODULES ""
+    UPDATE_DISCONNECTED TRUE
     OVERRIDE_FIND_PACKAGE 
 )
 FetchContent_MakeAvailable(whisper)

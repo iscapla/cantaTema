@@ -134,9 +134,9 @@ jobs:
           path: |
             build/_deps
             build/CPM.cmake
-          key: ${{ runner.os }}-cmake-deps-${{ hashFiles('CMakeLists.txt', 'cmake/**') }}
+          key: ${{ runner.os }}-cmake-deps-v3-${{ hashFiles('CMakeLists.txt', 'cmake/**') }}
           restore-keys: |
-            ${{ runner.os }}-cmake-deps-
+            ${{ runner.os }}-cmake-deps-v3-
 
       # ────────────────────────────────────────────────────────────
       # 4. Configure
