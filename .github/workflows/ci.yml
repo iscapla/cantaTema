@@ -111,7 +111,7 @@ jobs:
             libudev-dev \
             libvulkan-dev \
             glslang-tools \
-            shaderc \
+            glslc \
             vulkan-validationlayers
 
       # macOS: Ensure full Xcode is active (needed for ObjC/Metal in SDL3)
