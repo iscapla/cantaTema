@@ -1,4 +1,5 @@
 include(FetchContent)
+include(ExternalProject)
 
 if(POLICY CMP0169)
     cmake_policy(SET CMP0169 OLD)
@@ -209,41 +210,21 @@ else()
 endif()
 
 # ============================================================
-# 3.5. Handle Reconfiguration (Clean if flags changed)
+# 4. External Build Target using ExternalProject
 # ============================================================
 
-# MuPDF's makefiles don't detect changes in environment variables/flags.
-# We track the build command and force a clean if it changes.
-set(MUPDF_CONFIG_FILE "${CMAKE_BINARY_DIR}/mupdf_build_config.txt")
-string(REPLACE ";" " " CURRENT_CONFIG_STR "${BUILD_CMD}")
-
-if(EXISTS "${MUPDF_CONFIG_FILE}")
-    file(READ "${MUPDF_CONFIG_FILE}" OLD_CONFIG_STR)
-else()
-    set(OLD_CONFIG_STR "")
-endif()
-
-if(NOT "${CURRENT_CONFIG_STR}" STREQUAL "${OLD_CONFIG_STR}")
-    message(STATUS "MuPDF build options changed. Cleaning to ensure correct rebuild...")
-    if(MSVC)
-        execute_process(COMMAND ${NMAKE_EXE} /f platform/win32/NMakefile clean WORKING_DIRECTORY ${MUPDF_ROOT} OUTPUT_QUIET ERROR_QUIET)
-    else()
-        execute_process(COMMAND ${MAKE_EXE} clean OUT=build/release WORKING_DIRECTORY ${MUPDF_ROOT} OUTPUT_QUIET ERROR_QUIET)
-    endif()
-    file(WRITE "${MUPDF_CONFIG_FILE}" "${CURRENT_CONFIG_STR}")
-endif()
-
-# ============================================================
-# 4. Build Target
-# ============================================================
-
-add_custom_target(mupdf_make
-    COMMAND ${BUILD_CMD}
-    WORKING_DIRECTORY ${MUPDF_ROOT}
-    COMMENT "Building MuPDF using native make..."
-    BYPRODUCTS ${LIB_MUPDF} ${LIB_THIRD}
-    VERBATIM
+ExternalProject_Add(
+    mupdf_ext
+    SOURCE_DIR "${MUPDF_ROOT}"
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND ${BUILD_CMD}
+    BUILD_IN_SOURCE 1
+    INSTALL_COMMAND ""
+    BUILD_BYPRODUCTS "${LIB_MUPDF}" "${LIB_THIRD}"
 )
+
+# Maintain alias compatibility
+add_custom_target(mupdf_make DEPENDS mupdf_ext)
 
 # ============================================================
 # 5. Import Library
@@ -251,7 +232,7 @@ add_custom_target(mupdf_make
 
 # Helper to import the thirdparty lib
 add_library(mupdf_third STATIC IMPORTED GLOBAL)
-add_dependencies(mupdf_third mupdf_make)
+add_dependencies(mupdf_third mupdf_ext)
 set_target_properties(mupdf_third PROPERTIES
     IMPORTED_LOCATION "${LIB_THIRD}"
 )
@@ -259,7 +240,7 @@ set_target_properties(mupdf_third PROPERTIES
 # Main mupdf library
 add_library(mupdf STATIC IMPORTED GLOBAL)
 add_library(mupdf::mupdf ALIAS mupdf)
-add_dependencies(mupdf mupdf_make)
+add_dependencies(mupdf mupdf_ext)
 
 set_target_properties(mupdf PROPERTIES
     IMPORTED_LOCATION "${LIB_MUPDF}"

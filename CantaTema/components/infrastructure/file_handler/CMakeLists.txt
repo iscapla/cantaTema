@@ -30,4 +30,6 @@ target_include_directories(_infra_FILE_HANDLER PRIVATE
     $<BUILD_INTERFACE:${mupdf_SOURCE_DIR}/include>
 )
 
+add_dependencies(_infra_FILE_HANDLER mupdf_ext)
+
 add_subdirectory(test)
