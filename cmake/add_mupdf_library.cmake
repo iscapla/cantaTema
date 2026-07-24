@@ -237,16 +237,14 @@ endif()
 # 4. Build Target
 # ============================================================
 
-add_custom_target(mupdf_make
+add_custom_command(
+    OUTPUT ${LIB_MUPDF} ${LIB_THIRD}
     COMMAND ${BUILD_CMD}
     WORKING_DIRECTORY ${MUPDF_ROOT}
     COMMENT "Building MuPDF using native make..."
-    BYPRODUCTS ${LIB_MUPDF} ${LIB_THIRD}
 )
 
-if(WIN32)
-    set_property(TARGET mupdf_make PROPERTY ENVIRONMENT "PATH=C:/msys64/usr/bin;C:/msys64/ucrt64/bin;$ENV{PATH}")
-endif()
+add_custom_target(mupdf_make DEPENDS ${LIB_MUPDF} ${LIB_THIRD})
 
 # ============================================================
 # 5. Import Library
