@@ -81,7 +81,7 @@ jobs:
         if: runner.os == 'Windows'
         uses: msys2/setup-msys2@v2
         with:
-          msystem: MINGW64
+          msystem: UCRT64
           update: true
           install: ${{ matrix.msys2_packages }}
 
@@ -111,6 +111,7 @@ jobs:
             libudev-dev \
             libvulkan-dev \
             glslang-tools \
+            shaderc \
             vulkan-validationlayers
 
       # macOS: Ensure full Xcode is active (needed for ObjC/Metal in SDL3)
