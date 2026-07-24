@@ -24,6 +24,7 @@ void util_logger_init(void)
 
     logger = new spdlog::logger("logger", {console_sink, file_sink});
     logger->set_level(spdlog::level::trace);
+    logger->flush_on(spdlog::level::debug);
 
     logger->trace("Logger initialized");
 }

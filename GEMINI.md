@@ -19,7 +19,7 @@ You are an Expert C++ Developer and Software Architect. Your task is to assist i
 | TagLib             | 2.1.1         | Audio metadata tagging                                   |
 | utf8cpp            | 4.0.9         | UTF-8 string handling                                    |
 | MuPDF              | —             | PDF text extraction for reference materials              |
-| Whisper.cpp        | 1.8.3         | Offline speech-to-text (Vulkan on Win/Linux, Metal on macOS) |
+| Whisper.cpp        | 1.8.3         | Offline speech-to-text (CUDA -> Vulkan -> CPU on Win/Linux, Metal -> CPU on macOS) |
 | libcurl            | curl-8_18_0   | HTTP-only build for Hugging Face model downloads         |
 | SimpleIni          | 4.25          | Header-only INI parser for `system.ini`                  |
 | fmt                | 12.1.0        | Modern string formatting                                 |
@@ -128,6 +128,7 @@ private:
 - **XOR Encryption Overlay:** For security and privacy, audio files are saved with a custom byte-level XOR masking scheme. 
 - **Encryption Implementation:** Any disk writing or reading in `SoundSystem` must pass through the `xor_process` method using `secure_fwrite` and `secure_fread`. Do not call standard `std::fwrite` or `std::fread` directly when writing or reading Opus files to disk, as they will bypass encryption/decryption, causing corruption.
 - **Audio Timestamps:** Monitor recording and playback progress in milliseconds using `get_recording_timestamp()` and `get_playing_timestamp()` respectively.
+- **Opus-to-WAV Conversion & Temporary File Cleanup:** Opus audio files must be converted into WAV format prior to speech recognition processing. Any temporary files created during audio conversion or processing MUST be automatically removed using RAII cleanup guards if something goes wrong or upon completion to prevent leaving transient temp files on disk.
 
 ## 🤖 Speech Recognition, Model Management & Coverage Analysis
 
@@ -214,6 +215,10 @@ flowchart LR
 
 ### Testing & Code Coverage
 - **Testing Requirements:** Every newly added or modified logic must have comprehensive unit tests written with the GoogleTest framework, placed under the appropriate component's `test` folder. Mocks (under `mocks` folder) should be used to isolate classes under test.
+- **Speech Recognition Testing Strategy (GoogleTest & GMock):**
+  - **Interface-Level Mocking:** Use `MockSpeechRecognition` deriving from `ISpeechRecognition` to test higher-level components (`OperationCoverage`, `Session`) without executing real model inference.
+  - **Engine Decoupling:** Decouple low-level `whisper.cpp` C library function calls behind an internal engine wrapper interface (e.g., `IWhisperEngineWrapper`) so `WhisperSpeechRecognition` can be unit-tested with a `MockWhisperEngineWrapper` without loading model binary files or triggering full hardware decoding.
+  - **Test Scenarios:** Verify context initialization and GPU-to-CPU fallback, audio buffer normalization and sample rate checks, segment/progress callback triggers and logging, error path handling on whisper execution failures, and proper RAII resource cleanup of whisper contexts.
 - **Code Coverage:** Code coverage is enabled using GCC/Clang `--coverage` options (via MinGW on Windows).
   - **Enforcement:** Production source files (`.h`, `.hpp`, `.c`, `.cpp`) must maintain at least **90% coverage per file**.
   - **Excluded from the 90% requirement:**
@@ -283,6 +288,7 @@ To run the interactive shell of the CantaTema project:
    ctest --test-dir build -C Debug
    ```
 6. **Temporary Scripts:** Create any test scripts or debug binaries inside a `scratch/` folder at the root directory of the workspace.
+7. **No Direct Modifications to `build/` Directory:** Never edit or modify files inside the `build/` directory or its subdirectories (e.g., `build/_deps/`). The `build/` directory is transient and completely wiped during clean builds or environment resets. Any build configuration patches, string replacements, or dependency modifications MUST be written cleanly into tracked repository files (such as root `CMakeLists.txt`, `cmake/*.cmake`, or component source code) so they automatically execute during CMake configuration.
 
 ## 📝 Documentation Guidelines
 - **Interface & Schema Changes:** If database schemas, configuration files, or core component interfaces change, update the documentation in the `docs` folder or add relevant annotations.

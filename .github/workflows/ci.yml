@@ -26,17 +26,20 @@ jobs:
         include:
           # ── Windows (MinGW / GCC) ──────────────────────────────
           - os: windows-latest
-            name: "Windows (MinGW)"
+            name: "Windows (MinGW UCRT64)"
             cmake_generator: "MinGW Makefiles"
             build_type: Debug
             shell: msys2 {0}
-            msys2_env: MINGW64
+            msys2_env: UCRT64
             msys2_packages: >-
-              mingw-w64-x86_64-gcc
-              mingw-w64-x86_64-cmake
-              mingw-w64-x86_64-ninja
-              mingw-w64-x86_64-make
-              mingw-w64-x86_64-vulkan-devel
+              mingw-w64-ucrt-x86_64-gcc
+              mingw-w64-ucrt-x86_64-cmake
+              mingw-w64-ucrt-x86_64-ninja
+              mingw-w64-ucrt-x86_64-make
+              mingw-w64-ucrt-x86_64-shaderc
+              mingw-w64-ucrt-x86_64-vulkan-headers
+              mingw-w64-ucrt-x86_64-vulkan-loader
+              mingw-w64-ucrt-x86_64-glslang
               git
               make
 
@@ -107,6 +110,7 @@ jobs:
             libdbus-1-dev \
             libudev-dev \
             libvulkan-dev \
+            glslang-tools \
             vulkan-validationlayers
 
       # macOS: Ensure full Xcode is active (needed for ObjC/Metal in SDL3)

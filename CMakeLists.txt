@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++23")
+set(CMAKE_CXX_SCAN_FOR_MODULES OFF CACHE BOOL "Disable C++ modules scanning for MinGW" FORCE)
 
 # Define UNICODE and _UNICODE for wide-character support on Windows
 if(WIN32)
@@ -390,41 +391,46 @@ include(add_mupdf_library)
 
 
 ################################
-# llama.cpp
-################################
-
-set(LLAMA_BUILD_TESTS OFF CACHE BOOL "Disable llama tests" FORCE)
-set(LLAMA_BUILD_EXAMPLES OFF CACHE BOOL "Disable llama examples" FORCE)
-set(LLAMA_BUILD_SERVER OFF CACHE BOOL "Disable llama server" FORCE)
-
-FetchContent_Declare(
-    llama
-    GIT_REPOSITORY https://github.com/ggerganov/llama.cpp.git
-    GIT_TAG        b3600
-)
-FetchContent_MakeAvailable(llama)
-
-# Workaround for macOS CI (C++23 libc++ / Apple Clang):
-# llama.cpp tag b3600 src/unicode.cpp omits #include <algorithm>, causing std::upper_bound to fail.
-if(EXISTS "${llama_SOURCE_DIR}/src/unicode.cpp")
-    file(READ "${llama_SOURCE_DIR}/src/unicode.cpp" LLAMA_UNICODE_CPP)
-    if(NOT LLAMA_UNICODE_CPP MATCHES "#include <algorithm>")
-        file(WRITE "${llama_SOURCE_DIR}/src/unicode.cpp" "#include <algorithm>\n${LLAMA_UNICODE_CPP}")
-    endif()
-endif()
-
-################################
 # whisper
 ################################
 
 set(WHISPER_BUILD_TESTS OFF CACHE BOOL "Disable whisper tests" FORCE)
 set(WHISPER_BUILD_EXAMPLES OFF CACHE BOOL "Disable whisper examples" FORCE)
+set(CMAKE_CXX_SCAN_FOR_MODULES OFF CACHE BOOL "Disable C++ modules scanning for Vulkan-Headers" FORCE)
 
 if(APPLE)
-  set(WHISPER_METAL ON CACHE BOOL "Enable CoreML/Metal support" FORCE)
-elseif(WIN32 OR UNIX)
-  # Enable Vulkan for Whisper acceleration on Windows/Linux (Requires Vulkan SDK)
-  set(WHISPER_VULKAN ON CACHE BOOL "Enable Whisper Vulkan support" FORCE)
+    message(STATUS "macOS detected — Enabling Metal GPU backend for Whisper.")
+    set(GGML_METAL ON CACHE BOOL "Enable Metal for GGML" FORCE)
+    set(GGML_CUDA OFF CACHE BOOL "Disable CUDA for GGML" FORCE)
+    set(GGML_VULKAN OFF CACHE BOOL "Disable Vulkan for GGML" FORCE)
+else()
+    # Priority 1: CUDA (On Windows, nvcc requires MSVC 'cl.exe' host compiler; on Linux nvcc works with GCC)
+    set(CAN_USE_CUDA FALSE)
+    if(NOT WIN32 OR MSVC)
+        find_package(CUDAToolkit QUIET)
+        if(CUDAToolkit_FOUND)
+            set(CAN_USE_CUDA TRUE)
+        endif()
+    endif()
+
+    if(CAN_USE_CUDA)
+        message(STATUS "CUDA Toolkit & compatible host compiler found — Enabling CUDA GPU backend for Whisper (Priority 1).")
+        set(GGML_CUDA ON CACHE BOOL "Enable CUDA for GGML" FORCE)
+        set(GGML_VULKAN OFF CACHE BOOL "Disable Vulkan for GGML" FORCE)
+    else()
+        # Priority 2: Vulkan (Supported under MinGW GCC, MSVC, and Linux)
+        find_package(Vulkan QUIET)
+        if(Vulkan_FOUND)
+            message(STATUS "CUDA not supported by toolchain, Vulkan SDK found — Enabling Vulkan GPU backend for Whisper (Priority 2).")
+            set(GGML_CUDA OFF CACHE BOOL "Disable CUDA for GGML" FORCE)
+            set(GGML_VULKAN ON CACHE BOOL "Enable Vulkan GPU acceleration" FORCE)
+        else()
+            # Priority 3: CPU
+            message(STATUS "Neither CUDA nor Vulkan GPU backends available for toolchain — Using CPU backend for Whisper (Priority 3).")
+            set(GGML_CUDA OFF CACHE BOOL "Disable CUDA for GGML" FORCE)
+            set(GGML_VULKAN OFF CACHE BOOL "Disable Vulkan GPU acceleration" FORCE)
+        endif()
+    endif()
 endif()
 
 FetchContent_Declare(
@@ -441,19 +447,98 @@ target_include_directories(whisper PUBLIC
     $<BUILD_INTERFACE:${whisper_SOURCE_DIR}/ggml/include>
     $<BUILD_INTERFACE:${whisper_SOURCE_DIR}/ggml/src>
 )
-target_compile_definitions(whisper PRIVATE
+set_target_properties(whisper PROPERTIES
+    CXX_STANDARD 23
+    CXX_STANDARD_REQUIRED ON
+)
+target_compile_definitions(whisper PUBLIC
+    GGML_USE_CPU
     GGML_VERSION="1.8.3"
     GGML_COMMIT="unknown"
 )
-target_sources(whisper PRIVATE
-    ${whisper_SOURCE_DIR}/ggml/src/ggml.c
-    ${whisper_SOURCE_DIR}/ggml/src/ggml-alloc.c
-    ${whisper_SOURCE_DIR}/ggml/src/ggml-quants.c
-    ${whisper_SOURCE_DIR}/ggml/src/ggml-backend.cpp
-    ${whisper_SOURCE_DIR}/ggml/src/ggml-backend-reg.cpp
-    ${whisper_SOURCE_DIR}/ggml/src/ggml-threading.cpp
-    ${whisper_SOURCE_DIR}/ggml/src/gguf.cpp
+target_link_libraries(whisper PUBLIC ggml)
+
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(whisper PRIVATE -O3)
+    target_compile_options(ggml-cpu PRIVATE -O3)
+elseif(MSVC)
+    target_compile_options(whisper PRIVATE /O2)
+    target_compile_options(ggml-cpu PRIVATE /O2)
+endif()
+
+################################
+# llama.cpp
+################################
+
+set(LLAMA_BUILD_TESTS OFF CACHE BOOL "Disable llama tests" FORCE)
+set(LLAMA_BUILD_EXAMPLES OFF CACHE BOOL "Disable llama examples" FORCE)
+set(LLAMA_BUILD_SERVER OFF CACHE BOOL "Disable llama server" FORCE)
+
+FetchContent_Declare(
+    llama
+    GIT_REPOSITORY https://github.com/ggerganov/llama.cpp.git
+    GIT_TAG        b3600
 )
+
+FetchContent_GetProperties(llama)
+if(NOT llama_POPULATED)
+    FetchContent_Populate(llama)
+
+    # Workaround for macOS CI (C++23 libc++ / Apple Clang):
+    if(EXISTS "${llama_SOURCE_DIR}/src/unicode.cpp")
+        file(READ "${llama_SOURCE_DIR}/src/unicode.cpp" LLAMA_UNICODE_CPP)
+        if(NOT LLAMA_UNICODE_CPP MATCHES "#include <algorithm>")
+            file(WRITE "${llama_SOURCE_DIR}/src/unicode.cpp" "#include <algorithm>\n${LLAMA_UNICODE_CPP}")
+        endif()
+    endif()
+
+    # Isolate llama's ggml target into ggml_llama so it does not collide with whisper's ggml target
+    if(EXISTS "${llama_SOURCE_DIR}/CMakeLists.txt")
+        file(READ "${llama_SOURCE_DIR}/CMakeLists.txt" LLAMA_ROOT_CMAKE)
+        if(NOT LLAMA_ROOT_CMAKE MATCHES "ggml_llama")
+            string(REPLACE "if (NOT TARGET ggml)" "if (NOT TARGET ggml_llama)" LLAMA_ROOT_CMAKE "${LLAMA_ROOT_CMAKE}")
+            string(REPLACE "get_target_property(GGML_DIRECTORY ggml" "get_target_property(GGML_DIRECTORY ggml_llama" LLAMA_ROOT_CMAKE "${LLAMA_ROOT_CMAKE}")
+            string(REPLACE "get_target_property(GGML_TARGET_DEFINES ggml" "get_target_property(GGML_TARGET_DEFINES ggml_llama" LLAMA_ROOT_CMAKE "${LLAMA_ROOT_CMAKE}")
+            string(REPLACE "get_target_property(GGML_LINK_LIBRARIES ggml" "get_target_property(GGML_LINK_LIBRARIES ggml_llama" LLAMA_ROOT_CMAKE "${LLAMA_ROOT_CMAKE}")
+            file(WRITE "${llama_SOURCE_DIR}/CMakeLists.txt" "${LLAMA_ROOT_CMAKE}")
+        endif()
+    endif()
+    if(EXISTS "${llama_SOURCE_DIR}/ggml/src/CMakeLists.txt")
+        file(READ "${llama_SOURCE_DIR}/ggml/src/CMakeLists.txt" LLAMA_GGML_CMAKE)
+        if(NOT LLAMA_GGML_CMAKE MATCHES "ggml_llama")
+            string(REPLACE "add_library(ggml\n" "add_library(ggml_llama\n" LLAMA_GGML_CMAKE "${LLAMA_GGML_CMAKE}")
+            string(REPLACE "add_library(ggml " "add_library(ggml_llama " LLAMA_GGML_CMAKE "${LLAMA_GGML_CMAKE}")
+            string(REPLACE "(ggml PUBLIC" "(ggml_llama PUBLIC" LLAMA_GGML_CMAKE "${LLAMA_GGML_CMAKE}")
+            string(REPLACE "(ggml PRIVATE" "(ggml_llama PRIVATE" LLAMA_GGML_CMAKE "${LLAMA_GGML_CMAKE}")
+            string(REPLACE "(ggml PROPERTIES" "(ggml_llama PROPERTIES" LLAMA_GGML_CMAKE "${LLAMA_GGML_CMAKE}")
+            string(REPLACE "ALIAS ggml)" "ALIAS ggml_llama)" LLAMA_GGML_CMAKE "${LLAMA_GGML_CMAKE}")
+            string(REPLACE "_ggml_vk_genshaders_cmd vulkan-shaders-gen" "_ggml_vk_genshaders_cmd vulkan-shaders-gen-llama" LLAMA_GGML_CMAKE "${LLAMA_GGML_CMAKE}")
+            file(WRITE "${llama_SOURCE_DIR}/ggml/src/CMakeLists.txt" "${LLAMA_GGML_CMAKE}")
+        endif()
+    endif()
+    if(EXISTS "${llama_SOURCE_DIR}/src/CMakeLists.txt")
+        file(READ "${llama_SOURCE_DIR}/src/CMakeLists.txt" LLAMA_SRC_CMAKE)
+        if(NOT LLAMA_SRC_CMAKE MATCHES "ggml_llama")
+            string(REPLACE "target_link_libraries(llama PUBLIC ggml)" "target_link_libraries(llama PUBLIC ggml_llama)" LLAMA_SRC_CMAKE "${LLAMA_SRC_CMAKE}")
+            file(WRITE "${llama_SOURCE_DIR}/src/CMakeLists.txt" "${LLAMA_SRC_CMAKE}")
+        endif()
+    endif()
+    if(EXISTS "${llama_SOURCE_DIR}/ggml/src/vulkan-shaders/CMakeLists.txt")
+        file(READ "${llama_SOURCE_DIR}/ggml/src/vulkan-shaders/CMakeLists.txt" LLAMA_VK_SHADERS_CMAKE)
+        string(REPLACE "set(TARGET vulkan-shaders-gen)" "set(TARGET vulkan-shaders-gen-llama)" LLAMA_VK_SHADERS_CMAKE "${LLAMA_VK_SHADERS_CMAKE}")
+        string(REPLACE "target_link_libraries(vulkan-shaders-gen " "target_link_libraries(vulkan-shaders-gen-llama " LLAMA_VK_SHADERS_CMAKE "${LLAMA_VK_SHADERS_CMAKE}")
+        string(REPLACE "vulkan-shaders-gen-llama.cpp" "vulkan-shaders-gen.cpp" LLAMA_VK_SHADERS_CMAKE "${LLAMA_VK_SHADERS_CMAKE}")
+        file(WRITE "${llama_SOURCE_DIR}/ggml/src/vulkan-shaders/CMakeLists.txt" "${LLAMA_VK_SHADERS_CMAKE}")
+    endif()
+    if(EXISTS "${llama_SOURCE_DIR}/ggml/src/ggml-vulkan/CMakeLists.txt")
+        file(READ "${llama_SOURCE_DIR}/ggml/src/ggml-vulkan/CMakeLists.txt" LLAMA_GGML_VK_CMAKE)
+        string(REPLACE "vulkan-shaders-gen" "vulkan-shaders-gen-llama" LLAMA_GGML_VK_CMAKE "${LLAMA_GGML_VK_CMAKE}")
+        string(REPLACE "vulkan-shaders-gen-llama-llama" "vulkan-shaders-gen-llama" LLAMA_GGML_VK_CMAKE "${LLAMA_GGML_VK_CMAKE}")
+        file(WRITE "${llama_SOURCE_DIR}/ggml/src/ggml-vulkan/CMakeLists.txt" "${LLAMA_GGML_VK_CMAKE}")
+    endif()
+
+    add_subdirectory(${llama_SOURCE_DIR} ${llama_BINARY_DIR})
+endif()
 
 #####################################################################################################
 # PROJECT RULES

@@ -165,3 +165,63 @@ To generate visual HTML report details:
    /ucrt64/bin/gcovr.exe -r . --filter CantaTema/ --html-details -o build/coverage.html
    ```
 3. Open `build/coverage.html` in your browser.
+
+---
+
+## ⚡ 8. GPU Acceleration Architecture & Selection Rules
+
+CantaTema supports local AI inference acceleration (for Whisper.cpp speech-to-text and llama.cpp text embeddings) across Windows, Linux, and macOS.
+
+### Toolchain & Backend Selection Matrix
+
+| Operating System | Toolchain / Compiler | Primary GPU Backend | Secondary Fallback | Notes & Technical Rationale |
+|------------------|----------------------|---------------------|--------------------|-----------------------------|
+| **Windows**      | **MinGW GCC**        | **Vulkan**          | CPU                | `nvcc` requires MSVC `cl.exe` on Windows. Vulkan offloads tensor matrix operations directly to NVIDIA Tensor Cores (`GL_NV_cooperative_matrix2`) at native FP16 execution speeds. |
+| **Windows**      | MSVC (`cl.exe`)      | CUDA                | Vulkan -> CPU      | Built natively using NVIDIA CUDA Toolkit. |
+| **Linux**        | GCC / Clang          | CUDA                | Vulkan -> CPU      | `nvcc` natively supports GCC host compiler on Linux. |
+| **macOS**        | Apple Clang          | Metal               | CPU                | Native Metal performance on Apple Silicon. |
+
+### GPU Acceleration Priority Selection Schema
+
+```mermaid
+flowchart TD
+    OS["Target Platform & OS"] --> WIN_LINUX["Windows / Linux"]
+    OS --> MAC["macOS"]
+
+    MAC --> MAC_P1["Priority 1: Metal"]
+    MAC_P1 --> MAC_P2["Priority 2: CPU"]
+
+    WIN_LINUX --> TOOLCHAIN{"Toolchain / Compiler?"}
+
+    TOOLCHAIN -- "MSVC (cl.exe) / Linux GCC" --> CUDA_PATH["Priority 1: CUDA"]
+    CUDA_PATH --> CUDA_FB["Priority 2: Vulkan -> Priority 3: CPU"]
+
+    TOOLCHAIN -- "Windows MinGW GCC" --> VK_PATH["Priority 1: Vulkan\n(Active on RTX 3070 Ti)"]
+    VK_PATH --> VK_FB["Priority 2: CPU"]
+```
+
+```text
+               ┌───────────────────────────────────────────────┐
+               │              Target Platform & OS             │
+               └───────────────────────┬───────────────────────┘
+                                       │
+                      ┌────────────────┴────────────────┐
+                      ▼                                 ▼
+             Windows / Linux                         macOS
+                      │                                 │
+           ┌──────────┴──────────┐                      ├─ Priority 1: Metal
+           ▼                     ▼                      └─ Priority 2: CPU
+    MSVC / Linux GCC         MinGW GCC
+           │                     │
+   Priority 1: CUDA      Priority 1: Vulkan (Active on RTX 3070 Ti)
+   Priority 2: Vulkan    Priority 2: CPU
+   Priority 3: CPU
+```
+
+### Technical Rationale: Vulkan on Windows MinGW GCC
+
+1. **Host Compiler Requirement (`nvcc` on Windows):**
+   NVIDIA's `nvcc.exe` compiler on Windows strictly requires Microsoft Visual C++ (`cl.exe`) as its host compiler backend. When building under MinGW GCC (`g++.exe` / MSYS2 UCRT64), `nvcc` fails at configuration time (`nvcc fatal: Cannot find compiler 'cl.exe' in PATH`).
+2. **NVIDIA Tensor Core Offloading:**
+   The Vulkan backend (`ggml-vulkan`) compiles natively under MinGW GCC using `glslc` (SPIR-V shader compiler from `shaderc`) and standard Vulkan loader (`vulkan-1.dll`). On NVIDIA RTX GPUs (such as the RTX 3070 Ti / 4000 / 5000 series), Vulkan utilizes NVIDIA cooperative matrix extensions (`GL_NV_cooperative_matrix2`), offloading model tensor weights directly into VRAM and achieving GPU performance matching CUDA.
+

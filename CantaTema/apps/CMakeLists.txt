@@ -5,7 +5,6 @@ string(TOUPPER ${DIR_NAME} COMPONENT_PROJECT_NAME)
 # Create child targets
 add_subdirectory(terminal)
 
-
 project(
     Terminal_CLI
     DESCRIPTION "CantaTema - Terminal_CLI"
