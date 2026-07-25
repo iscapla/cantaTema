@@ -1,9 +1,5 @@
 include(FetchContent)
 
-if(POLICY CMP0169)
-    cmake_policy(SET CMP0169 OLD)
-endif()
-
 # ============================================================
 # 1. Fetch MuPDF (Source only)
 # ============================================================
@@ -35,7 +31,6 @@ if(NOT mupdf_src_POPULATED)
         thirdparty/jbig2dec
         thirdparty/mujs
         thirdparty/lcms2
-        thirdparty/gumbo-parser
     )
 
     execute_process(
@@ -101,8 +96,6 @@ foreach(DEF IN LISTS MUPDF_DEFINITIONS)
 endforeach()
 
 set(MUPDF_MAKE_OPTIONS
-    "CC=${CMAKE_C_COMPILER}"
-    "CXX=${CMAKE_CXX_COMPILER}"
     HAVE_CURL=no
     HAVE_FREETYPE=no
     HAVE_GLFW=no
@@ -133,17 +126,9 @@ set(MUPDF_MAKE_OPTIONS
     HAVE_TIFF=no
     HAVE_X11=no
     HAVE_ZXINGCPP=no
-    HAVE_CJK=no
-    HAVE_CJK_FULL=no
-    HAVE_CJK_SINGLE=no
-    "FONT_FLAGS="
-    "TOFU_FLAGS="
-    FONT_CJK=no
-    FONT_SMALL=yes
-    TOFU_CJK_LANG=no
-    TOFU_CJK_EXT=no
     USE_BROTLI=no
     USE_EXTRACT=no
+    USE_GUMBO=no
     USE_LEPTONICA=no
     USE_LIBARCHIVE=no
     USE_MUJS=no
@@ -191,41 +176,43 @@ else()
         set(MUPDF_ARCH_FLAGS "-msse4.1")
     endif()
 
-    if(WIN32)
-        find_program(SH_EXE sh PATHS C:/msys64/usr/bin C:/msys64/ucrt64/bin "C:/Program Files/Git/bin")
-        if(SH_EXE)
-            string(REPLACE ";" " " MUPDF_MAKE_OPTIONS_STR "${MUPDF_MAKE_OPTIONS}")
-            set(BUILD_CMD ${SH_EXE} -c "export PATH=/usr/bin:/ucrt64/bin:C:/msys64/usr/bin:C:/msys64/ucrt64/bin:\$PATH; ${MAKE_EXE} -j${N_CORES} XCFLAGS=\"${MUPDF_ARCH_FLAGS} ${MUPDF_DEFINITIONS_STR}\" ${MUPDF_MAKE_OPTIONS_STR} extract=no build=release OUT=build/release libs")
-        else()
-            set(BUILD_CMD ${MAKE_EXE} -j${N_CORES} "XCFLAGS=${MUPDF_ARCH_FLAGS} ${MUPDF_DEFINITIONS_STR}" ${MUPDF_MAKE_OPTIONS} extract=no build=release OUT=build/release libs)
-        endif()
-    else()
-        set(BUILD_CMD ${MAKE_EXE} -j${N_CORES} "XCFLAGS=${MUPDF_ARCH_FLAGS} ${MUPDF_DEFINITIONS_STR}" ${MUPDF_MAKE_OPTIONS} extract=no build=release OUT=build/release libs)
-    endif()
+    set(BUILD_CMD ${MAKE_EXE} -j${N_CORES} "XCFLAGS=${MUPDF_ARCH_FLAGS} ${MUPDF_DEFINITIONS_STR}" ${MUPDF_MAKE_OPTIONS} extract=no OUT=build/release-cmake)
     
     # Standard Makefile builds into build/release/
-    set(LIB_MUPDF "${MUPDF_ROOT}/build/release/libmupdf.a")
-    set(LIB_THIRD "${MUPDF_ROOT}/build/release/libmupdf-third.a")
+    set(LIB_MUPDF "${MUPDF_ROOT}/build/release-cmake/libmupdf.a")
+    set(LIB_THIRD "${MUPDF_ROOT}/build/release-cmake/libmupdf-third.a")
 endif()
 
 # ============================================================
-# 3.5. Ensure Target File Directory and Placeholder Files Exist at Configure Time
+# 3.5. Handle Reconfiguration (Clean if flags changed)
 # ============================================================
 
-get_filename_component(MUPDF_BUILD_DIR "${LIB_MUPDF}" DIRECTORY)
-file(MAKE_DIRECTORY "${MUPDF_BUILD_DIR}")
-if(NOT EXISTS "${LIB_MUPDF}")
-    file(TOUCH "${LIB_MUPDF}")
+# MuPDF's makefiles don't detect changes in environment variables/flags.
+# We track the build command and force a clean if it changes.
+set(MUPDF_CONFIG_FILE "${CMAKE_BINARY_DIR}/mupdf_build_config.txt")
+string(REPLACE ";" " " CURRENT_CONFIG_STR "${BUILD_CMD}")
+
+if(EXISTS "${MUPDF_CONFIG_FILE}")
+    file(READ "${MUPDF_CONFIG_FILE}" OLD_CONFIG_STR)
+else()
+    set(OLD_CONFIG_STR "")
 endif()
-if(NOT EXISTS "${LIB_THIRD}")
-    file(TOUCH "${LIB_THIRD}")
+
+if(NOT "${CURRENT_CONFIG_STR}" STREQUAL "${OLD_CONFIG_STR}")
+    message(STATUS "MuPDF build options changed. Cleaning to ensure correct rebuild...")
+    if(MSVC)
+        execute_process(COMMAND ${NMAKE_EXE} /f platform/win32/NMakefile clean WORKING_DIRECTORY ${MUPDF_ROOT} OUTPUT_QUIET ERROR_QUIET)
+    else()
+        execute_process(COMMAND ${MAKE_EXE} clean OUT=build/release-cmake WORKING_DIRECTORY ${MUPDF_ROOT} OUTPUT_QUIET ERROR_QUIET)
+    endif()
+    file(WRITE "${MUPDF_CONFIG_FILE}" "${CURRENT_CONFIG_STR}")
 endif()
 
 # ============================================================
 # 4. Build Target
 # ============================================================
 
-add_custom_target(mupdf_make ALL
+add_custom_target(mupdf_make
     COMMAND ${BUILD_CMD}
     WORKING_DIRECTORY ${MUPDF_ROOT}
     COMMENT "Building MuPDF using native make..."
