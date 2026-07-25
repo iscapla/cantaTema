@@ -20,6 +20,13 @@ function(create_test_exec)
     
     add_executable(${PARSED_ARGS_TARGET} ${PARSED_ARGS_SRCS})
     
+    if(TARGET mupdf_make)
+        add_dependencies(${PARSED_ARGS_TARGET} mupdf_make)
+    endif()
+    if(TARGET mupdf_ext)
+        add_dependencies(${PARSED_ARGS_TARGET} mupdf_ext)
+    endif()
+    
     if(PARSED_ARGS_INC_PRIVATE)
         target_link_libraries(${PARSED_ARGS_TARGET} PRIVATE gtest gmock ${PARSED_ARGS_INC_PRIVATE})
     endif(PARSED_ARGS_INC_PRIVATE)

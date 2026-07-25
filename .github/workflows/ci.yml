@@ -81,7 +81,7 @@ jobs:
         if: runner.os == 'Windows'
         uses: msys2/setup-msys2@v2
         with:
-          msystem: MINGW64
+          msystem: UCRT64
           update: true
           install: ${{ matrix.msys2_packages }}
 
@@ -111,6 +111,7 @@ jobs:
             libudev-dev \
             libvulkan-dev \
             glslang-tools \
+            glslc \
             vulkan-validationlayers
 
       # macOS: Ensure full Xcode is active (needed for ObjC/Metal in SDL3)
@@ -133,9 +134,9 @@ jobs:
           path: |
             build/_deps
             build/CPM.cmake
-          key: ${{ runner.os }}-cmake-deps-${{ hashFiles('CMakeLists.txt', 'cmake/**') }}
+          key: ${{ runner.os }}-cmake-deps-v3-${{ hashFiles('CMakeLists.txt', 'cmake/**') }}
           restore-keys: |
-            ${{ runner.os }}-cmake-deps-
+            ${{ runner.os }}-cmake-deps-v3-
 
       # ────────────────────────────────────────────────────────────
       # 4. Configure
