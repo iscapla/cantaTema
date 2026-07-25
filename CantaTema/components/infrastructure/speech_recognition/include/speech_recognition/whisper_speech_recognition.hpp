@@ -10,9 +10,19 @@
 
 struct whisper_context;
 
+namespace cantatema::infra {
+class IGpuDetector;
+}
+
+class IWhisperEngineWrapper;
+
 class WhisperSpeechRecognition : public ISpeechRecognition {
 public:
-    explicit WhisperSpeechRecognition(std::shared_ptr<ISoundSystem> sound_system = nullptr);
+    explicit WhisperSpeechRecognition(
+        std::shared_ptr<ISoundSystem> sound_system = nullptr,
+        std::shared_ptr<IWhisperEngineWrapper> engine_wrapper = nullptr,
+        std::shared_ptr<cantatema::infra::IGpuDetector> gpu_detector = nullptr
+    );
     ~WhisperSpeechRecognition() override;
 
     rst_code_e initialize(const speech_recognition_config_t& config) override;
@@ -23,6 +33,8 @@ public:
 
 private:
     std::shared_ptr<ISoundSystem> m_soundSystem;
+    std::shared_ptr<IWhisperEngineWrapper> m_engineWrapper;
+    std::shared_ptr<cantatema::infra::IGpuDetector> m_gpuDetector;
     speech_recognition_config_t m_config;
     whisper_context* m_whisperCtx{nullptr};
     std::vector<TranscriptSegment> m_segments;

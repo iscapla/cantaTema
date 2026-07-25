@@ -6,7 +6,11 @@ create_test_exec(
     SRCS
         t_speech_recognition_main.cxx
         t_whisper_speech_recognition.cxx
+        t_whisper_config_and_init.cxx
+        t_whisper_audio_conversion.cxx
+        t_whisper_transcription_engine.cxx
         t_voice_quality_analyzer.cxx
+        t_gpu_detector.cxx
     INC_PRIVATE
         CORE::PRIMITIVES
         CORE::CONFIGURATION

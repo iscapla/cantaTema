@@ -1,4 +1,6 @@
 #include "speech_recognition/whisper_speech_recognition.hpp"
+#include "speech_recognition/i_whisper_engine_wrapper.hpp"
+#include "speech_recognition/whisper_engine_wrapper.hpp"
 
 #include <fstream>
 #include <sstream>
@@ -175,12 +177,22 @@ static bool convert_opus_to_wav(const std::string& opus_path, const std::string&
 
 } // anonymous namespace
 
-WhisperSpeechRecognition::WhisperSpeechRecognition(std::shared_ptr<ISoundSystem> sound_system)
-    : m_soundSystem(sound_system) {}
+WhisperSpeechRecognition::WhisperSpeechRecognition(
+    std::shared_ptr<ISoundSystem> sound_system,
+    std::shared_ptr<IWhisperEngineWrapper> engine_wrapper,
+    std::shared_ptr<cantatema::infra::IGpuDetector> gpu_detector
+) : m_soundSystem(sound_system), m_engineWrapper(engine_wrapper), m_gpuDetector(gpu_detector) {
+    if (!m_engineWrapper) {
+        m_engineWrapper = std::make_shared<WhisperEngineWrapper>();
+    }
+    if (!m_gpuDetector) {
+        m_gpuDetector = std::make_shared<cantatema::infra::GpuDetector>();
+    }
+}
 
 WhisperSpeechRecognition::~WhisperSpeechRecognition() {
-    if (m_whisperCtx) {
-        whisper_free(m_whisperCtx);
+    if (m_whisperCtx && m_engineWrapper) {
+        m_engineWrapper->free_context(m_whisperCtx);
         m_whisperCtx = nullptr;
     }
 }
@@ -190,8 +202,8 @@ rst_code_e WhisperSpeechRecognition::initialize(const speech_recognition_config_
     m_config = config;
     m_status = speech_recognition_status_e::IDLE;
 
-    if (m_whisperCtx) {
-        whisper_free(m_whisperCtx);
+    if (m_whisperCtx && m_engineWrapper) {
+        m_engineWrapper->free_context(m_whisperCtx);
         m_whisperCtx = nullptr;
     }
 
@@ -214,20 +226,17 @@ rst_code_e WhisperSpeechRecognition::initialize(const speech_recognition_config_
         return FILE_NOT_FOUND;
     }
 
-    cantatema::infra::AccelerationReport accel_report = cantatema::infra::detect_accelerators();
+    cantatema::infra::AccelerationReport accel_report = m_gpuDetector ? m_gpuDetector->detect_accelerators() : cantatema::infra::detect_accelerators();
 
-    struct whisper_context_params cparams = whisper_context_default_params();
-    cparams.use_gpu = config.use_gpu || accel_report.use_gpu;
-    cparams.flash_attn = false;
+    bool request_gpu = config.use_gpu || accel_report.use_gpu;
 
     if (logger) logger->info("[WhisperSpeechRecognition] Initializing whisper context (GPU acceleration strategy: {}, use_gpu: {})",
-                             accel_report.selected_device_name, cparams.use_gpu ? "ON" : "OFF");
+                             accel_report.selected_device_name, request_gpu ? "ON" : "OFF");
 
-    m_whisperCtx = whisper_init_from_file_with_params(model_path.string().c_str(), cparams);
-    if (!m_whisperCtx && cparams.use_gpu) {
+    m_whisperCtx = m_engineWrapper->init_from_file_with_params(model_path.string(), request_gpu);
+    if (!m_whisperCtx && request_gpu) {
         if (logger) logger->warn("[WhisperSpeechRecognition] GPU context initialization failed or no supported GPU found. Retrying with CPU mode...");
-        cparams.use_gpu = false;
-        m_whisperCtx = whisper_init_from_file_with_params(model_path.string().c_str(), cparams);
+        m_whisperCtx = m_engineWrapper->init_from_file_with_params(model_path.string(), false);
     }
 
     if (!m_whisperCtx) {
@@ -331,46 +340,6 @@ rst_code_e WhisperSpeechRecognition::submit_task(const std::string& audio_file_p
 
     m_segments.clear();
 
-    struct whisper_full_params wparams = whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
-
-    std::string lang = m_config.language.empty() ? "es" : m_config.language;
-    wparams.language        = lang.c_str();
-    wparams.n_threads       = 8; // Optimal P-core threads
-    wparams.duration_ms     = 0; // 0 = process full audio file
-    wparams.print_progress  = false;
-    wparams.print_special   = false;
-    wparams.print_realtime  = false;
-    wparams.print_timestamps = false;
-    wparams.no_timestamps   = false;
-    wparams.single_segment  = false;
-    wparams.translate       = false;
-    wparams.token_timestamps = true;
-
-    wparams.temperature_inc = 0.0f;  // Disable fallback retries on low confidence/silence
-    wparams.greedy.best_of  = 1;     // Fast single-pass greedy decoding
-    wparams.no_context      = true;  // Disable past text context overhead
-
-    wparams.new_segment_callback = [](struct whisper_context* ctx_cb, struct whisper_state*, int n_new, void*) {
-        const int n_segments = whisper_full_n_segments(ctx_cb);
-        for (int i = n_segments - n_new; i < n_segments; ++i) {
-            const char* text = whisper_full_get_segment_text(ctx_cb, i);
-            const int64_t t0 = whisper_full_get_segment_t0(ctx_cb, i) * 10;
-            const int64_t t1 = whisper_full_get_segment_t1(ctx_cb, i) * 10;
-            const double s0  = static_cast<double>(t0) / 1000.0;
-            const double s1  = static_cast<double>(t1) / 1000.0;
-
-            if (logger) logger->debug("[seg {:02d}] [{:.2f}s -> {:.2f}s] {}", i, s0, s1, text ? text : "");
-        }
-    };
-
-    wparams.progress_callback = [](struct whisper_context*, struct whisper_state*, int progress, void*) {
-        static int last_reported_progress = -1;
-        if (progress != last_reported_progress) {
-            if (logger) logger->info("Transcription progress: {}%", progress);
-            last_reported_progress = progress;
-        }
-    };
-
     std::vector<float> pcm_samples = decode_audio_to_pcm(audio_file_path);
     if (pcm_samples.empty()) {
         if (logger) logger->error("[WhisperSpeechRecognition] Failed to decode audio from: {}", audio_file_path);
@@ -382,10 +351,11 @@ rst_code_e WhisperSpeechRecognition::submit_task(const std::string& audio_file_p
     }
 
     const double duration_s = static_cast<double>(pcm_samples.size()) / WHISPER_SAMPLE_RATE;
-    if (logger) logger->info("[WhisperSpeechRecognition] Running transcription ({} thread(s), {} samples / {:.2f} s)...",
-                             wparams.n_threads, pcm_samples.size(), duration_s);
+    if (logger) logger->info("[WhisperSpeechRecognition] Running transcription ({} samples / {:.2f} s)...",
+                             pcm_samples.size(), duration_s);
 
-    int ret = whisper_full(m_whisperCtx, wparams, pcm_samples.data(), static_cast<int>(pcm_samples.size()));
+    std::string lang = m_config.language.empty() ? "es" : m_config.language;
+    int ret = m_engineWrapper->run_full(m_whisperCtx, lang, pcm_samples);
     if (ret != 0) {
         if (logger) logger->error("[WhisperSpeechRecognition] whisper_full failed with code: {}", ret);
         m_status = speech_recognition_status_e::ERROR;
@@ -395,31 +365,16 @@ rst_code_e WhisperSpeechRecognition::submit_task(const std::string& audio_file_p
         return UNKNOWN;
     }
 
-    const int n_segments = whisper_full_n_segments(m_whisperCtx);
-    if (logger) logger->info("[WhisperSpeechRecognition] Transcription complete — {} segment(s)", n_segments);
+    auto raw_segments = m_engineWrapper->extract_segments(m_whisperCtx);
+    if (logger) logger->info("[WhisperSpeechRecognition] Transcription complete — {} segment(s)", raw_segments.size());
 
-    for (int i = 0; i < n_segments; ++i) {
-        const int64_t t0 = whisper_full_get_segment_t0(m_whisperCtx, i) * 10;
-        const int64_t t1 = whisper_full_get_segment_t1(m_whisperCtx, i) * 10;
-        const char* text_ptr = whisper_full_get_segment_text(m_whisperCtx, i);
-
+    for (const auto& raw_seg : raw_segments) {
         TranscriptSegment seg;
-        seg.start_time_ms = static_cast<uint64_t>(t0);
-        seg.end_time_ms = static_cast<uint64_t>(t1);
-        seg.text = text_ptr ? std::string(text_ptr) : "";
-
-        const int n_tokens = whisper_full_n_tokens(m_whisperCtx, i);
-        float sum_prob = 0.0f;
-        int count = 0;
-        for (int j = 0; j < n_tokens; ++j) {
-            auto token_data = whisper_full_get_token_data(m_whisperCtx, i, j);
-            if (token_data.p > 0.0f) {
-                sum_prob += token_data.p;
-                count++;
-            }
-        }
-        seg.confidence_score = (count > 0) ? (sum_prob / count) : 1.0f;
-        seg.avg_logprob = (count > 0) ? std::log(seg.confidence_score) : 0.0f;
+        seg.start_time_ms = static_cast<uint64_t>(raw_seg.t0);
+        seg.end_time_ms = static_cast<uint64_t>(raw_seg.t1);
+        seg.text = raw_seg.text;
+        seg.confidence_score = raw_seg.avg_confidence;
+        seg.avg_logprob = raw_seg.avg_logprob;
 
         m_segments.push_back(seg);
     }

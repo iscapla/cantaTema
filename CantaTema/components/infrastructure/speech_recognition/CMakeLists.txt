@@ -5,6 +5,7 @@ create_infra_library(
     "speech_recognition"
     SRCS
     src/whisper_speech_recognition.cpp
+    src/whisper_engine_wrapper.cpp
     src/voice_quality_analyzer.cpp
     src/gpu_detector.cpp
     INC_PUBLIC

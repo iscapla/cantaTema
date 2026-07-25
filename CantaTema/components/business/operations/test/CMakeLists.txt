@@ -11,6 +11,9 @@ create_test_exec(
         t_operation_user_metrics.cxx
         t_operation_user.cxx
         t_operation_coverage.cxx
+        t_operation_coverage_validation.cxx
+        t_operation_coverage_pipeline_failures.cxx
+        t_operation_coverage_scoring_and_reports.cxx
 
     INC_PRIVATE
         CORE::PRIMITIVES

@@ -9,6 +9,7 @@
 #include <cstddef>
 #include <string>
 #include <vector>
+#include <memory>
 
 namespace cantatema::infra {
 
@@ -39,11 +40,34 @@ struct AccelerationReport {
 };
 
 /**
+ * @class IGpuDetector
+ * @brief Abstract interface for hardware accelerator detection and capability reporting.
+ */
+class IGpuDetector {
+public:
+    virtual ~IGpuDetector() = default;
+
+    /**
+     * @brief Probe host hardware and registered GGML backends to generate an acceleration report.
+     * @return AccelerationReport containing enumerated devices and selected backend strategy.
+     */
+    virtual AccelerationReport detect_accelerators() = 0;
+};
+
+/**
+ * @class GpuDetector
+ * @brief Concrete implementation of IGpuDetector probing host CUDA/Vulkan/Metal drivers and GGML backends.
+ */
+class GpuDetector : public IGpuDetector {
+public:
+    GpuDetector() = default;
+    ~GpuDetector() override = default;
+
+    AccelerationReport detect_accelerators() override;
+};
+
+/**
  * @brief Probe all registered GGML backend devices and generate a hardware acceleration report.
- *
- * Log outputs are generated at info/debug levels detailing detected devices and
- * the recommended acceleration strategy.
- *
  * @return AccelerationReport containing enumerated devices and selected backend strategy.
  */
 AccelerationReport detect_accelerators();

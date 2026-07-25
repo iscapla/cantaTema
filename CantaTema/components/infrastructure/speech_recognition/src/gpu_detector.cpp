@@ -175,7 +175,7 @@ static bool probe_cuda_driver(AccelerationReport& report)
 #endif
 }
 
-AccelerationReport detect_accelerators()
+AccelerationReport GpuDetector::detect_accelerators()
 {
     AccelerationReport report{};
 
@@ -279,7 +279,6 @@ AccelerationReport detect_accelerators()
     bool ggml_has_metal  = false;
 
     for (const auto& dev : report.devices) {
-        // Skip host system CUDA driver entry when checking GGML backend capabilities
         if (dev.backend_name == "CUDA Driver") {
             continue;
         }
@@ -338,6 +337,12 @@ AccelerationReport detect_accelerators()
 #endif
 
     return report;
+}
+
+AccelerationReport detect_accelerators()
+{
+    GpuDetector detector;
+    return detector.detect_accelerators();
 }
 
 } // namespace cantatema::infra

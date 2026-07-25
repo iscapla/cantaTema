@@ -60,3 +60,38 @@ TEST(VoiceQualityAnalyzerTest, IrregularPacingScoresLower) {
 
     EXPECT_GT(regular_pacing, irregular_pacing);
 }
+
+TEST(VoiceQualityAnalyzerTest, ZeroDurationSegmentDoesNotCrash) {
+    std::vector<TranscriptSegment> zero_dur_segments = {
+        {1000, 1000, "Palabra", 0.0f, 0.5f}
+    };
+
+    auto metrics = VoiceQualityAnalyzer::analyze(zero_dur_segments);
+    EXPECT_GE(metrics.overall_quality_score, 0.0f);
+    EXPECT_LE(metrics.overall_quality_score, 100.0f);
+}
+
+TEST(VoiceQualityAnalyzerTest, ClarityScoreCalculationEdges) {
+    std::vector<TranscriptSegment> low_confidence_segments = {
+        {0, 2000, "Palabra dudosa", 0.0f, 0.20f},
+        {2500, 4000, "Segunda dudosa", 0.0f, 0.30f}
+    };
+
+    float clarity = VoiceQualityAnalyzer::calculate_clarity_score(low_confidence_segments);
+    EXPECT_NEAR(clarity, 25.0f, 1.0f);
+}
+
+TEST(VoiceQualityAnalyzerTest, BoundsClampingCheck) {
+    std::vector<TranscriptSegment> extreme_segments = {
+        {0, 100, "Uno dos tres cuatro cinco seis siete ocho nueve diez once doce trece catorce quince diez y seis", 0.0f, 1.0f}
+    };
+
+    auto metrics = VoiceQualityAnalyzer::analyze(extreme_segments);
+    EXPECT_GE(metrics.speech_rate_wpm, 0.0f);
+    EXPECT_GE(metrics.clarity_score, 0.0f);
+    EXPECT_LE(metrics.clarity_score, 100.0f);
+    EXPECT_GE(metrics.pacing_score, 0.0f);
+    EXPECT_LE(metrics.pacing_score, 100.0f);
+    EXPECT_GE(metrics.overall_quality_score, 0.0f);
+    EXPECT_LE(metrics.overall_quality_score, 100.0f);
+}
