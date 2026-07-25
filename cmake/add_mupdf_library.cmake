@@ -1,5 +1,4 @@
 include(FetchContent)
-include(ExternalProject)
 
 if(POLICY CMP0169)
     cmake_policy(SET CMP0169 OLD)
@@ -210,37 +209,29 @@ else()
 endif()
 
 # ============================================================
-# 3.6. Ensure Initial Build of MuPDF on Configure (Fixes MinGW Makefiles)
+# 3.5. Ensure Target File Directory and Placeholder Files Exist at Configure Time
 # ============================================================
 
-if(NOT EXISTS "${LIB_MUPDF}" OR NOT EXISTS "${LIB_THIRD}")
-    message(STATUS "Initial MuPDF build starting at configure time...")
-    execute_process(
-        COMMAND ${BUILD_CMD}
-        WORKING_DIRECTORY ${MUPDF_ROOT}
-        RESULT_VARIABLE MUPDF_INIT_RESULT
-    )
-    if(NOT MUPDF_INIT_RESULT EQUAL 0)
-        message(FATAL_ERROR "Initial MuPDF build failed with exit code ${MUPDF_INIT_RESULT}")
-    endif()
+get_filename_component(MUPDF_BUILD_DIR "${LIB_MUPDF}" DIRECTORY)
+file(MAKE_DIRECTORY "${MUPDF_BUILD_DIR}")
+if(NOT EXISTS "${LIB_MUPDF}")
+    file(TOUCH "${LIB_MUPDF}")
+endif()
+if(NOT EXISTS "${LIB_THIRD}")
+    file(TOUCH "${LIB_THIRD}")
 endif()
 
 # ============================================================
-# 4. External Build Target using ExternalProject
+# 4. Build Target
 # ============================================================
 
-ExternalProject_Add(
-    mupdf_ext
-    SOURCE_DIR "${MUPDF_ROOT}"
-    CONFIGURE_COMMAND ""
-    BUILD_COMMAND ${BUILD_CMD}
-    BUILD_IN_SOURCE 1
-    INSTALL_COMMAND ""
-    BUILD_BYPRODUCTS "${LIB_MUPDF}" "${LIB_THIRD}"
+add_custom_target(mupdf_make ALL
+    COMMAND ${BUILD_CMD}
+    WORKING_DIRECTORY ${MUPDF_ROOT}
+    COMMENT "Building MuPDF using native make..."
+    BYPRODUCTS ${LIB_MUPDF} ${LIB_THIRD}
+    VERBATIM
 )
-
-# Maintain alias compatibility
-add_custom_target(mupdf_make DEPENDS mupdf_ext)
 
 # ============================================================
 # 5. Import Library
@@ -248,7 +239,7 @@ add_custom_target(mupdf_make DEPENDS mupdf_ext)
 
 # Helper to import the thirdparty lib
 add_library(mupdf_third STATIC IMPORTED GLOBAL)
-add_dependencies(mupdf_third mupdf_ext)
+add_dependencies(mupdf_third mupdf_make)
 set_target_properties(mupdf_third PROPERTIES
     IMPORTED_LOCATION "${LIB_THIRD}"
 )
@@ -256,7 +247,7 @@ set_target_properties(mupdf_third PROPERTIES
 # Main mupdf library
 add_library(mupdf STATIC IMPORTED GLOBAL)
 add_library(mupdf::mupdf ALIAS mupdf)
-add_dependencies(mupdf mupdf_ext)
+add_dependencies(mupdf mupdf_make)
 
 set_target_properties(mupdf PROPERTIES
     IMPORTED_LOCATION "${LIB_MUPDF}"
