@@ -1,11 +1,16 @@
 #include <iostream>
+#include <fstream>
 #include <iomanip>
 #include <vector>
 #include <string>
+#include <string_view>
 #include <filesystem>
 #include <chrono>
 #include <memory>
 #include <sstream>
+
+#include <whisper.h>
+#include <llama.h>
 
 #include "sound_system/sound_converter.hpp"
 #include "speech_recognition/whisper_speech_recognition.hpp"
@@ -20,6 +25,20 @@
 #include "primitives/utils_logger.hpp"
 
 namespace {
+
+/**
+ * @brief Custom log callback to filter out internal ggml/whisper/llama messages requested to be suppressed.
+ */
+void quiet_ggml_log_callback(ggml_log_level level, const char* text, void* user_data) {
+    (void)level;
+    (void)user_data;
+    if (!text) return;
+    std::string_view msg(text);
+    if (msg.find("decode: cannot decode batches") != std::string_view::npos ||
+        msg.find("output_reserve: reallocating output buffer") != std::string_view::npos) {
+        return;
+    }
+}
 
 /**
  * @brief RAII guard to delete temporary files when leaving scope or on failure.
@@ -130,6 +149,9 @@ int main(int argc, char* argv[]) {
     (void)argv;
 
     util_logger_init();
+    whisper_log_set(quiet_ggml_log_callback, nullptr);
+    llama_log_set(quiet_ggml_log_callback, nullptr);
+
     std::cout << "========================================================================\n";
     std::cout << "                     CantaTema - ComparisonExample                      \n";
     std::cout << "        Stand-Alone Developer Audio-to-PDF Analysis Pipeline           \n";
@@ -216,15 +238,19 @@ int main(int argc, char* argv[]) {
     speech_cfg.model_name = whisper_model;
     speech_cfg.language = "es";
     speech_cfg.use_gpu = ConfigurationSystem::getInstance().get_whisper_use_gpu();
+    speech_cfg.progress_callback = [](int pct) {
+        std::cout << "\r[STEP 2] Transcribing audio via Whisper: " << std::setw(3) << pct << "%" << std::flush;
+    };
 
     WhisperSpeechRecognition speech_rec;
     rst_code_e rst = speech_rec.initialize(speech_cfg);
     if (rst != RST_OK) {
-        std::cerr << "[ERROR] Failed to initialize Whisper speech recognition: " << get_rst_txt(rst) << "\n";
+        std::cerr << "\n[ERROR] Failed to initialize Whisper speech recognition: " << get_rst_txt(rst) << "\n";
         return 1;
     }
 
     rst = speech_rec.submit_task(temp_wav_path.string());
+    std::cout << "\n";
     if (rst != RST_OK) {
         std::cerr << "[ERROR] Speech transcription task failed: " << get_rst_txt(rst) << "\n";
         return 1;
@@ -236,17 +262,43 @@ int main(int argc, char* argv[]) {
     auto t2_end = std::chrono::high_resolution_clock::now();
     double step2_ms = std::chrono::duration<double, std::milli>(t2_end - t2_start).count();
 
-    std::cout << "[STEP 2] Transcription finished in " << step2_ms << " ms. Total segments: " << segments.size() << "\n";
-    std::cout << "------------------------------------------------------------------------\n";
-    for (size_t i = 0; i < segments.size(); ++i) {
-        const auto& seg = segments[i];
-        std::cout << "  Seg #" << std::setw(2) << (i + 1) << " ["
-                  << std::setw(6) << seg.start_time_ms << "ms - "
-                  << std::setw(6) << seg.end_time_ms << "ms] "
-                  << "(Conf: " << std::fixed << std::setprecision(2) << seg.confidence_score << "): "
-                  << seg.text << "\n";
+    std::cout << "[STEP 2] Transcription finished in " << std::fixed << std::setprecision(2) << step2_ms << " ms. Total segments: " << segments.size() << "\n";
+
+    // Save full converted text on a single file (replaced on every execution)
+    std::filesystem::path converted_text_path = std::filesystem::current_path() / "converted_text.txt";
+    std::ofstream text_file(converted_text_path, std::ios::trunc);
+    if (text_file.is_open()) {
+        for (size_t i = 0; i < segments.size(); ++i) {
+            text_file << segments[i].text;
+            if (i + 1 < segments.size()) {
+                text_file << "\n";
+            }
+        }
+        text_file.close();
+        std::cout << "[STEP 2] Saved full converted text to: " << converted_text_path.string() << "\n";
+    } else {
+        std::cerr << "[ERROR] Failed to write converted text file: " << converted_text_path.string() << "\n";
     }
-    std::cout << "------------------------------------------------------------------------\n\n";
+
+    // Save text with all metrics (time, chunk, conf, logprob) on another file (replaced on every execution)
+    std::filesystem::path converted_metrics_path = std::filesystem::current_path() / "converted_text_metrics.txt";
+    std::ofstream metrics_file(converted_metrics_path, std::ios::trunc);
+    if (metrics_file.is_open()) {
+        for (size_t i = 0; i < segments.size(); ++i) {
+            const auto& seg = segments[i];
+            metrics_file << "Chunk #" << std::setw(2) << (i + 1)
+                         << " | Time: [" << std::setw(6) << seg.start_time_ms << "ms - "
+                         << std::setw(6) << seg.end_time_ms << "ms]"
+                         << " | Duration: " << (seg.end_time_ms - seg.start_time_ms) << "ms"
+                         << " | Conf: " << std::fixed << std::setprecision(2) << seg.confidence_score
+                         << " | Logprob: " << std::setprecision(4) << seg.avg_logprob
+                         << " | Text: " << seg.text << "\n";
+        }
+        metrics_file.close();
+        std::cout << "[STEP 2] Saved text with metrics to: " << converted_metrics_path.string() << "\n\n";
+    } else {
+        std::cerr << "[ERROR] Failed to write converted text metrics file: " << converted_metrics_path.string() << "\n\n";
+    }
 
     // =========================================================================
     // STEP 3: Extract Text and Features from PDF
@@ -273,18 +325,26 @@ int main(int argc, char* argv[]) {
     double step3_ms = std::chrono::duration<double, std::milli>(t3_end - t3_start).count();
 
     std::cout << "[STEP 3] Extracted " << doc_chunks.size() << " sentence chunks in " << step3_ms << " ms.\n";
-    std::cout << "------------------------------------------------------------------------\n";
-    for (size_t i = 0; i < std::min<size_t>(doc_chunks.size(), 10); ++i) {
-        const auto& chunk = doc_chunks[i];
-        std::cout << "  Chunk #" << std::setw(2) << (i + 1)
-                  << " [Weight: " << std::fixed << std::setprecision(2) << chunk.importance_weight
-                  << " | B:" << chunk.is_bold << " I:" << chunk.is_italic << " U:" << chunk.is_underlined << " C:" << chunk.has_bg_color << "]: "
-                  << (chunk.text.length() > 70 ? chunk.text.substr(0, 67) + "..." : chunk.text) << "\n";
+
+    // Save extracted PDF chunks to file (replaced on every execution)
+    std::filesystem::path pdf_chunks_path = std::filesystem::current_path() / "pdf_chunks.txt";
+    std::ofstream pdf_chunks_file(pdf_chunks_path, std::ios::trunc);
+    if (pdf_chunks_file.is_open()) {
+        for (size_t i = 0; i < doc_chunks.size(); ++i) {
+            const auto& chunk = doc_chunks[i];
+            pdf_chunks_file << "Chunk #" << std::setw(3) << (i + 1)
+                            << " | Weight: " << std::fixed << std::setprecision(2) << chunk.importance_weight
+                            << " | Bold: " << (chunk.is_bold ? "YES" : " NO")
+                            << " | Italic: " << (chunk.is_italic ? "YES" : " NO")
+                            << " | Underline: " << (chunk.is_underlined ? "YES" : " NO")
+                            << " | BgColor: " << (chunk.has_bg_color ? "YES" : " NO")
+                            << " | Text: " << chunk.text << "\n";
+        }
+        pdf_chunks_file.close();
+        std::cout << "[STEP 3] Saved PDF chunk detection to: " << pdf_chunks_path.string() << "\n\n";
+    } else {
+        std::cerr << "[ERROR] Failed to write PDF chunk detection file: " << pdf_chunks_path.string() << "\n\n";
     }
-    if (doc_chunks.size() > 10) {
-        std::cout << "  ... (" << (doc_chunks.size() - 10) << " more chunks extracted)\n";
-    }
-    std::cout << "------------------------------------------------------------------------\n\n";
 
     // =========================================================================
     // STEP 4: Compare Both Texts via Embeddings & Similarity Search
@@ -349,8 +409,23 @@ int main(int argc, char* argv[]) {
     std::cout << "[STEP 4] Generating vector embeddings for " << pdf_texts.size() << " PDF chunks & "
               << transcript_texts.size() << " transcript segments...\n";
 
-    auto pdf_embeddings = embedding_engine.generate_embeddings_batch(pdf_texts);
-    auto transcript_embeddings = embedding_engine.generate_embeddings_batch(transcript_texts);
+    std::vector<std::vector<float>> pdf_embeddings;
+    pdf_embeddings.reserve(pdf_texts.size());
+    for (size_t i = 0; i < pdf_texts.size(); ++i) {
+        pdf_embeddings.push_back(embedding_engine.generate_embedding(pdf_texts[i]));
+        int pct = static_cast<int>((i + 1) * 100 / pdf_texts.size());
+        std::cout << "\r[STEP 4] Processing PDF Embeddings (" << (i + 1) << "/" << pdf_texts.size() << "): " << std::setw(3) << pct << "%" << std::flush;
+    }
+    std::cout << "\n";
+
+    std::vector<std::vector<float>> transcript_embeddings;
+    transcript_embeddings.reserve(transcript_texts.size());
+    for (size_t i = 0; i < transcript_texts.size(); ++i) {
+        transcript_embeddings.push_back(embedding_engine.generate_embedding(transcript_texts[i]));
+        int pct = static_cast<int>((i + 1) * 100 / transcript_texts.size());
+        std::cout << "\r[STEP 4] Processing Transcript Embeddings (" << (i + 1) << "/" << transcript_texts.size() << "): " << std::setw(3) << pct << "%" << std::flush;
+    }
+    std::cout << "\n";
 
     FaissSimilaritySearch similarity_search;
     similarity_search.index_transcript_embeddings(transcript_embeddings);
@@ -369,16 +444,25 @@ int main(int argc, char* argv[]) {
     std::cout << "[STEP 4] Similarity search complete in " << step4_ms << " ms.\n";
     std::cout << "[STEP 4] Mentioned PDF Chunks: " << mentioned_count << " / " << matches.size()
               << " (Threshold: " << std::fixed << std::setprecision(2) << sim_threshold << ")\n";
-    std::cout << "------------------------------------------------------------------------\n";
-    for (size_t i = 0; i < matches.size(); ++i) {
-        const auto& m = matches[i];
-        std::cout << "  PDF Chunk #" << std::setw(2) << (i + 1)
-                  << " -> Best Match Segment #" << std::setw(2) << (m.best_transcript_chunk_index >= 0 ? m.best_transcript_chunk_index + 1 : -1)
-                  << " | Sim Score: " << std::fixed << std::setprecision(4) << m.similarity_score
-                  << " | Mentioned: " << (m.is_mentioned ? "YES" : " NO")
-                  << " | Missed Score: " << std::setprecision(2) << m.weighted_missed_score << "\n";
+
+    // Save PDF comparison results to file (replaced on every execution)
+    std::filesystem::path pdf_comp_path = std::filesystem::current_path() / "pdf_comparison.txt";
+    std::ofstream pdf_comp_file(pdf_comp_path, std::ios::trunc);
+    if (pdf_comp_file.is_open()) {
+        for (size_t i = 0; i < matches.size(); ++i) {
+            const auto& m = matches[i];
+            pdf_comp_file << "PDF Chunk #" << std::setw(3) << (i + 1)
+                          << " -> Best Match Segment #" << std::setw(3) << (m.best_transcript_chunk_index >= 0 ? m.best_transcript_chunk_index + 1 : -1)
+                          << " | Sim Score: " << std::fixed << std::setprecision(4) << m.similarity_score
+                          << " | Mentioned: " << (m.is_mentioned ? "YES" : " NO")
+                          << " | Missed Score: " << std::setprecision(2) << m.weighted_missed_score
+                          << " | PDF Text: " << (i < doc_chunks.size() ? doc_chunks[i].text : "") << "\n";
+        }
+        pdf_comp_file.close();
+        std::cout << "[STEP 4] Saved PDF comparison results to: " << pdf_comp_path.string() << "\n\n";
+    } else {
+        std::cerr << "[ERROR] Failed to write PDF comparison file: " << pdf_comp_path.string() << "\n\n";
     }
-    std::cout << "------------------------------------------------------------------------\n\n";
 
     // =========================================================================
     // STEP 5: Generate Metrics (Voice Metrics & Comparison Metrics)

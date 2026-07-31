@@ -23,6 +23,8 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     INFRASTRUCTURE::SPEECH_RECOGNITION
     INFRASTRUCTURE::EMBEDDINGS
     INFRASTRUCTURE::SIMILARITY
+    whisper
+    llama
 )
 
 # install information

@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <cstdint>
+#include <functional>
 
 struct whisper_context;
 
@@ -42,13 +43,23 @@ public:
     virtual void free_context(whisper_context* ctx) = 0;
 
     /**
-     * @brief Execute full whisper transcription on PCM float samples.
+     * @brief Execute full whisper transcription on PCM float samples without progress callback.
      * @param ctx Pointer to opaque whisper context.
      * @param language Target language string (e.g. "es").
      * @param pcm_samples Floating-point PCM audio samples at 16kHz.
      * @return 0 on success, or non-zero error code.
      */
     virtual int run_full(whisper_context* ctx, const std::string& language, const std::vector<float>& pcm_samples) = 0;
+
+    /**
+     * @brief Execute full whisper transcription on PCM float samples with progress callback.
+     * @param ctx Pointer to opaque whisper context.
+     * @param language Target language string (e.g. "es").
+     * @param pcm_samples Floating-point PCM audio samples at 16kHz.
+     * @param progress_cb Callback invoked with transcription progress percentage (0-100).
+     * @return 0 on success, or non-zero error code.
+     */
+    virtual int run_full(whisper_context* ctx, const std::string& language, const std::vector<float>& pcm_samples, std::function<void(int)> progress_cb) = 0;
 
     /**
      * @brief Extract decoded segments and confidence metrics from a completed whisper context.

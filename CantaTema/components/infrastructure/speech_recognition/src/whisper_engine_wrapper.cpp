@@ -20,6 +20,10 @@ void WhisperEngineWrapper::free_context(whisper_context* ctx) {
 }
 
 int WhisperEngineWrapper::run_full(whisper_context* ctx, const std::string& language, const std::vector<float>& pcm_samples) {
+    return run_full(ctx, language, pcm_samples, nullptr);
+}
+
+int WhisperEngineWrapper::run_full(whisper_context* ctx, const std::string& language, const std::vector<float>& pcm_samples, std::function<void(int)> progress_cb) {
     if (!ctx) return -1;
 
     struct whisper_full_params wparams = whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
@@ -39,23 +43,21 @@ int WhisperEngineWrapper::run_full(whisper_context* ctx, const std::string& lang
     wparams.greedy.best_of  = 1;
     wparams.no_context      = true;
 
-    wparams.new_segment_callback = [](struct whisper_context* ctx_cb, struct whisper_state*, int n_new, void*) {
-        const int n_segments = whisper_full_n_segments(ctx_cb);
-        for (int i = n_segments - n_new; i < n_segments; ++i) {
-            const char* text = whisper_full_get_segment_text(ctx_cb, i);
-            const int64_t t0 = whisper_full_get_segment_t0(ctx_cb, i) * 10;
-            const int64_t t1 = whisper_full_get_segment_t1(ctx_cb, i) * 10;
-            const double s0  = static_cast<double>(t0) / 1000.0;
-            const double s1  = static_cast<double>(t1) / 1000.0;
-
-            if (logger) logger->debug("[seg {:02d}] [{:.2f}s -> {:.2f}s] {}", i, s0, s1, text ? text : "");
-        }
+    struct ProgressData {
+        std::function<void(int)> cb;
     };
+    ProgressData cb_data{progress_cb};
 
-    wparams.progress_callback = [](struct whisper_context*, struct whisper_state*, int progress, void*) {
+    wparams.progress_callback_user_data = &cb_data;
+    wparams.progress_callback = [](struct whisper_context*, struct whisper_state*, int progress, void* user_data) {
         static int last_reported_progress = -1;
         if (progress != last_reported_progress) {
-            if (logger) logger->info("Transcription progress: {}%", progress);
+            if (user_data) {
+                auto* data = static_cast<ProgressData*>(user_data);
+                if (data->cb) {
+                    data->cb(progress);
+                }
+            }
             last_reported_progress = progress;
         }
     };

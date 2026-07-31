@@ -15,6 +15,7 @@ public:
     whisper_context* init_from_file_with_params(const std::string& model_path, bool use_gpu) override;
     void free_context(whisper_context* ctx) override;
     int run_full(whisper_context* ctx, const std::string& language, const std::vector<float>& pcm_samples) override;
+    int run_full(whisper_context* ctx, const std::string& language, const std::vector<float>& pcm_samples, std::function<void(int)> progress_cb) override;
     std::vector<WhisperSegmentData> extract_segments(whisper_context* ctx) override;
 };
 

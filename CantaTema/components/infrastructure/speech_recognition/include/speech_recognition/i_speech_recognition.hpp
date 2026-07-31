@@ -33,11 +33,13 @@ public:
     };
 
     using StatusCallback = std::function<void(speech_recognition_status_e)>;
+    using ProgressCallback = std::function<void(int progress_pct)>;
 
     struct speech_recognition_config_t {
         std::string model_name;
         std::string language{"es"};
         StatusCallback status_callback;
+        ProgressCallback progress_callback;
         bool use_gpu{false};
     };
 

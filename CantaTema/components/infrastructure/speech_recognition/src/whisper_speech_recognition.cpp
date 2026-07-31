@@ -234,7 +234,9 @@ rst_code_e WhisperSpeechRecognition::submit_task(const std::string& audio_file_p
                              pcm_samples.size(), duration_s);
 
     std::string lang = m_config.language.empty() ? "es" : m_config.language;
-    int ret = m_engineWrapper->run_full(m_whisperCtx, lang, pcm_samples);
+    int ret = m_config.progress_callback ?
+        m_engineWrapper->run_full(m_whisperCtx, lang, pcm_samples, m_config.progress_callback) :
+        m_engineWrapper->run_full(m_whisperCtx, lang, pcm_samples);
     if (ret != 0) {
         if (logger) logger->error("[WhisperSpeechRecognition] whisper_full failed with code: {}", ret);
         m_status = speech_recognition_status_e::ERROR;
