@@ -474,6 +474,40 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(llama)
 
+# Workaround for macOS CI (C++23 libc++ / Apple Clang):
+# llama.cpp model source files (dflash.cpp, t5.cpp, eagle3.cpp) define build_arch_graph before graph constructor specializations,
+# causing "explicit specialization after instantiation" error on Apple Clang.
+if(EXISTS "${llama_SOURCE_DIR}/src/models/dflash.cpp")
+    file(READ "${llama_SOURCE_DIR}/src/models/dflash.cpp" LLAMA_DFLASH_CPP)
+    if(NOT LLAMA_DFLASH_CPP MATCHES "template <>[^\n]*graph<true>::graph")
+        string(REPLACE "#include \"models.h\""
+            "#include \"models.h\"\n\ntemplate <> llama_model_dflash::graph<true>::graph(const llama_model &, const llm_graph_params &);\ntemplate <> llama_model_dflash::graph<false>::graph(const llama_model &, const llm_graph_params &);"
+            LLAMA_DFLASH_CPP "${LLAMA_DFLASH_CPP}")
+        file(WRITE "${llama_SOURCE_DIR}/src/models/dflash.cpp" "${LLAMA_DFLASH_CPP}")
+    endif()
+endif()
+
+if(EXISTS "${llama_SOURCE_DIR}/src/models/t5.cpp")
+    file(READ "${llama_SOURCE_DIR}/src/models/t5.cpp" LLAMA_T5_CPP)
+    if(NOT LLAMA_T5_CPP MATCHES "template <>[^\n]*graph<true>::graph")
+        string(REPLACE "#include \"models.h\""
+            "#include \"models.h\"\n\ntemplate <> llama_model_t5::graph<true>::graph(const llama_model &, const llm_graph_params &);\ntemplate <> llama_model_t5::graph<false>::graph(const llama_model &, const llm_graph_params &);"
+            LLAMA_T5_CPP "${LLAMA_T5_CPP}")
+        file(WRITE "${llama_SOURCE_DIR}/src/models/t5.cpp" "${LLAMA_T5_CPP}")
+    endif()
+endif()
+
+if(EXISTS "${llama_SOURCE_DIR}/src/models/eagle3.cpp")
+    file(READ "${llama_SOURCE_DIR}/src/models/eagle3.cpp" LLAMA_EAGLE3_CPP)
+    if(NOT LLAMA_EAGLE3_CPP MATCHES "template <>[^\n]*graph<true>::graph")
+        string(REPLACE "#include \"models.h\""
+            "#include \"models.h\"\n\ntemplate <> llama_model_eagle3::graph<true>::graph(const llama_model &, const llm_graph_params &);\ntemplate <> llama_model_eagle3::graph<false>::graph(const llama_model &, const llm_graph_params &);"
+            LLAMA_EAGLE3_CPP "${LLAMA_EAGLE3_CPP}")
+        file(WRITE "${llama_SOURCE_DIR}/src/models/eagle3.cpp" "${LLAMA_EAGLE3_CPP}")
+    endif()
+endif()
+
+
 ################################
 # whisper
 ################################
