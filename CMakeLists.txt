@@ -518,6 +518,11 @@ set(WHISPER_BUILD_EXTRA_TARGETS OFF CACHE BOOL "Disable whisper extra targets (p
 set(WHISPER_PARAKEET OFF CACHE BOOL "Disable parakeet model support" FORCE)
 set(CMAKE_CXX_SCAN_FOR_MODULES OFF CACHE BOOL "Disable C++ modules scanning for Vulkan-Headers" FORCE)
 
+# Ensure GGML target from llama exists before configuring whisper
+if(NOT TARGET ggml OR NOT EXISTS "${llama_SOURCE_DIR}/ggml/include")
+    message(FATAL_ERROR "GGML library target from Llama is not available for whisper. Aborting configuration.")
+endif()
+
 FetchContent_Declare(
     whisper
     GIT_REPOSITORY https://github.com/ggml-org/whisper.cpp.git
@@ -529,14 +534,19 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(whisper)
 
+if(NOT TARGET ggml)
+    message(FATAL_ERROR "Whisper is not using GGML from Llama. Aborting configuration.")
+endif()
+
 target_include_directories(whisper PUBLIC
-    $<BUILD_INTERFACE:${whisper_SOURCE_DIR}/ggml/include>
-    $<BUILD_INTERFACE:${whisper_SOURCE_DIR}/ggml/src>
+    $<BUILD_INTERFACE:${llama_SOURCE_DIR}/ggml/include>
+    $<BUILD_INTERFACE:${llama_SOURCE_DIR}/ggml/src>
 )
 set_target_properties(whisper PROPERTIES
     CXX_STANDARD 23
     CXX_STANDARD_REQUIRED ON
 )
+
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(whisper PRIVATE -O3)
