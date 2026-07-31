@@ -125,7 +125,7 @@ TEST_F(ConfigurationSystemTest, FallbackOnGarbageValues) {
     EXPECT_EQ(config.get_user_usage_limit_in_mb(), 512u);
     EXPECT_EQ(config.get_max_pdf_page_count(), 100u);
     EXPECT_EQ(config.get_max_recording_duration_minutes(), 30u);
-    EXPECT_EQ(config.get_embeddings_gpu_offload_layers(), 0);
+    EXPECT_EQ(config.get_embeddings_gpu_offload_layers(), 99);
     EXPECT_FLOAT_EQ(config.get_coverage_similarity_threshold(), 0.75f);
     EXPECT_FLOAT_EQ(config.get_importance_weight_bold(), 1.5f);
     EXPECT_FLOAT_EQ(config.get_importance_weight_italic(), 1.2f);

@@ -30,7 +30,7 @@ ConfigurationSystem::ConfigurationSystem() : IConfigurationBase() {
     set_default_if_not_present("WHISPER", "use_gpu", "true");
 
     set_default_if_not_present("EMBEDDINGS", "default_model", "AUTO");
-    set_default_if_not_present("EMBEDDINGS", "gpu_offload_layers", "0");
+    set_default_if_not_present("EMBEDDINGS", "gpu_offload_layers", "99");
 
     set_default_if_not_present("COVERAGE", "similarity_threshold", "0.75");
     set_default_if_not_present("COVERAGE", "importance_weight_bold", "1.5");
@@ -150,11 +150,11 @@ std::string ConfigurationSystem::get_embeddings_default_model() const {
 }
 
 int ConfigurationSystem::get_embeddings_gpu_offload_layers() const {
-    std::string value = const_cast<ConfigurationSystem*>(this)->get_or_default("EMBEDDINGS", "gpu_offload_layers", "0");
+    std::string value = const_cast<ConfigurationSystem*>(this)->get_or_default("EMBEDDINGS", "gpu_offload_layers", "99");
     try {
         return std::stoi(value);
     } catch (...) {
-        return 0; // Default fallback
+        return 99; // Default fallback
     }
 }
 
