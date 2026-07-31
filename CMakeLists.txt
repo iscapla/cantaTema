@@ -38,9 +38,7 @@ endif()
 option(ENABLE_COVERAGE "Enable code coverage compilation flags" ON)
 if(ENABLE_COVERAGE)
     if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-        add_compile_options(--coverage)
-        add_link_options(--coverage)
-        message(STATUS "Code coverage instrumentation enabled")
+        message(STATUS "Code coverage instrumentation enabled for project targets")
         find_program(GCOV_PATH NAMES gcov gcov.exe)
         if(GCOV_PATH)
             set(CTEST_COVERAGE_COMMAND "${GCOV_PATH}")
@@ -61,6 +59,7 @@ if(ENABLE_COVERAGE)
         message(WARNING "Code coverage is only supported for GCC/Clang. Ignored. Compiler ID: ${CMAKE_CXX_COMPILER_ID}")
     endif()
 endif()
+
 
 set(CMAKE_MAIN_PROJECT_NAME ${PROJECT_NAME})
 
@@ -474,6 +473,40 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(llama)
 
+# Workaround for macOS CI (C++23 libc++ / Apple Clang):
+# llama.cpp model source files (dflash.cpp, t5.cpp, eagle3.cpp) define build_arch_graph before graph constructor specializations,
+# causing "explicit specialization after instantiation" error on Apple Clang.
+if(EXISTS "${llama_SOURCE_DIR}/src/models/dflash.cpp")
+    file(READ "${llama_SOURCE_DIR}/src/models/dflash.cpp" LLAMA_DFLASH_CPP)
+    if(NOT LLAMA_DFLASH_CPP MATCHES "template <>[^\n]*graph<true>::graph")
+        string(REPLACE "#include \"models.h\""
+            "#include \"models.h\"\n\ntemplate <> llama_model_dflash::graph<true>::graph(const llama_model &, const llm_graph_params &);\ntemplate <> llama_model_dflash::graph<false>::graph(const llama_model &, const llm_graph_params &);"
+            LLAMA_DFLASH_CPP "${LLAMA_DFLASH_CPP}")
+        file(WRITE "${llama_SOURCE_DIR}/src/models/dflash.cpp" "${LLAMA_DFLASH_CPP}")
+    endif()
+endif()
+
+if(EXISTS "${llama_SOURCE_DIR}/src/models/t5.cpp")
+    file(READ "${llama_SOURCE_DIR}/src/models/t5.cpp" LLAMA_T5_CPP)
+    if(NOT LLAMA_T5_CPP MATCHES "template <>[^\n]*graph<true>::graph")
+        string(REPLACE "#include \"models.h\""
+            "#include \"models.h\"\n\ntemplate <> llama_model_t5::graph<true>::graph(const llama_model &, const llm_graph_params &);\ntemplate <> llama_model_t5::graph<false>::graph(const llama_model &, const llm_graph_params &);"
+            LLAMA_T5_CPP "${LLAMA_T5_CPP}")
+        file(WRITE "${llama_SOURCE_DIR}/src/models/t5.cpp" "${LLAMA_T5_CPP}")
+    endif()
+endif()
+
+if(EXISTS "${llama_SOURCE_DIR}/src/models/eagle3.cpp")
+    file(READ "${llama_SOURCE_DIR}/src/models/eagle3.cpp" LLAMA_EAGLE3_CPP)
+    if(NOT LLAMA_EAGLE3_CPP MATCHES "template <>[^\n]*graph<true>::graph")
+        string(REPLACE "#include \"models.h\""
+            "#include \"models.h\"\n\ntemplate <> llama_model_eagle3::graph<true>::graph(const llama_model &, const llm_graph_params &);\ntemplate <> llama_model_eagle3::graph<false>::graph(const llama_model &, const llm_graph_params &);"
+            LLAMA_EAGLE3_CPP "${LLAMA_EAGLE3_CPP}")
+        file(WRITE "${llama_SOURCE_DIR}/src/models/eagle3.cpp" "${LLAMA_EAGLE3_CPP}")
+    endif()
+endif()
+
+
 ################################
 # whisper
 ################################
@@ -483,6 +516,11 @@ set(WHISPER_BUILD_EXAMPLES OFF CACHE BOOL "Disable whisper examples" FORCE)
 set(WHISPER_BUILD_EXTRA_TARGETS OFF CACHE BOOL "Disable whisper extra targets (parakeet, etc.)" FORCE)
 set(WHISPER_PARAKEET OFF CACHE BOOL "Disable parakeet model support" FORCE)
 set(CMAKE_CXX_SCAN_FOR_MODULES OFF CACHE BOOL "Disable C++ modules scanning for Vulkan-Headers" FORCE)
+
+# Ensure GGML target from llama exists before configuring whisper
+if(NOT TARGET ggml OR NOT EXISTS "${llama_SOURCE_DIR}/ggml/include")
+    message(FATAL_ERROR "GGML library target from Llama is not available for whisper. Aborting configuration.")
+endif()
 
 FetchContent_Declare(
     whisper
@@ -495,14 +533,19 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(whisper)
 
+if(NOT TARGET ggml)
+    message(FATAL_ERROR "Whisper is not using GGML from Llama. Aborting configuration.")
+endif()
+
 target_include_directories(whisper PUBLIC
-    $<BUILD_INTERFACE:${whisper_SOURCE_DIR}/ggml/include>
-    $<BUILD_INTERFACE:${whisper_SOURCE_DIR}/ggml/src>
+    $<BUILD_INTERFACE:${llama_SOURCE_DIR}/ggml/include>
+    $<BUILD_INTERFACE:${llama_SOURCE_DIR}/ggml/src>
 )
 set_target_properties(whisper PROPERTIES
     CXX_STANDARD 23
     CXX_STANDARD_REQUIRED ON
 )
+
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(whisper PRIVATE -O3)
