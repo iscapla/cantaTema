@@ -27,6 +27,7 @@ ConfigurationSystem::ConfigurationSystem() : IConfigurationBase() {
     set_default_if_not_present("USER_LIMITS", "max_recording_duration_minutes", "30");
 
     set_default_if_not_present("WHISPER", "default_model", "AUTO");
+    set_default_if_not_present("WHISPER", "use_gpu", "true");
 
     set_default_if_not_present("EMBEDDINGS", "default_model", "AUTO");
     set_default_if_not_present("EMBEDDINGS", "gpu_offload_layers", "0");
@@ -55,7 +56,8 @@ int ConfigurationSystem::get_files_extensions_allowed(
     char patterns[MAX_EXTENSIONS_COUNT][MAX_EXTENSIONS_LENGTH]
 ) const {
 
-    std::string value = const_cast<ConfigurationSystem*>(this)->get(section, key);
+    std::string default_val = (section == "TEXT_FILES") ? "*.txt\n*.pdf" : "*.opus";
+    std::string value = const_cast<ConfigurationSystem*>(this)->get_or_default(section, key, default_val);
 
     if(patterns == nullptr){
         logger->error("Destination variable cannot be null.");
@@ -95,11 +97,11 @@ int ConfigurationSystem::get_text_files_extensions_allowed(char patterns[MAX_EXT
 }
 
 unsigned int ConfigurationSystem::get_user_default_max_text_file_size_in_mb(void) const {
-    std::string value = const_cast<ConfigurationSystem*>(this)->get("USER_LIMITS", "max_text_file_size_mb");
+    std::string value = const_cast<ConfigurationSystem*>(this)->get_or_default("USER_LIMITS", "max_text_file_size_mb", "25");
     try {
         return std::stoul(value);
     } catch (...) {
-        return 10; // Default fallback
+        return 25; // Default fallback
     }
 }
 
@@ -114,29 +116,29 @@ int ConfigurationSystem::get_sound_files_extensions_allowed(char patterns[MAX_EX
 }
 
 unsigned int ConfigurationSystem::get_user_default_max_sound_file_size_in_mb(void) const {
-    std::string value = const_cast<ConfigurationSystem*>(this)->get("USER_LIMITS", "max_sound_file_size_mb");
+    std::string value = const_cast<ConfigurationSystem*>(this)->get_or_default("USER_LIMITS", "max_sound_file_size_mb", "25");
     try {
         return std::stoul(value);
     } catch (...) {
-        return 50; // Default fallback
+        return 25; // Default fallback
     }
 }
 
 unsigned int ConfigurationSystem::get_user_usage_limit_in_mb(void) const {
-    std::string value = const_cast<ConfigurationSystem*>(this)->get("USER_LIMITS", "usage_limit_mb");
+    std::string value = const_cast<ConfigurationSystem*>(this)->get_or_default("USER_LIMITS", "usage_limit_mb", "512");
     try {
         return std::stoul(value);
     } catch (...) {
-        return 128; // Default fallback
+        return 512; // Default fallback
     }
 }
 
 std::string ConfigurationSystem::get_whisper_default_model() const {
-    return const_cast<ConfigurationSystem*>(this)->get("WHISPER", "default_model");
+    return const_cast<ConfigurationSystem*>(this)->get_or_default("WHISPER", "default_model", "AUTO");
 }
 
 bool ConfigurationSystem::get_whisper_use_gpu() const {
-    std::string value = const_cast<ConfigurationSystem*>(this)->get("WHISPER", "use_gpu");
+    std::string value = const_cast<ConfigurationSystem*>(this)->get_or_default("WHISPER", "use_gpu", "false");
     if (value == "true" || value == "1" || value == "TRUE") {
         return true;
     }
@@ -144,11 +146,11 @@ bool ConfigurationSystem::get_whisper_use_gpu() const {
 }
 
 std::string ConfigurationSystem::get_embeddings_default_model() const {
-    return const_cast<ConfigurationSystem*>(this)->get("EMBEDDINGS", "default_model");
+    return const_cast<ConfigurationSystem*>(this)->get_or_default("EMBEDDINGS", "default_model", "AUTO");
 }
 
 int ConfigurationSystem::get_embeddings_gpu_offload_layers() const {
-    std::string value = const_cast<ConfigurationSystem*>(this)->get("EMBEDDINGS", "gpu_offload_layers");
+    std::string value = const_cast<ConfigurationSystem*>(this)->get_or_default("EMBEDDINGS", "gpu_offload_layers", "0");
     try {
         return std::stoi(value);
     } catch (...) {
@@ -157,7 +159,7 @@ int ConfigurationSystem::get_embeddings_gpu_offload_layers() const {
 }
 
 float ConfigurationSystem::get_coverage_similarity_threshold() const {
-    std::string value = const_cast<ConfigurationSystem*>(this)->get("COVERAGE", "similarity_threshold");
+    std::string value = const_cast<ConfigurationSystem*>(this)->get_or_default("COVERAGE", "similarity_threshold", "0.75");
     try {
         return std::stof(value);
     } catch (...) {
@@ -166,7 +168,7 @@ float ConfigurationSystem::get_coverage_similarity_threshold() const {
 }
 
 float ConfigurationSystem::get_importance_weight_bold() const {
-    std::string value = const_cast<ConfigurationSystem*>(this)->get("COVERAGE", "importance_weight_bold");
+    std::string value = const_cast<ConfigurationSystem*>(this)->get_or_default("COVERAGE", "importance_weight_bold", "1.5");
     try {
         return std::stof(value);
     } catch (...) {
@@ -175,7 +177,7 @@ float ConfigurationSystem::get_importance_weight_bold() const {
 }
 
 float ConfigurationSystem::get_importance_weight_italic() const {
-    std::string value = const_cast<ConfigurationSystem*>(this)->get("COVERAGE", "importance_weight_italic");
+    std::string value = const_cast<ConfigurationSystem*>(this)->get_or_default("COVERAGE", "importance_weight_italic", "1.2");
     try {
         return std::stof(value);
     } catch (...) {
@@ -184,7 +186,7 @@ float ConfigurationSystem::get_importance_weight_italic() const {
 }
 
 float ConfigurationSystem::get_importance_weight_underline() const {
-    std::string value = const_cast<ConfigurationSystem*>(this)->get("COVERAGE", "importance_weight_underline");
+    std::string value = const_cast<ConfigurationSystem*>(this)->get_or_default("COVERAGE", "importance_weight_underline", "1.3");
     try {
         return std::stof(value);
     } catch (...) {
@@ -193,7 +195,7 @@ float ConfigurationSystem::get_importance_weight_underline() const {
 }
 
 float ConfigurationSystem::get_importance_weight_bg_color() const {
-    std::string value = const_cast<ConfigurationSystem*>(this)->get("COVERAGE", "importance_weight_bg_color");
+    std::string value = const_cast<ConfigurationSystem*>(this)->get_or_default("COVERAGE", "importance_weight_bg_color", "1.4");
     try {
         return std::stof(value);
     } catch (...) {
@@ -202,7 +204,7 @@ float ConfigurationSystem::get_importance_weight_bg_color() const {
 }
 
 unsigned int ConfigurationSystem::get_max_pdf_page_count() const {
-    std::string value = const_cast<ConfigurationSystem*>(this)->get("USER_LIMITS", "max_pdf_page_count");
+    std::string value = const_cast<ConfigurationSystem*>(this)->get_or_default("USER_LIMITS", "max_pdf_page_count", "100");
     try {
         return std::stoul(value);
     } catch (...) {
@@ -211,7 +213,7 @@ unsigned int ConfigurationSystem::get_max_pdf_page_count() const {
 }
 
 unsigned int ConfigurationSystem::get_max_recording_duration_minutes() const {
-    std::string value = const_cast<ConfigurationSystem*>(this)->get("USER_LIMITS", "max_recording_duration_minutes");
+    std::string value = const_cast<ConfigurationSystem*>(this)->get_or_default("USER_LIMITS", "max_recording_duration_minutes", "30");
     try {
         return std::stoul(value);
     } catch (...) {

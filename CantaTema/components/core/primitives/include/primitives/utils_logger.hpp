@@ -1,6 +1,10 @@
 #ifndef __UTILS_LOGGER_HPP
 #define __UTILS_LOGGER_HPP
 
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
 #include <spdlog/spdlog.h>
 
 extern spdlog::logger *logger;

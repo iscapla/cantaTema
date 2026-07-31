@@ -17,10 +17,9 @@ include(FetchContent)
 # Version configuration
 # ----------------------------------------------------------------------------
 
-# SQLite3 Multiple Ciphers v2.2.6 (based on SQLite 3.51.1)
-# Released: Nov 30, 2025
-set(SQLITE_MC_VER "2.2.6")
-set(SQLITE_VER "3.51.1")
+# SQLite3 Multiple Ciphers v2.4.0 (based on SQLite 3.53.4)
+set(SQLITE_MC_VER "2.4.0")
+set(SQLITE_VER "3.53.4")
 
 set(SQLITE_MC_URL
     "https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v${SQLITE_MC_VER}/sqlite3mc-${SQLITE_MC_VER}-sqlite-${SQLITE_VER}-amalgamation.zip"

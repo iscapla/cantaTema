@@ -11,6 +11,8 @@ set(CMAKE_CXX_SCAN_FOR_MODULES OFF CACHE BOOL "Disable C++ modules scanning for 
 
 if(WIN32 AND MSVC)
     add_compile_options(/utf-8)
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    add_compile_options(-Wno-deprecated-declarations)
 endif()
 
 set(PROJ_MAJOR_VERSION 1)
@@ -88,20 +90,13 @@ set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 # PROJECT COMPILATION
 #####################################################################################################
 
-# define our sub projects that will not require to use the find_package
-# functionality
-set(SUBPROJECTS utf8cpp)
-
 # find_package override
 if(POLICY CMP0057)
   cmake_policy(SET CMP0057 NEW)
 endif()
-# this is disencourage due to: https://crascit.com/2018/09/14/do-not-redefine-cmake-commands/
-macro(find_package)
-  if(NOT "${ARGV0}" IN_LIST SUBPROJECTS)
-    _find_package(${ARGV})
-  endif()
-endmacro()
+if(POLICY CMP0169)
+  cmake_policy(SET CMP0169 OLD)
+endif()
 
 enable_testing()
 
@@ -153,18 +148,7 @@ set(BUILD_TESTING ON CACHE BOOL "" FORCE)
 include(CTest)
 set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
 include(FetchContent)
-# include(ExternalProject)
-# include(CMakePrintHelpers)
-# include(GenerateExportHeader)
 
-set(CPM_DOWNLOAD_LOCATION ${CMAKE_BINARY_DIR}/CPM.cmake)
-
-file(DOWNLOAD
-  https://github.com/cpm-cmake/CPM.cmake/releases/latest/download/cpm.cmake
-  ${CPM_DOWNLOAD_LOCATION})
-
-include(${CPM_DOWNLOAD_LOCATION})
-        
 ################################
 # GOOGLE TEST
 ################################
@@ -185,7 +169,7 @@ FetchContent_MakeAvailable(googletest)
 FetchContent_Declare(
   fmt
   GIT_REPOSITORY https://github.com/fmtlib/fmt.git
-  GIT_TAG 12.1.0
+  GIT_TAG 12.2.0
   OVERRIDE_FIND_PACKAGE
 )
 set(FMT_INSTALL OFF CACHE BOOL "" FORCE)
@@ -203,7 +187,7 @@ FetchContent_MakeAvailable(fmt)
 FetchContent_Declare(
   spdlog
   GIT_REPOSITORY https://github.com/gabime/spdlog.git
-  GIT_TAG v1.16.0
+  GIT_TAG v1.17.0
   OVERRIDE_FIND_PACKAGE
 )
 set(SPDLOG_INSTALL OFF CACHE BOOL "" FORCE)
@@ -261,13 +245,12 @@ FetchContent_Declare(
   utf8cpp
   GIT_REPOSITORY https://github.com/nemtrif/utfcpp.git
   GIT_TAG v4.0.9
+  OVERRIDE_FIND_PACKAGE
 )
 set(UTF8_TESTS OFF CACHE BOOL "" FORCE)
 set(UTF8_SAMPLES OFF CACHE BOOL "" FORCE)
 set(UTF8_INSTALL OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(utf8cpp)
-# Manually set utf8cpp_FOUND to prevent TagLib from trying to build it again
-# and causing a target name collision.
 set(utf8cpp_FOUND TRUE CACHE BOOL "" FORCE)
 
 ################################
@@ -277,9 +260,8 @@ set(utf8cpp_FOUND TRUE CACHE BOOL "" FORCE)
 FetchContent_Declare(
   taglib
   GIT_REPOSITORY https://github.com/taglib/taglib.git
-  GIT_TAG v2.1.1
+  GIT_TAG v2.3.1
 )
-# Disable optional utf8cpp dependency
 set(WITH_APE OFF CACHE BOOL "" FORCE)
 set(WITH_ASF OFF CACHE BOOL "" FORCE)
 set(WITH_DSF OFF CACHE BOOL "" FORCE)
@@ -323,7 +305,7 @@ set(SDL_METAL OFF CACHE BOOL "" FORCE)
 FetchContent_Declare(
   SDL3
   GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
-  GIT_TAG release-3.4.0
+  GIT_TAG release-3.4.12
   OVERRIDE_FIND_PACKAGE
 )
 set(SDL_TEST OFF CACHE BOOL "Build the SDL3 test programs" FORCE)
@@ -373,7 +355,7 @@ endif()
 FetchContent_Declare(
   curl
   GIT_REPOSITORY https://github.com/curl/curl.git
-  GIT_TAG curl-8_18_0
+  GIT_TAG curl-8_21_0
 )
 FetchContent_MakeAvailable(curl)
 
@@ -382,34 +364,11 @@ FetchContent_MakeAvailable(curl)
 ################################
 
 include(add_mupdf_library)
-
-
 ################################################################
-# llama.cpp
+# GPU backend selection (must run BEFORE llama/whisper FetchContent
+# so that GGML_* cache vars and SPIRV-Headers are in place when
+# llama's ggml-vulkan/CMakeLists.txt is processed)
 ################################
-
-set(LLAMA_BUILD_TESTS OFF CACHE BOOL "Disable llama tests" FORCE)
-set(LLAMA_BUILD_EXAMPLES OFF CACHE BOOL "Disable llama examples" FORCE)
-set(LLAMA_BUILD_SERVER OFF CACHE BOOL "Disable llama server" FORCE)
-
-FetchContent_Declare(
-    llama
-    GIT_REPOSITORY https://github.com/ggerganov/llama.cpp.git
-    GIT_TAG        b4400
-    GIT_SHALLOW    TRUE
-    GIT_SUBMODULES ""
-    UPDATE_DISCONNECTED TRUE
-)
-
-FetchContent_MakeAvailable(llama)
-
-################################
-# whisper
-################################
-
-set(WHISPER_BUILD_TESTS OFF CACHE BOOL "Disable whisper tests" FORCE)
-set(WHISPER_BUILD_EXAMPLES OFF CACHE BOOL "Disable whisper examples" FORCE)
-set(CMAKE_CXX_SCAN_FOR_MODULES OFF CACHE BOOL "Disable C++ modules scanning for Vulkan-Headers" FORCE)
 
 if(APPLE)
     message(STATUS "macOS detected — Enabling Metal GPU backend for Whisper.")
@@ -432,11 +391,61 @@ else()
         set(GGML_VULKAN OFF CACHE BOOL "Disable Vulkan for GGML" FORCE)
     else()
         # Priority 2: Vulkan (Supported under MinGW GCC, MSVC, and Linux)
-        find_package(Vulkan QUIET COMPONENTS glslc)
-        if(Vulkan_FOUND AND Vulkan_glslc_FOUND)
-            message(STATUS "CUDA not supported by toolchain, Vulkan SDK & glslc found — Enabling Vulkan GPU backend for Whisper (Priority 2).")
+        find_package(Vulkan QUIET)
+        if(NOT Vulkan_FOUND)
+            message(STATUS "System Vulkan SDK not found — Fetching Vulkan-Headers via FetchContent...")
+            FetchContent_Declare(
+                Vulkan-Headers
+                GIT_REPOSITORY https://github.com/KhronosGroup/Vulkan-Headers.git
+                GIT_TAG        v1.4.357
+                GIT_SHALLOW    TRUE
+            )
+            FetchContent_MakeAvailable(Vulkan-Headers)
+            find_package(Vulkan QUIET)
+        endif()
+
+        if(Vulkan_FOUND OR TARGET Vulkan-Headers OR TARGET Vulkan::Headers)
+            message(STATUS "Vulkan headers available — Enabling Vulkan GPU backend for Whisper & GGML (Priority 2).")
             set(GGML_CUDA OFF CACHE BOOL "Disable CUDA for GGML" FORCE)
             set(GGML_VULKAN ON CACHE BOOL "Enable Vulkan GPU acceleration" FORCE)
+
+            # llama.cpp b10154 ggml-vulkan/CMakeLists.txt calls find_package(SPIRV-Headers REQUIRED).
+            # Fetch it before llama so the config file is available in the build tree, then point
+            # SPIRV-Headers_DIR at the generated cmake/ sub-directory in the binary dir.
+            # SPIRV-Headers' install(EXPORT) only runs at cmake --install, never at
+            # configure time.  So find_package(SPIRV-Headers CONFIG REQUIRED) inside
+            # llama's ggml-vulkan/CMakeLists.txt can never find a config file through
+            # any INSTALL-based mechanism.
+            #
+            # Solution: fetch SPIRV-Headers (which defines the global targets
+            # SPIRV-Headers and SPIRV-Headers::SPIRV-Headers via add_subdirectory),
+            # then write a minimal shim SPIRV-HeadersConfig.cmake via file(WRITE) which
+            # runs immediately at configure time.  The shim is a no-op when the targets
+            # already exist, but gives find_package a discoverable config file.
+            set(SPIRV_HEADERS_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
+            set(SPIRV_HEADERS_ENABLE_TESTS   OFF CACHE BOOL "" FORCE)
+            if(NOT spirv-headers_POPULATED)
+                FetchContent_Declare(
+                    SPIRV-Headers
+                    GIT_REPOSITORY https://github.com/KhronosGroup/SPIRV-Headers.git
+                    GIT_TAG        vulkan-sdk-1.4.357.0
+                    GIT_SHALLOW    TRUE
+                )
+                            FetchContent_MakeAvailable(SPIRV-Headers)
+            endif()
+            include_directories(SYSTEM "${spirv-headers_SOURCE_DIR}/include")
+            file(WRITE "${CMAKE_BINARY_DIR}/spirv-headers-shim/SPIRV-HeadersConfig.cmake"
+"# CantaTema: SPIRV-Headers FetchContent shim config (configure-time generated).
+set(SPIRV-Headers_INCLUDE_DIRS \"${spirv-headers_SOURCE_DIR}/include\")
+set(SPIRV_HEADERS_INCLUDE_DIRS \"${spirv-headers_SOURCE_DIR}/include\")
+if(NOT TARGET SPIRV-Headers::SPIRV-Headers)
+    if(TARGET SPIRV-Headers)
+        add_library(SPIRV-Headers::SPIRV-Headers ALIAS SPIRV-Headers)
+    endif()
+endif()
+")
+            set(SPIRV-Headers_DIR "${CMAKE_BINARY_DIR}/spirv-headers-shim"
+                CACHE PATH "Shim dir for SPIRV-Headers find_package compatibility" FORCE)
         else()
             # Priority 3: CPU
             message(STATUS "Neither CUDA nor Vulkan GPU backends available for toolchain — Using CPU backend for Whisper (Priority 3).")
@@ -446,10 +455,39 @@ else()
     endif()
 endif()
 
+################################################################
+# llama.cpp
+################################
+
+set(LLAMA_BUILD_TESTS OFF CACHE BOOL "Disable llama tests" FORCE)
+set(LLAMA_BUILD_EXAMPLES OFF CACHE BOOL "Disable llama examples" FORCE)
+set(LLAMA_BUILD_SERVER OFF CACHE BOOL "Disable llama server" FORCE)
+
+FetchContent_Declare(
+    llama
+    GIT_REPOSITORY https://github.com/ggml-org/llama.cpp.git
+    GIT_TAG        b10154
+    GIT_SHALLOW    TRUE
+    GIT_SUBMODULES ""
+    UPDATE_DISCONNECTED TRUE
+)
+
+FetchContent_MakeAvailable(llama)
+
+################################
+# whisper
+################################
+
+set(WHISPER_BUILD_TESTS OFF CACHE BOOL "Disable whisper tests" FORCE)
+set(WHISPER_BUILD_EXAMPLES OFF CACHE BOOL "Disable whisper examples" FORCE)
+set(WHISPER_BUILD_EXTRA_TARGETS OFF CACHE BOOL "Disable whisper extra targets (parakeet, etc.)" FORCE)
+set(WHISPER_PARAKEET OFF CACHE BOOL "Disable parakeet model support" FORCE)
+set(CMAKE_CXX_SCAN_FOR_MODULES OFF CACHE BOOL "Disable C++ modules scanning for Vulkan-Headers" FORCE)
+
 FetchContent_Declare(
     whisper
-    GIT_REPOSITORY https://github.com/ggerganov/whisper.cpp.git
-    GIT_TAG        v1.8.3
+    GIT_REPOSITORY https://github.com/ggml-org/whisper.cpp.git
+    GIT_TAG        v1.9.1
     GIT_SHALLOW    TRUE
     GIT_SUBMODULES ""
     UPDATE_DISCONNECTED TRUE
@@ -457,8 +495,6 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(whisper)
 
-# Workaround: whisper v1.8.3 whisper.h includes ggml-cpu.h but the whisper
-# src/CMakeLists.txt omits ggml/include/ from the target include paths.
 target_include_directories(whisper PUBLIC
     $<BUILD_INTERFACE:${whisper_SOURCE_DIR}/ggml/include>
     $<BUILD_INTERFACE:${whisper_SOURCE_DIR}/ggml/src>
@@ -467,12 +503,6 @@ set_target_properties(whisper PROPERTIES
     CXX_STANDARD 23
     CXX_STANDARD_REQUIRED ON
 )
-target_compile_definitions(whisper PUBLIC
-    GGML_USE_CPU
-    GGML_VERSION="1.8.3"
-    GGML_COMMIT="unknown"
-)
-target_link_libraries(whisper PUBLIC ggml)
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(whisper PRIVATE -O3)

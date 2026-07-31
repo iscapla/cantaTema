@@ -1,6 +1,13 @@
 
+include(FetchContent)
 find_package(Threads REQUIRED)
-CPMAddPackage("gh:chriskohlhoff/asio#asio-1-36-0@1.36.0")
+FetchContent_Declare(
+    asio
+    GIT_REPOSITORY https://github.com/chriskohlhoff/asio.git
+    GIT_TAG        asio-1-36-0
+    OVERRIDE_FIND_PACKAGE
+)
+FetchContent_MakeAvailable(asio)
 
 # ASIO doesn't use CMake, we have to configure it manually. Extra notes for using on Windows:
 #

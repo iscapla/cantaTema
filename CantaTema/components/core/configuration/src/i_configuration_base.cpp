@@ -61,6 +61,19 @@ std::string IConfigurationBase::get(const std::string &section, const std::strin
     return value ? std::string(value) : "";
 }
 
+std::string IConfigurationBase::get_or_default(const std::string &section, const std::string &field, const std::string &default_value) {
+    std::lock_guard<std::mutex> lock(mtx);
+    const char* value = ini.GetValue(section.c_str(), field.c_str(), nullptr);
+    if (value == nullptr || std::string(value).empty()) {
+        ini.SetValue(section.c_str(), field.c_str(), default_value.c_str());
+        if (!file_path.empty()) {
+            ini.SaveFile(file_path.c_str());
+        }
+        return default_value;
+    }
+    return std::string(value);
+}
+
 rst_code_e IConfigurationBase::set(const std::string &section, const std::string &field, const std::string &value) {
     std::lock_guard<std::mutex> lock(mtx);
     SI_Error rc = ini.SetValue(section.c_str(), field.c_str(), value.c_str());

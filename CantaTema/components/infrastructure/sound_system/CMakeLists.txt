@@ -5,6 +5,7 @@ create_infra_library(
     "sound_system"
     SRCS
     src/sound_system.cpp
+    src/sound_converter.cpp
     INC_PUBLIC
     INFRASTRUCTURE::FILE_HANDLER
     SDL3::SDL3

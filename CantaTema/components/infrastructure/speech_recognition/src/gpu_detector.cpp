@@ -225,13 +225,17 @@ AccelerationReport GpuDetector::detect_accelerators()
             details.type_str = "GPU (Dedicated)";
             details.is_gpu   = true;
             break;
+#if defined(GGML_BACKEND_DEVICE_TYPE_IGPU)
         case GGML_BACKEND_DEVICE_TYPE_IGPU:
             details.type_str = "GPU (Integrated)";
             details.is_gpu   = true;
             break;
+#endif
+#if defined(GGML_BACKEND_DEVICE_TYPE_ACCEL)
         case GGML_BACKEND_DEVICE_TYPE_ACCEL:
             details.type_str = "Accelerator";
             break;
+#endif
         case GGML_BACKEND_DEVICE_TYPE_CPU:
         default:
             details.type_str = "CPU";

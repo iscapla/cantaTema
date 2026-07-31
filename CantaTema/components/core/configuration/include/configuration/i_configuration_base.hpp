@@ -21,6 +21,7 @@ protected:
 
     void set_file_path(const std::filesystem::path &file_path);
     std::string get(const std::string &section, const std::string &field);
+    std::string get_or_default(const std::string &section, const std::string &field, const std::string &default_value);
     rst_code_e set(const std::string &section, const std::string &field, const std::string &value);
 
 private:

@@ -1,22 +1,13 @@
-# Set COMPONENT_PROJECT_NAME based on the directory name
-get_filename_component(DIR_NAME ${CMAKE_CURRENT_SOURCE_DIR} NAME)
-string(TOUPPER ${DIR_NAME} COMPONENT_PROJECT_NAME)
-
-# Create child targets
-add_subdirectory(terminal)
-add_subdirectory(comparison_example)
-
 project(
-    Terminal_CLI
-    DESCRIPTION "CantaTema - Terminal_CLI"
+    ComparisonExample
+    DESCRIPTION "CantaTema - Comparison Example Developer Binary"
     VERSION ${PROJ_VERSION}
     LANGUAGES CXX
 )
 
-# inform of our project
 message(STATUS "Building ${PROJECT_NAME}...")
 
-add_executable(${PROJECT_NAME} main_terminal.cpp)
+add_executable(${PROJECT_NAME} main_comparison_example.cpp)
 
 if(MINGW OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     target_link_options(${PROJECT_NAME} PRIVATE -Wl,--allow-multiple-definition)
@@ -26,18 +17,23 @@ endif()
 target_link_libraries(${PROJECT_NAME} PRIVATE
     CORE::PRIMITIVES
     CORE::CONFIGURATION
-    APPS::TERMINAL
+    CORE::MODELS
+    INFRASTRUCTURE::SOUND_SYSTEM
+    INFRASTRUCTURE::FILE_HANDLER
+    INFRASTRUCTURE::SPEECH_RECOGNITION
+    INFRASTRUCTURE::EMBEDDINGS
+    INFRASTRUCTURE::SIMILARITY
 )
 
 # install information
 install(TARGETS ${PROJECT_NAME} DESTINATION bin/${PROJECT_NAME})
 
-# Set the runtime output directory for each executable
+# Set the runtime output directory for executable
 set_target_properties(${PROJECT_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin/${PROJECT_NAME})
 
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
-    ${CMAKE_CURRENT_SOURCE_DIR}/../example_data
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../example_data
     $<TARGET_FILE_DIR:${PROJECT_NAME}>/example_data
     COMMENT "Copying example_data to ${PROJECT_NAME} binary directory"
 )

@@ -167,7 +167,7 @@ TEST(LlamaContextImplTest, LlamaContextImplExecutionSuccessPaths) {
 TEST(LlamaContextImplTest, ContextCreationFailure) {
     // Model loads OK but context creation returns nullptr → load_model should fail
     LlamaContextImpl::setup_mocks();
-    LlamaContextImpl::fn_llama_new_context_with_model = [](llama_model*, llama_context_params) -> llama_context* {
+    LlamaContextImpl::fn_llama_init_from_model = [](llama_model*, llama_context_params) -> llama_context* {
         return nullptr;
     };
     {
@@ -183,7 +183,7 @@ TEST(LlamaContextImplTest, TokenizeRetryOnSmallBuffer) {
     // First call returns -4 (needs 4 tokens); second call succeeds
     LlamaContextImpl::setup_mocks();
     int call_count = 0;
-    LlamaContextImpl::fn_llama_tokenize = [&call_count](const llama_model*, const char*, int,
+    LlamaContextImpl::fn_llama_tokenize = [&call_count](const llama_vocab*, const char*, int,
                                                          llama_token* tokens, int, bool, bool) -> int {
         ++call_count;
         if (call_count == 1) return -4;           // buffer too small
@@ -203,7 +203,7 @@ TEST(LlamaContextImplTest, TokenizeRetryOnSmallBuffer) {
 TEST(LlamaContextImplTest, TokenizeAlwaysFails) {
     // Both tokenize calls return negative → should return -1
     LlamaContextImpl::setup_mocks();
-    LlamaContextImpl::fn_llama_tokenize = [](const llama_model*, const char*, int,
+    LlamaContextImpl::fn_llama_tokenize = [](const llama_vocab*, const char*, int,
                                               llama_token*, int, bool, bool) -> int {
         return -1;
     };
@@ -254,10 +254,11 @@ TEST(LlamaContextImplTest, FallbackToGetEmbeddings) {
 }
 
 TEST(LlamaContextImplTest, NullEmbeddingPointers) {
-    // Both get_embeddings_ith and get_embeddings return nullptr → should return {}
+    // get_embeddings_seq, get_embeddings_ith and get_embeddings return nullptr → should return {}
     LlamaContextImpl::setup_mocks();
-    LlamaContextImpl::fn_llama_get_embeddings_ith = [](llama_context*, int) -> float* { return nullptr; };
-    LlamaContextImpl::fn_llama_get_embeddings     = [](llama_context*)       -> float* { return nullptr; };
+    LlamaContextImpl::fn_llama_get_embeddings_seq = [](llama_context*, int32_t) -> float* { return nullptr; };
+    LlamaContextImpl::fn_llama_get_embeddings_ith = [](llama_context*, int)     -> float* { return nullptr; };
+    LlamaContextImpl::fn_llama_get_embeddings     = [](llama_context*)          -> float* { return nullptr; };
     {
         LlamaContextImpl ctx;
         EXPECT_TRUE(ctx.load_model("dummy.gguf", 0));
