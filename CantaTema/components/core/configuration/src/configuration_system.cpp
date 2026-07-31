@@ -138,7 +138,7 @@ std::string ConfigurationSystem::get_whisper_default_model() const {
 }
 
 bool ConfigurationSystem::get_whisper_use_gpu() const {
-    std::string value = const_cast<ConfigurationSystem*>(this)->get_or_default("WHISPER", "use_gpu", "false");
+    std::string value = const_cast<ConfigurationSystem*>(this)->get_or_default("WHISPER", "use_gpu", "true");
     if (value == "true" || value == "1" || value == "TRUE") {
         return true;
     }

@@ -11,6 +11,7 @@ create_test_exec(
         t_whisper_transcription_engine.cxx
         t_voice_quality_analyzer.cxx
         t_gpu_detector.cxx
+        t_whisper_quijote_integration.cxx
     INC_PRIVATE
         CORE::PRIMITIVES
         CORE::CONFIGURATION

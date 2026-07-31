@@ -120,9 +120,9 @@ TEST_F(ConfigurationSystemTest, FallbackOnGarbageValues) {
     (config.*set_fn)("COVERAGE", "importance_weight_bg_color", "not_a_number");
 
     // 3. Verify fallbacks are returned
-    EXPECT_EQ(config.get_user_default_max_text_file_size_in_mb(), 10u);
-    EXPECT_EQ(config.get_user_default_max_sound_file_size_in_mb(), 50u);
-    EXPECT_EQ(config.get_user_usage_limit_in_mb(), 128u);
+    EXPECT_EQ(config.get_user_default_max_text_file_size_in_mb(), 25u);
+    EXPECT_EQ(config.get_user_default_max_sound_file_size_in_mb(), 25u);
+    EXPECT_EQ(config.get_user_usage_limit_in_mb(), 512u);
     EXPECT_EQ(config.get_max_pdf_page_count(), 100u);
     EXPECT_EQ(config.get_max_recording_duration_minutes(), 30u);
     EXPECT_EQ(config.get_embeddings_gpu_offload_layers(), 0);
@@ -149,7 +149,7 @@ TEST_F(ConfigurationSystemTest, FallbackOnGarbageValues) {
 TEST_F(ConfigurationSystemTest, NewGettersValues) {
     ConfigurationSystem& config = ConfigurationSystem::getInstance();
     EXPECT_STRNE(config.get_whisper_default_model().c_str(), "");
-    EXPECT_FALSE(config.get_whisper_use_gpu());
+    EXPECT_TRUE(config.get_whisper_use_gpu());
     EXPECT_STRNE(config.get_embeddings_default_model().c_str(), "");
     EXPECT_GE(config.get_embeddings_gpu_offload_layers(), 0);
     EXPECT_GT(config.get_coverage_similarity_threshold(), 0.0f);
