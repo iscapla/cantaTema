@@ -38,9 +38,7 @@ endif()
 option(ENABLE_COVERAGE "Enable code coverage compilation flags" ON)
 if(ENABLE_COVERAGE)
     if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-        add_compile_options(--coverage)
-        add_link_options(--coverage)
-        message(STATUS "Code coverage instrumentation enabled")
+        message(STATUS "Code coverage instrumentation enabled for project targets")
         find_program(GCOV_PATH NAMES gcov gcov.exe)
         if(GCOV_PATH)
             set(CTEST_COVERAGE_COMMAND "${GCOV_PATH}")
@@ -61,6 +59,7 @@ if(ENABLE_COVERAGE)
         message(WARNING "Code coverage is only supported for GCC/Clang. Ignored. Compiler ID: ${CMAKE_CXX_COMPILER_ID}")
     endif()
 endif()
+
 
 set(CMAKE_MAIN_PROJECT_NAME ${PROJECT_NAME})
 

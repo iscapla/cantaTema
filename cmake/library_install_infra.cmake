@@ -50,6 +50,11 @@ function(create_infra_library)
             $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include_priv>
     )
     
+    if(ENABLE_COVERAGE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        target_compile_options(${TARGET_NAME} PRIVATE --coverage)
+        target_link_options(${TARGET_NAME} PRIVATE --coverage)
+    endif()
+
     # install target
     install(TARGETS ${TARGET_NAME}
             EXPORT ${TARGET_NAME}Targets
@@ -58,5 +63,6 @@ function(create_infra_library)
             ARCHIVE DESTINATION ${INSTALL_LIB_DIR}
             INCLUDES DESTINATION ${INSTALL_INCLUDE_DIR}
     )
+
 
 endfunction(create_infra_library)

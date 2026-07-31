@@ -40,9 +40,15 @@ function(create_test_exec)
         target_link_options(${PARSED_ARGS_TARGET} PRIVATE -Wl,--allow-multiple-definition)
     endif()
 
+    if(ENABLE_COVERAGE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        target_compile_options(${PARSED_ARGS_TARGET} PRIVATE --coverage)
+        target_link_options(${PARSED_ARGS_TARGET} PRIVATE --coverage)
+    endif()
+
     # Set the runtime output directory for each executable
     set_target_properties(${PARSED_ARGS_TARGET} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin/Test)
 
     add_test(NAME ${PARSED_ARGS_TARGET} COMMAND ${PARSED_ARGS_TARGET} WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/bin/Test)
+
 
 endfunction(create_test_exec)
