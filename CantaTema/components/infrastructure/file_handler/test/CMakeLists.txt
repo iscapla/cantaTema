@@ -10,6 +10,7 @@ create_test_exec(
         t_sound_handler.cxx
         t_extension_type_pdf.cxx
         t_text_chunk_extractor.cxx
+        t_text_conversion_coverage.cxx
     INC_PRIVATE
         CORE::PRIMITIVES
         CORE::CONFIGURATION

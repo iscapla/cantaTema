@@ -15,6 +15,7 @@ create_test_exec(
         t_operation_coverage_pipeline_failures.cxx
         t_operation_coverage_scoring_and_reports.cxx
         t_operation_coverage_quijote_scenario.cxx
+        t_operation_coverage_llama_comparison.cxx
 
     INC_PRIVATE
         CORE::PRIMITIVES
