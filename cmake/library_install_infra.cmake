@@ -51,9 +51,10 @@ function(create_infra_library)
     )
     
     if(ENABLE_COVERAGE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-        target_compile_options(${TARGET_NAME} PRIVATE --coverage)
-        target_link_options(${TARGET_NAME} PRIVATE --coverage)
+        target_compile_options(${TARGET_NAME} PUBLIC --coverage)
+        target_link_options(${TARGET_NAME} PUBLIC --coverage)
     endif()
+
 
     # install target
     install(TARGETS ${TARGET_NAME}
