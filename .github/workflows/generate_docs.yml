@@ -1,0 +1,59 @@
+# ============================================================================
+# CantaTema – Manual Doxygen Documentation Workflow
+# ============================================================================
+# Manually triggered workflow (workflow_dispatch) to generate Doxygen HTML 
+# documentation on a Linux runner and publish the output as a reusable artifact.
+# ============================================================================
+
+name: Generate Documentation
+
+on:
+  workflow_dispatch:
+    inputs:
+      retention_days:
+        description: 'Artifact retention period in days'
+        required: false
+        default: '3'
+        type: string
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  generate-doxygen-docs:
+    name: "Generate Doxygen Docs (Linux)"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Doxygen and Graphviz
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y doxygen graphviz cmake build-essential
+
+      - name: Configure CMake
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Debug
+
+      - name: Build Doxygen Documentation Target
+        run: cmake --build build --target doxygen_docs
+
+      - name: Verify Documentation Output
+        run: |
+          if [ ! -f "build/docs/doxygen/html/index.html" ]; then
+            echo "::error::Doxygen index.html file not found!"
+            exit 1
+          fi
+          echo "Documentation successfully generated at build/docs/doxygen/html/index.html"
+
+      - name: Upload Documentation Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: doxygen-docs
+          path: build/docs/doxygen/html/
+          retention-days: ${{ inputs.retention_days || '10' }}
+          if-no-files-found: error

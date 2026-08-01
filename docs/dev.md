@@ -100,7 +100,7 @@ Run the following sequential commands:
 
 Doxygen documentation is configured as a dedicated, opt-in target (`doxygen_docs`) and is **not** compiled during normal build commands.
 
-### Generate Documentation
+### Local Execution (On Demand)
 Run the following command from the workspace root to generate HTML documentation:
 ```powershell
 cmake --build build --target doxygen_docs
@@ -108,6 +108,30 @@ cmake --build build --target doxygen_docs
 
 - **Output Path:** Generated HTML files are placed in `build/docs/doxygen/html/index.html`.
 - **System Requirements / Fallback:** If Doxygen is installed on the host system, standard CMake `find_package(Doxygen)` is used. If not found locally, CMake automatically downloads the prebuilt Doxygen binary release via `FetchContent` to provide the documentation target.
+
+---
+
+### Manual CI Workflow (`.github/workflows/generate_docs.yml`)
+
+A dedicated GitHub Actions workflow is provided for manual execution on a Linux runner (`ubuntu-latest`).
+
+#### 1. Triggering Manually on GitHub:
+1. Go to the repository's **Actions** tab on GitHub.
+2. Select **Generate Documentation** from the left workflows list.
+3. Click **Run workflow** -> Select branch -> Click **Run workflow**.
+
+#### 2. Downloading Generated Files:
+Once the run completes, scroll down to the **Artifacts** section of the run summary and click **`doxygen-docs`** to download the generated HTML documentation as a `.zip` archive.
+
+#### 3. Reusing Artifacts in Downstream Workflows:
+Downstream GitHub Actions workflows can download and reuse the generated documentation using `actions/download-artifact@v4`:
+```yaml
+- name: Download Documentation Artifact
+  uses: actions/download-artifact@v4
+  with:
+    name: doxygen-docs
+    path: build/docs/doxygen/html/
+```
 
 ---
 
