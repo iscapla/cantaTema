@@ -289,6 +289,7 @@ To run the interactive shell of the CantaTema project:
    ```
 6. **Temporary Scripts:** Create any test scripts or debug binaries inside a `scratch/` folder at the root directory of the workspace.
 7. **No Direct Modifications to `build/` Directory:** Never edit or modify files inside the `build/` directory or its subdirectories (e.g., `build/_deps/`). The `build/` directory is transient and completely wiped during clean builds or environment resets. Any build configuration patches, string replacements, or dependency modifications MUST be written cleanly into tracked repository files (such as root `CMakeLists.txt`, `cmake/*.cmake`, or component source code) so they automatically execute during CMake configuration.
+8. **Architecture & Schema Synchronization:** Whenever CMake target definitions, component libraries, abstract interfaces, or core features are added, removed, or modified, you MUST update [docs/dev.md](file:///c:/Users/iscap/Desktop/Projects/cantaTema/docs/dev.md) and its Mermaid architecture schema to accurately reflect the exact state of the project.
 
 ## 📝 Documentation Guidelines
 - **Interface & Schema Changes:** If database schemas, configuration files, or core component interfaces change, update the documentation in the `docs` folder or add relevant annotations.
