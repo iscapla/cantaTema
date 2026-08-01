@@ -31,10 +31,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install Doxygen and Graphviz
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y doxygen graphviz cmake build-essential
+      - name: Install build dependencies, Doxygen and Graphviz
+        uses: ./.github/actions/setup-linux-deps
+        with:
+          extra_packages: 'doxygen graphviz'
 
       - name: Configure CMake
         run: cmake -B build -DCMAKE_BUILD_TYPE=Debug

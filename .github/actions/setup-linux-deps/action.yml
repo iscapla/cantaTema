@@ -1,0 +1,40 @@
+name: 'Setup Linux Dependencies'
+description: 'Installs build, audio, display, and library dependencies for CantaTema on Linux (Ubuntu)'
+
+inputs:
+  extra_packages:
+    description: 'Additional apt packages to install (e.g. doxygen graphviz)'
+    required: false
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install apt dependencies
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          cmake \
+          ninja-build \
+          git \
+          pkg-config \
+          libasound2-dev \
+          libpulse-dev \
+          libx11-dev \
+          libxext-dev \
+          libxrandr-dev \
+          libxcursor-dev \
+          libxi-dev \
+          libxss-dev \
+          libxtst-dev \
+          libpsl-dev \
+          libwayland-dev \
+          libdbus-1-dev \
+          libudev-dev \
+          libvulkan-dev \
+          glslang-tools \
+          glslc \
+          vulkan-validationlayers \
+          ${{ inputs.extra_packages }}

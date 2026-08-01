@@ -88,31 +88,7 @@ jobs:
       # Linux: Install build dependencies
       - name: Install dependencies (Linux)
         if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential \
-            cmake \
-            ninja-build \
-            git \
-            pkg-config \
-            libasound2-dev \
-            libpulse-dev \
-            libx11-dev \
-            libxext-dev \
-            libxrandr-dev \
-            libxcursor-dev \
-            libxi-dev \
-            libxss-dev \
-            libxtst-dev \
-            libpsl-dev \
-            libwayland-dev \
-            libdbus-1-dev \
-            libudev-dev \
-            libvulkan-dev \
-            glslang-tools \
-            glslc \
-            vulkan-validationlayers
+        uses: ./.github/actions/setup-linux-deps
 
       # macOS: Ensure full Xcode is active (needed for ObjC/Metal in SDL3)
       - name: Setup Xcode (macOS)
