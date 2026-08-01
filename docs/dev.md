@@ -96,7 +96,22 @@ Run the following sequential commands:
 
 ---
 
-## 💻 5. Executing the Tool
+## 📚 5. Generating Doxygen Documentation
+
+Doxygen documentation is configured as a dedicated, opt-in target (`doxygen_docs`) and is **not** compiled during normal build commands.
+
+### Generate Documentation
+Run the following command from the workspace root to generate HTML documentation:
+```powershell
+cmake --build build --target doxygen_docs
+```
+
+- **Output Path:** Generated HTML files are placed in `build/docs/doxygen/html/index.html`.
+- **System Requirements / Fallback:** If Doxygen is installed on the host system, standard CMake `find_package(Doxygen)` is used. If not found locally, CMake automatically downloads the prebuilt Doxygen binary release via `FetchContent` to provide the documentation target.
+
+---
+
+## 💻 6. Executing the Tool
 
 To run the interactive console shell application:
 

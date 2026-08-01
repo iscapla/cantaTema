@@ -273,6 +273,7 @@ set(WITH_ZLIB OFF CACHE BOOL "" FORCE)
 set(TAGLIB_INSTALL OFF CACHE BOOL "" FORCE)
 set(TAGLIB_BUILD_BINDINGS OFF CACHE BOOL "" FORCE)
 set(TAGLIB_WITH_ZLIB OFF CACHE BOOL "" FORCE)
+set(BUILD_DOCUMENTATION OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(taglib)
 
 ################################
@@ -569,6 +570,73 @@ foreach(target_name ggml ggml-base ggml-cpu ggml-vulkan)
         )
     endif()
 endforeach()
+
+#####################################################################################################
+# DOXYGEN DOCUMENTATION TARGET
+#####################################################################################################
+
+find_package(Doxygen OPTIONAL_COMPONENTS dot)
+
+if(NOT DOXYGEN_FOUND)
+    if(WIN32)
+        message(STATUS "Doxygen system installation not found. Downloading prebuilt Doxygen binary for Windows...")
+        FetchContent_Declare(
+            doxygen_bin
+            URL https://github.com/doxygen/doxygen/releases/download/Release_1_12_0/doxygen-1.12.0.windows.x64.bin.zip
+            DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+        )
+        FetchContent_MakeAvailable(doxygen_bin)
+        if(EXISTS "${doxygen_bin_SOURCE_DIR}/doxygen.exe")
+            set(DOXYGEN_EXECUTABLE "${doxygen_bin_SOURCE_DIR}/doxygen.exe" CACHE FILEPATH "Doxygen binary path" FORCE)
+            find_package(Doxygen OPTIONAL_COMPONENTS dot)
+            message(STATUS "Prebuilt Doxygen binary registered at: ${DOXYGEN_EXECUTABLE}")
+        endif()
+    elseif(UNIX AND NOT APPLE)
+        message(STATUS "Doxygen system installation not found. Downloading prebuilt Doxygen binary for Linux...")
+        FetchContent_Declare(
+            doxygen_bin
+            URL https://github.com/doxygen/doxygen/releases/download/Release_1_12_0/doxygen-1.12.0.linux.bin.tar.gz
+            DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+        )
+        FetchContent_MakeAvailable(doxygen_bin)
+        if(EXISTS "${doxygen_bin_SOURCE_DIR}/bin/doxygen")
+            set(DOXYGEN_EXECUTABLE "${doxygen_bin_SOURCE_DIR}/bin/doxygen" CACHE FILEPATH "Doxygen binary path" FORCE)
+            find_package(Doxygen OPTIONAL_COMPONENTS dot)
+            message(STATUS "Prebuilt Doxygen binary registered at: ${DOXYGEN_EXECUTABLE}")
+        endif()
+    else()
+        message(STATUS "Doxygen system executable was not found. On macOS run 'brew install doxygen' to enable the 'doxygen_docs' target.")
+    endif()
+endif()
+
+if(DOXYGEN_FOUND)
+    set(DOXYGEN_PROJECT_NAME "CantaTema")
+    set(DOXYGEN_PROJECT_NUMBER "${PROJECT_VERSION}")
+    set(DOXYGEN_PROJECT_BRIEF "Train your voice. Master your topics.")
+    set(DOXYGEN_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/docs/doxygen")
+    set(DOXYGEN_RECURSIVE YES)
+    set(DOXYGEN_EXTRACT_ALL YES)
+    set(DOXYGEN_EXTRACT_PRIVATE YES)
+    set(DOXYGEN_EXTRACT_STATIC YES)
+    set(DOXYGEN_GENERATE_HTML YES)
+    set(DOXYGEN_GENERATE_LATEX NO)
+    set(DOXYGEN_BUILTIN_STL_SUPPORT YES)
+
+    if(DOXYGEN_DOT_FOUND)
+        set(DOXYGEN_HAVE_DOT YES)
+        set(DOXYGEN_CALL_GRAPH YES)
+        set(DOXYGEN_CALLER_GRAPH YES)
+    endif()
+
+    doxygen_add_docs(
+        doxygen_docs
+        "${CMAKE_CURRENT_SOURCE_DIR}/CantaTema"
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+        COMMENT "Generating Doxygen documentation for CantaTema"
+    )
+else()
+    message(STATUS "Doxygen could not be initialized. The 'doxygen_docs' target will not be available.")
+endif()
 
 #####################################################################################################
 # PROJECT RULES
