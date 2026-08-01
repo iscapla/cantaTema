@@ -94,7 +94,7 @@ TEST_F(OperationCoverageScoringAndReportsTest, FullPipeline100PercentCoverage) {
     EXPECT_CALL(*mock_subject_op, subject_get_by_id(user, 10, _))
         .WillOnce(DoAll(SetArgReferee<2>(subject), Return(RST_OK)));
 
-    EXPECT_CALL(*mock_speech, initialize(_)).WillOnce(Return(RST_OK));
+    EXPECT_CALL(*mock_speech, initialize(::testing::An<const ISpeechRecognition::speech_recognition_config_t&>())).WillOnce(Return(RST_OK));
     EXPECT_CALL(*mock_speech, submit_task(test_audio_file)).WillOnce(Return(RST_OK));
 
     std::vector<TranscriptSegment> mock_segments;
@@ -159,7 +159,7 @@ TEST_F(OperationCoverageScoringAndReportsTest, FullPipelineZeroPercentCoverage) 
     EXPECT_CALL(*mock_subject_op, subject_get_by_id(user, 10, _))
         .WillOnce(DoAll(SetArgReferee<2>(subject), Return(RST_OK)));
 
-    EXPECT_CALL(*mock_speech, initialize(_)).WillOnce(Return(RST_OK));
+    EXPECT_CALL(*mock_speech, initialize(::testing::An<const ISpeechRecognition::speech_recognition_config_t&>())).WillOnce(Return(RST_OK));
     EXPECT_CALL(*mock_speech, submit_task(test_audio_file)).WillOnce(Return(RST_OK));
 
     std::vector<TranscriptSegment> mock_segments;

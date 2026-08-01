@@ -114,7 +114,7 @@ TEST_F(OperationCoverageLlamaComparisonTest, ComparisonModelConversionErrors) {
     EXPECT_CALL(*mock_subject_op, subject_get_by_id(user, 10, _))
         .WillOnce(DoAll(SetArgReferee<2>(subject), Return(RST_OK)));
 
-    EXPECT_CALL(*mock_speech, initialize(_)).WillOnce(Return(RST_OK));
+    EXPECT_CALL(*mock_speech, initialize(::testing::An<const ISpeechRecognition::speech_recognition_config_t&>())).WillOnce(Return(RST_OK));
     EXPECT_CALL(*mock_speech, submit_task(test_audio_file)).WillOnce(Return(RST_OK));
 
     std::vector<TranscriptSegment> mock_segments;
@@ -145,7 +145,7 @@ TEST_F(OperationCoverageLlamaComparisonTest, Comparison100Accuracy) {
         .WillOnce(DoAll(SetArgReferee<2>(practice), Return(RST_OK)));
     EXPECT_CALL(*mock_subject_op, subject_get_by_id(user, 10, _))
         .WillOnce(DoAll(SetArgReferee<2>(subject), Return(RST_OK)));
-    EXPECT_CALL(*mock_speech, initialize(_)).WillOnce(Return(RST_OK));
+    EXPECT_CALL(*mock_speech, initialize(::testing::An<const ISpeechRecognition::speech_recognition_config_t&>())).WillOnce(Return(RST_OK));
     EXPECT_CALL(*mock_speech, submit_task(test_audio_file)).WillOnce(Return(RST_OK));
 
     std::vector<TranscriptSegment> mock_segments;
@@ -192,7 +192,7 @@ TEST_F(OperationCoverageLlamaComparisonTest, ComparisonSingleDifference) {
         .WillOnce(DoAll(SetArgReferee<2>(practice), Return(RST_OK)));
     EXPECT_CALL(*mock_subject_op, subject_get_by_id(user, 10, _))
         .WillOnce(DoAll(SetArgReferee<2>(subject), Return(RST_OK)));
-    EXPECT_CALL(*mock_speech, initialize(_)).WillOnce(Return(RST_OK));
+    EXPECT_CALL(*mock_speech, initialize(::testing::An<const ISpeechRecognition::speech_recognition_config_t&>())).WillOnce(Return(RST_OK));
     EXPECT_CALL(*mock_speech, submit_task(test_audio_file)).WillOnce(Return(RST_OK));
 
     std::vector<TranscriptSegment> mock_segments;
@@ -245,7 +245,7 @@ TEST_F(OperationCoverageLlamaComparisonTest, ComparisonSomeDifferences) {
         .WillOnce(DoAll(SetArgReferee<2>(practice), Return(RST_OK)));
     EXPECT_CALL(*mock_subject_op, subject_get_by_id(user, 10, _))
         .WillOnce(DoAll(SetArgReferee<2>(subject), Return(RST_OK)));
-    EXPECT_CALL(*mock_speech, initialize(_)).WillOnce(Return(RST_OK));
+    EXPECT_CALL(*mock_speech, initialize(::testing::An<const ISpeechRecognition::speech_recognition_config_t&>())).WillOnce(Return(RST_OK));
     EXPECT_CALL(*mock_speech, submit_task(test_audio_file)).WillOnce(Return(RST_OK));
 
     std::vector<TranscriptSegment> mock_segments;
@@ -299,7 +299,7 @@ TEST_F(OperationCoverageLlamaComparisonTest, ComparisonDifferentTextOrders) {
         .WillOnce(DoAll(SetArgReferee<2>(practice), Return(RST_OK)));
     EXPECT_CALL(*mock_subject_op, subject_get_by_id(user, 10, _))
         .WillOnce(DoAll(SetArgReferee<2>(subject), Return(RST_OK)));
-    EXPECT_CALL(*mock_speech, initialize(_)).WillOnce(Return(RST_OK));
+    EXPECT_CALL(*mock_speech, initialize(::testing::An<const ISpeechRecognition::speech_recognition_config_t&>())).WillOnce(Return(RST_OK));
     EXPECT_CALL(*mock_speech, submit_task(test_audio_file)).WillOnce(Return(RST_OK));
 
     // Spoken out of order: Chunk 5 first, then Chunk 1
@@ -368,7 +368,7 @@ TEST_F(OperationCoverageLlamaComparisonTest, ComparisonMetricsVerification) {
         .WillOnce(DoAll(SetArgReferee<2>(practice), Return(RST_OK)));
     EXPECT_CALL(*mock_subject_op, subject_get_by_id(user, 10, _))
         .WillOnce(DoAll(SetArgReferee<2>(subject), Return(RST_OK)));
-    EXPECT_CALL(*mock_speech, initialize(_)).WillOnce(Return(RST_OK));
+    EXPECT_CALL(*mock_speech, initialize(::testing::An<const ISpeechRecognition::speech_recognition_config_t&>())).WillOnce(Return(RST_OK));
     EXPECT_CALL(*mock_speech, submit_task(test_audio_file)).WillOnce(Return(RST_OK));
 
     std::vector<TranscriptSegment> mock_segments;

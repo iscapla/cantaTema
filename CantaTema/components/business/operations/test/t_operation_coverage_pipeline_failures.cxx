@@ -94,7 +94,7 @@ TEST_F(OperationCoveragePipelineFailuresTest, SpeechRecognitionInitFailure) {
     EXPECT_CALL(*mock_subject_op, subject_get_by_id(user, 10, _))
         .WillOnce(DoAll(SetArgReferee<2>(subject), Return(RST_OK)));
 
-    EXPECT_CALL(*mock_speech, initialize(_))
+    EXPECT_CALL(*mock_speech, initialize(::testing::An<const ISpeechRecognition::speech_recognition_config_t&>()))
         .WillOnce(Return(MODELS_FILE_NOT_FOUND));
 
     std::string exec_id;
@@ -117,7 +117,7 @@ TEST_F(OperationCoveragePipelineFailuresTest, SpeechRecognitionSubmitTaskFailure
     EXPECT_CALL(*mock_subject_op, subject_get_by_id(user, 10, _))
         .WillOnce(DoAll(SetArgReferee<2>(subject), Return(RST_OK)));
 
-    EXPECT_CALL(*mock_speech, initialize(_)).WillOnce(Return(RST_OK));
+    EXPECT_CALL(*mock_speech, initialize(::testing::An<const ISpeechRecognition::speech_recognition_config_t&>())).WillOnce(Return(RST_OK));
     EXPECT_CALL(*mock_speech, submit_task(test_audio_file)).WillOnce(Return(UNKNOWN));
 
     std::string exec_id;
@@ -140,7 +140,7 @@ TEST_F(OperationCoveragePipelineFailuresTest, EmbeddingSizeMismatchReturnsUnknow
     EXPECT_CALL(*mock_subject_op, subject_get_by_id(user, 10, _))
         .WillOnce(DoAll(SetArgReferee<2>(subject), Return(RST_OK)));
 
-    EXPECT_CALL(*mock_speech, initialize(_)).WillOnce(Return(RST_OK));
+    EXPECT_CALL(*mock_speech, initialize(::testing::An<const ISpeechRecognition::speech_recognition_config_t&>())).WillOnce(Return(RST_OK));
     EXPECT_CALL(*mock_speech, submit_task(test_audio_file)).WillOnce(Return(RST_OK));
 
     std::vector<TranscriptSegment> mock_segments;
@@ -175,7 +175,7 @@ TEST_F(OperationCoveragePipelineFailuresTest, DatabaseSaveFailurePropagatesError
     EXPECT_CALL(*mock_subject_op, subject_get_by_id(user, 10, _))
         .WillOnce(DoAll(SetArgReferee<2>(subject), Return(RST_OK)));
 
-    EXPECT_CALL(*mock_speech, initialize(_)).WillOnce(Return(RST_OK));
+    EXPECT_CALL(*mock_speech, initialize(::testing::An<const ISpeechRecognition::speech_recognition_config_t&>())).WillOnce(Return(RST_OK));
     EXPECT_CALL(*mock_speech, submit_task(test_audio_file)).WillOnce(Return(RST_OK));
 
     std::vector<TranscriptSegment> mock_segments;

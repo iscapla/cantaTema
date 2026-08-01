@@ -33,6 +33,7 @@ create_infra_library(
     src/subject.cpp
     src/category.cpp
     src/practice_event.cpp
+    src/user_configuration.cpp
     INC_PUBLIC
     CORE::LOGGER
     INC_PRIVATE

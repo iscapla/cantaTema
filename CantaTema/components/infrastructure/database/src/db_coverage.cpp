@@ -33,6 +33,20 @@ rst_code_e DB_Coverage::create_coverage_tables() {
         sqlite3_free(zErrMsg);
         return rst_code_e::DB_FAIL;
     }
+
+    const char *sql_user_cfg = 
+        "CREATE TABLE IF NOT EXISTS user_configurations ("
+        "user_id INTEGER PRIMARY KEY,"
+        "config_json TEXT NOT NULL,"
+        "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);";
+
+    rc = sqlite3_exec(db.get(), sql_user_cfg, 0, 0, &zErrMsg);
+    if (rc != SQLITE_OK) {
+        logger->error("SQL error creating user_configurations table: {}", zErrMsg);
+        sqlite3_free(zErrMsg);
+        return rst_code_e::DB_FAIL;
+    }
+
     return rst_code_e::RST_OK;
 }
 
@@ -169,6 +183,59 @@ rst_code_e DB_Coverage::get_analysis_execution_details(
         out_report_json = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
         out_config_json = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
         ret = rst_code_e::RST_OK;
+    }
+
+    sqlite3_finalize(stmt);
+    return ret;
+}
+
+rst_code_e DB_Coverage::save_user_configuration(unsigned int user_id, const UserConfiguration& config) {
+    std::shared_ptr<sqlite3> db = DB_Connection::getConn();
+    sqlite3_stmt *stmt;
+    const char *sql = 
+        "INSERT INTO user_configurations (user_id, config_json, updated_at) "
+        "VALUES (?, ?, CURRENT_TIMESTAMP) "
+        "ON CONFLICT(user_id) DO UPDATE SET "
+        "config_json = excluded.config_json, "
+        "updated_at = CURRENT_TIMESTAMP;";
+
+    if (sqlite3_prepare_v2(db.get(), sql, -1, &stmt, 0) != SQLITE_OK) {
+        logger->error("Failed to prepare save_user_configuration: {}", sqlite3_errmsg(db.get()));
+        return rst_code_e::DB_FAIL;
+    }
+
+    std::string json_str = config.to_json();
+    sqlite3_bind_int(stmt, 1, static_cast<int>(user_id));
+    sqlite3_bind_text(stmt, 2, json_str.c_str(), -1, SQLITE_TRANSIENT);
+
+    int rc = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+
+    if (rc != SQLITE_DONE) {
+        logger->error("Failed to execute save_user_configuration: {}", sqlite3_errmsg(db.get()));
+        return rst_code_e::DB_FAIL;
+    }
+    return rst_code_e::RST_OK;
+}
+
+rst_code_e DB_Coverage::get_user_configuration(unsigned int user_id, UserConfiguration& out_config) {
+    std::shared_ptr<sqlite3> db = DB_Connection::getConn();
+    sqlite3_stmt *stmt;
+    const char *sql = "SELECT config_json FROM user_configurations WHERE user_id = ?;";
+
+    if (sqlite3_prepare_v2(db.get(), sql, -1, &stmt, 0) != SQLITE_OK) {
+        logger->error("Failed to prepare get_user_configuration: {}", sqlite3_errmsg(db.get()));
+        return rst_code_e::DB_FAIL;
+    }
+
+    sqlite3_bind_int(stmt, 1, static_cast<int>(user_id));
+
+    rst_code_e ret = rst_code_e::DB_NOT_FOUND;
+    if (sqlite3_step(stmt) == SQLITE_ROW) {
+        const char* json_text = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+        if (json_text && out_config.from_json(json_text)) {
+            ret = rst_code_e::RST_OK;
+        }
     }
 
     sqlite3_finalize(stmt);

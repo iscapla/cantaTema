@@ -49,6 +49,13 @@ public:
         std::string& out_analysis_execution_id
     ) override;
 
+    rst_code_e analyze_practice_coverage(
+        const std::shared_ptr<const User>& user,
+        int practice_id,
+        const UserConfiguration& config,
+        std::string& out_analysis_execution_id
+    ) override;
+
 private:
     std::shared_ptr<IDatabase> m_db;
     std::shared_ptr<IOperationSubject> m_subject_op;

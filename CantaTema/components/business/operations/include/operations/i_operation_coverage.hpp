@@ -5,6 +5,7 @@
 #include <string>
 #include "primitives/definitions.hpp"
 #include "primitives/user.hpp"
+#include "primitives/user_configuration.hpp"
 
 class IOperationCoverage
 {
@@ -30,6 +31,16 @@ public:
         const std::string& llama_model,
         float similarity_threshold,
         const std::string& language,
+        std::string& out_analysis_execution_id
+    ) = 0;
+
+    /**
+     * @brief Orchestrates the full audio-to-PDF coverage analysis pipeline using a UserConfiguration.
+     */
+    virtual rst_code_e analyze_practice_coverage(
+        const std::shared_ptr<const User>& user,
+        int practice_id,
+        const UserConfiguration& config,
         std::string& out_analysis_execution_id
     ) = 0;
 };

@@ -186,3 +186,25 @@ rst_code_e TextChunkExtractor::extract_chunks(const TextFileHandler& handler, st
 
     return RST_OK;
 }
+
+rst_code_e TextChunkExtractor::extract_chunks(const TextFileHandler& handler, std::vector<DocumentChunk>& out_chunks, const UserConfiguration& config) const {
+    rst_code_e res = extract_chunks(handler, out_chunks);
+    if (res != RST_OK) return res;
+
+    // Apply custom importance weights from user configuration
+    double bold_mult = config.reference_extraction.importance_weight_bold;
+    double italic_mult = config.reference_extraction.importance_weight_italic;
+    double underline_mult = config.reference_extraction.importance_weight_underline;
+    double bg_color_mult = config.reference_extraction.importance_weight_bg_color;
+
+    for (auto& chunk : out_chunks) {
+        double weight = 1.0;
+        if (chunk.is_bold) weight *= bold_mult;
+        if (chunk.is_italic) weight *= italic_mult;
+        if (chunk.is_underlined) weight *= underline_mult;
+        if (chunk.has_bg_color) weight *= bg_color_mult;
+        chunk.importance_weight = weight;
+    }
+
+    return RST_OK;
+}

@@ -70,6 +70,14 @@ WhisperSpeechRecognition::~WhisperSpeechRecognition() {
     }
 }
 
+rst_code_e WhisperSpeechRecognition::initialize(const UserConfiguration& user_config) {
+    speech_recognition_config_t cfg;
+    cfg.model_name = user_config.whisper.model_name;
+    cfg.language = user_config.whisper.language;
+    cfg.use_gpu = user_config.whisper.use_gpu;
+    return initialize(cfg);
+}
+
 rst_code_e WhisperSpeechRecognition::initialize(const speech_recognition_config_t& config) {
     std::lock_guard<std::mutex> lock(m_mutex);
     m_config = config;

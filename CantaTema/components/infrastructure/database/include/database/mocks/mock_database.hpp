@@ -33,6 +33,9 @@ public:
         std::string& out_report_json,
         std::string& out_config_json
     ), (override));
+
+    MOCK_METHOD(rst_code_e, save_user_configuration, (unsigned int user_id, const UserConfiguration& config), (override));
+    MOCK_METHOD(rst_code_e, get_user_configuration, (unsigned int user_id, UserConfiguration& out_config), (override));
 };
 
 #endif // __MOCK_DATABASE_HPP

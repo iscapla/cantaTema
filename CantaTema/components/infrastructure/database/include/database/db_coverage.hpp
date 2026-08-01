@@ -36,6 +36,9 @@ public:
         std::string& out_report_json,
         std::string& out_config_json
     ) override;
+
+    rst_code_e save_user_configuration(unsigned int user_id, const UserConfiguration& config) override;
+    rst_code_e get_user_configuration(unsigned int user_id, UserConfiguration& out_config) override;
 };
 
 #endif // __DB_COVERAGE_HPP

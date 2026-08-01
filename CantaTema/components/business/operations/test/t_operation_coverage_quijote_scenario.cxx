@@ -116,7 +116,7 @@ TEST_F(OperationCoverageQuijoteTest, QuijoteFullCoverage100Percent) {
     EXPECT_CALL(*mock_subject_op, subject_get_by_id(user, 50, _))
         .WillOnce(DoAll(SetArgReferee<2>(subject), Return(RST_OK)));
 
-    EXPECT_CALL(*mock_speech, initialize(_)).WillOnce(Return(RST_OK));
+    EXPECT_CALL(*mock_speech, initialize(::testing::An<const ISpeechRecognition::speech_recognition_config_t&>())).WillOnce(Return(RST_OK));
     EXPECT_CALL(*mock_speech, submit_task(audio_quijote_wav)).WillOnce(Return(RST_OK));
 
     std::vector<TranscriptSegment> mock_segments;
@@ -197,7 +197,7 @@ TEST_F(OperationCoverageQuijoteTest, QuijotePartialCoverageMissingSentence2) {
     EXPECT_CALL(*mock_subject_op, subject_get_by_id(user, 50, _))
         .WillOnce(DoAll(SetArgReferee<2>(subject), Return(RST_OK)));
 
-    EXPECT_CALL(*mock_speech, initialize(_)).WillOnce(Return(RST_OK));
+    EXPECT_CALL(*mock_speech, initialize(::testing::An<const ISpeechRecognition::speech_recognition_config_t&>())).WillOnce(Return(RST_OK));
     EXPECT_CALL(*mock_speech, submit_task(audio_quijote_wav)).WillOnce(Return(RST_OK));
 
     // Student only spoke Sentence 1 and Sentence 3
@@ -278,7 +278,7 @@ TEST_F(OperationCoverageQuijoteTest, QuijoteVoiceQualityAndPacingMetrics) {
     EXPECT_CALL(*mock_subject_op, subject_get_by_id(user, 50, _))
         .WillOnce(DoAll(SetArgReferee<2>(subject), Return(RST_OK)));
 
-    EXPECT_CALL(*mock_speech, initialize(_)).WillOnce(Return(RST_OK));
+    EXPECT_CALL(*mock_speech, initialize(::testing::An<const ISpeechRecognition::speech_recognition_config_t&>())).WillOnce(Return(RST_OK));
     EXPECT_CALL(*mock_speech, submit_task(audio_quijote_wav)).WillOnce(Return(RST_OK));
 
     // High clarity, steady pace audio across 33 seconds (~33000 ms)

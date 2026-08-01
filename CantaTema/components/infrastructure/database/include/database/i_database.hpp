@@ -3,6 +3,7 @@
 
 #include <string>
 #include "primitives/definitions.hpp"
+#include "primitives/user_configuration.hpp"
 
 class IDatabase {
 public:
@@ -35,6 +36,9 @@ public:
         std::string& out_report_json,
         std::string& out_config_json
     ) = 0;
+
+    virtual rst_code_e save_user_configuration(unsigned int user_id, const UserConfiguration& config) = 0;
+    virtual rst_code_e get_user_configuration(unsigned int user_id, UserConfiguration& out_config) = 0;
 };
 
 #endif // __I_DATABASE_HPP

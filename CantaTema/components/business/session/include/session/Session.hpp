@@ -80,8 +80,20 @@ public:
         float similarity_threshold = 0.0f,
         const std::string &language = ""
     );
+    rst_code_e analyze_practice_coverage(
+        int practice_id,
+        const UserConfiguration &config,
+        std::string &out_execution_id
+    );
     rst_code_e get_analysis_executions_for_practice(int practice_id, std::string &executions_list_json);
     rst_code_e get_analysis_execution_details(const std::string &execution_id, std::string &report_json, std::string &config_json);
+
+    // User Configuration management
+    UserConfiguration& get_user_config();
+    const UserConfiguration& get_user_config() const;
+    rst_code_e set_user_config(const UserConfiguration &config);
+    rst_code_e load_user_config();
+    rst_code_e save_user_config();
 
 private:
     std::shared_ptr<IOperationUser> user_op{nullptr};
@@ -95,6 +107,7 @@ private:
     //-------------------------------------------------------------------------------------
 
     std::shared_ptr<const User> session_user{nullptr};
+    UserConfiguration session_user_config;
 };
 
 #endif //__SESSION_HPP

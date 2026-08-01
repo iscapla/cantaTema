@@ -15,6 +15,13 @@ public:
         const std::string& language,
         std::string& out_analysis_execution_id
     ), (override));
+
+    MOCK_METHOD(rst_code_e, analyze_practice_coverage, (
+        const std::shared_ptr<const User>& user,
+        int practice_id,
+        const UserConfiguration& config,
+        std::string& out_analysis_execution_id
+    ), (override));
 };
 
 #endif // __MOCK_OPERATION_COVERAGE_HPP

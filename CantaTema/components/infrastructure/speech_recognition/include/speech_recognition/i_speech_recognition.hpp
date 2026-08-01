@@ -8,6 +8,7 @@
 #include <functional>
 
 #include "primitives/definitions.hpp"
+#include "primitives/user_configuration.hpp"
 
 /**
  * @brief Represents a single transcribed speech segment with timing and confidence data.
@@ -46,6 +47,7 @@ public:
     virtual ~ISpeechRecognition() = default;
 
     virtual rst_code_e initialize(const speech_recognition_config_t& config) = 0;
+    virtual rst_code_e initialize(const UserConfiguration& user_config) = 0;
     virtual rst_code_e submit_task(const std::string& audio_file_path) = 0;
     virtual speech_recognition_status_e get_status() = 0;
     virtual rst_code_e get_result(std::string& text_document_path) = 0;

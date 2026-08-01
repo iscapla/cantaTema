@@ -16,6 +16,8 @@ struct DocumentChunk {
     bool has_bg_color = false;
 };
 
+#include "primitives/user_configuration.hpp"
+
 class TextChunkExtractor {
 public:
     TextChunkExtractor(void) = default;
@@ -29,6 +31,11 @@ public:
      * @return rst_code_e RST_OK if successful, or error code (e.g. FILE_EXCEEDS_PAGE_LIMIT, FILE_EMPTY_OR_INVALID).
      */
     rst_code_e extract_chunks(const TextFileHandler& handler, std::vector<DocumentChunk>& out_chunks) const;
+
+    /**
+     * @brief Extracts sentence-level chunks with computed importance weights using a specific UserConfiguration.
+     */
+    rst_code_e extract_chunks(const TextFileHandler& handler, std::vector<DocumentChunk>& out_chunks, const UserConfiguration& config) const;
 };
 
 #endif // TEXT_CHUNK_EXTRACTOR_HPP

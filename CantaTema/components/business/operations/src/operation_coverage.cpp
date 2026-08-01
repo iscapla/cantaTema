@@ -276,3 +276,20 @@ rst_code_e OperationCoverage::analyze_practice_coverage(
 
     return res;
 }
+
+rst_code_e OperationCoverage::analyze_practice_coverage(
+    const std::shared_ptr<const User>& user,
+    int practice_id,
+    const UserConfiguration& config,
+    std::string& out_analysis_execution_id
+) {
+    return analyze_practice_coverage(
+        user,
+        practice_id,
+        config.whisper.model_name,
+        config.comparison.embedding_model_name,
+        config.comparison.similarity_threshold,
+        config.whisper.language,
+        out_analysis_execution_id
+    );
+}

@@ -9,6 +9,7 @@ create_test_exec(
         t_utils_functions.cxx
         t_utils_thread_pool.cxx
         t_definitions.cxx
+        t_user_configuration.cxx
     INC_PRIVATE
         CORE::PRIMITIVES
 )

@@ -453,3 +453,48 @@ rst_code_e Session::get_analysis_execution_details(const std::string &execution_
 
     return db_coverage_op->get_analysis_execution_details(execution_id, report_json, config_json);
 }
+
+rst_code_e Session::analyze_practice_coverage(int practice_id, const UserConfiguration &config, std::string &out_execution_id) {
+    if (session_user == nullptr || !user_op->user_is_authenticated())
+        return USER_NO_AUTH;
+    if (!coverage_op)
+        return UNKNOWN;
+    return coverage_op->analyze_practice_coverage(session_user, practice_id, config, out_execution_id);
+}
+
+UserConfiguration& Session::get_user_config() {
+    return session_user_config;
+}
+
+const UserConfiguration& Session::get_user_config() const {
+    return session_user_config;
+}
+
+rst_code_e Session::set_user_config(const UserConfiguration &config) {
+    session_user_config = config;
+    return save_user_config();
+}
+
+rst_code_e Session::load_user_config() {
+    if (session_user == nullptr || !user_op->user_is_authenticated()) {
+        session_user_config.set_default_values();
+        return USER_NO_AUTH;
+    }
+    if (!db_coverage_op) {
+        session_user_config.set_default_values();
+        return RST_OK;
+    }
+    rst_code_e res = db_coverage_op->get_user_configuration(session_user->get_useraccountid(), session_user_config);
+    if (res != RST_OK) {
+        session_user_config.set_default_values();
+    }
+    return RST_OK;
+}
+
+rst_code_e Session::save_user_config() {
+    if (session_user == nullptr || !user_op->user_is_authenticated())
+        return USER_NO_AUTH;
+    if (!db_coverage_op)
+        return UNKNOWN;
+    return db_coverage_op->save_user_configuration(session_user->get_useraccountid(), session_user_config);
+}
