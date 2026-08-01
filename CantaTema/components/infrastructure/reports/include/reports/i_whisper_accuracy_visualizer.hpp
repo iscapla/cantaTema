@@ -1,3 +1,8 @@
+/**
+ * @file i_whisper_accuracy_visualizer.hpp
+ * @brief Abstract interface and data contracts for generating Whisper transcription accuracy visualizer reports.
+ */
+
 #ifndef I_WHISPER_ACCURACY_VISUALIZER_HPP
 #define I_WHISPER_ACCURACY_VISUALIZER_HPP
 
@@ -21,16 +26,16 @@ struct WhisperAccuracyConfig {
  * @brief Input payload containing transcript segments and audio conversion metadata.
  */
 struct WhisperAccuracyInput {
-    std::string audio_filepath;
-    std::string model_name;
-    std::string language;
-    uint64_t total_duration_ms{0};
-    uint64_t processing_time_ms{0};
-    float speech_rate_wpm{0.0f};
-    float clarity_score{0.0f};
-    float overall_confidence{0.0f};
-    std::vector<TranscriptSegment> segments;
-    WhisperAccuracyConfig config;
+    std::string audio_filepath;               ///< Absolute or relative filesystem path to input audio file.
+    std::string model_name;                   ///< Name/identifier of the loaded Whisper model (e.g. ggml-small.bin).
+    std::string language;                     ///< ISO language code for speech recognition (e.g. "es").
+    uint64_t total_duration_ms{0};            ///< Total duration of processed audio in milliseconds.
+    uint64_t processing_time_ms{0};           ///< Total inference duration in milliseconds.
+    float speech_rate_wpm{0.0f};              ///< Average speaking velocity in Words Per Minute.
+    float clarity_score{0.0f};                ///< Normalized clarity score derived from token probabilities (0-100).
+    float overall_confidence{0.0f};           ///< Average overall confidence percentage across all transcript segments.
+    std::vector<TranscriptSegment> segments;  ///< Array of transcribed text segments with timecodes and token scores.
+    WhisperAccuracyConfig config;             ///< Threshold configuration parameters for visual rendering.
 };
 
 /**
@@ -39,6 +44,9 @@ struct WhisperAccuracyInput {
  */
 class IWhisperAccuracyVisualizer {
 public:
+    /**
+     * @brief Virtual destructor for IWhisperAccuracyVisualizer.
+     */
     virtual ~IWhisperAccuracyVisualizer() = default;
 
     /**

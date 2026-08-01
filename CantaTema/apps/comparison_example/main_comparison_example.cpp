@@ -1,3 +1,8 @@
+/**
+ * @file main_comparison_example.cpp
+ * @brief Demonstration application showcasing audio decoding, Whisper speech recognition, PDF parsing, embedding generation, Faiss vector matching, and HTML report generation.
+ */
+
 #include <iostream>
 #include <fstream>
 #include <iomanip>

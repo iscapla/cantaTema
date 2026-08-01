@@ -1,3 +1,8 @@
+/**
+ * @file whisper_engine_wrapper.cpp
+ * @brief Implementation of WhisperEngineWrapper delegating to whisper.cpp functions.
+ */
+
 #include "speech_recognition/whisper_engine_wrapper.hpp"
 
 #include <cmath>

@@ -1,3 +1,8 @@
+/**
+ * @file whisper_accuracy_visualizer.cpp
+ * @brief Implementation of WhisperAccuracyVisualizer HTML generator for speech recognition reports.
+ */
+
 #include "reports/whisper_accuracy_visualizer.hpp"
 #include <sstream>
 #include <iomanip>

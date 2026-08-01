@@ -1,3 +1,8 @@
+/**
+ * @file text_comparison_visualizer.cpp
+ * @brief Implementation of TextComparisonVisualizer dual-column HTML report generator.
+ */
+
 #include "reports/text_comparison_visualizer.hpp"
 #include <sstream>
 #include <iomanip>

@@ -1,3 +1,8 @@
+/**
+ * @file i_embedding_engine.hpp
+ * @brief Abstract interface for text embedding engines generating high-dimensional semantic vectors.
+ */
+
 #ifndef I_EMBEDDING_ENGINE_HPP
 #define I_EMBEDDING_ENGINE_HPP
 
@@ -6,8 +11,15 @@
 #include <filesystem>
 #include "primitives/definitions.hpp"
 
+/**
+ * @class IEmbeddingEngine
+ * @brief Abstract interface for loading text embedding models and calculating vector embeddings for text chunks.
+ */
 class IEmbeddingEngine {
 public:
+    /**
+     * @brief Virtual destructor for IEmbeddingEngine.
+     */
     virtual ~IEmbeddingEngine() = default;
 
     /**

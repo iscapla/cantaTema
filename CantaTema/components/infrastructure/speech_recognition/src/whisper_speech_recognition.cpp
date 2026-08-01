@@ -1,3 +1,8 @@
+/**
+ * @file whisper_speech_recognition.cpp
+ * @brief Implementation of WhisperSpeechRecognition pipeline.
+ */
+
 #include "speech_recognition/whisper_speech_recognition.hpp"
 #include "speech_recognition/i_whisper_engine_wrapper.hpp"
 #include "speech_recognition/whisper_engine_wrapper.hpp"

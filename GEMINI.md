@@ -210,7 +210,7 @@ flowchart LR
 - **Domain exceptions:** When exceptions are used, prefer domain-specific exception types (e.g., `DatabaseException`, `AudioException`) over generic `std::runtime_error`.
 
 ### Documentation & Logging
-- **Doxygen Documentation:** All classes, public methods, and functions must be documented with descriptive Doxygen-style blocks.
+- **Doxygen Documentation:** The mandatory documentation style is **Doxygen**. All files, classes, structs, enums, public/private methods, and helper functions must be documented with detailed Doxygen-style comments (`/** ... */` or `///`) including `@file`, `@brief`, `@param`, `@return`, `@throws`, and structural block tags.
 - **Logger Usage:** System logs must write to the unified `logger` instance (configured via `utils_logger.hpp`), categorized by log severity levels (`info`, `debug`, `warn`, `error`).
 
 ### Testing & Code Coverage

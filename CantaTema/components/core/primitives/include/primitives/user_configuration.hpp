@@ -1,3 +1,8 @@
+/**
+ * @file user_configuration.hpp
+ * @brief Configuration data structures and UserConfiguration class for per-user execution settings.
+ */
+
 #ifndef USER_CONFIGURATION_HPP
 #define USER_CONFIGURATION_HPP
 

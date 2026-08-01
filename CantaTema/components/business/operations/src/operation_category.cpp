@@ -1,3 +1,8 @@
+/**
+ * @file operation_category.cpp
+ * @brief Implementation of OperationCategory business logic methods.
+ */
+
 #include "operations/operation_category.hpp"
 
 #include "database/db_main.hpp"
