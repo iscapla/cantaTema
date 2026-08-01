@@ -23,6 +23,8 @@
 #include "configuration/configuration_system.hpp"
 #include "primitives/tool_paths.hpp"
 #include "primitives/utils_logger.hpp"
+#include "reports/whisper_accuracy_visualizer.hpp"
+#include "reports/text_comparison_visualizer.hpp"
 
 namespace {
 
@@ -480,6 +482,88 @@ int main(int argc, char* argv[]) {
 
     VoiceQualityMetrics voice_metrics = VoiceQualityAnalyzer::analyze(segments);
     double coverage_pct = doc_chunks.empty() ? 0.0 : (static_cast<double>(mentioned_count) / static_cast<double>(doc_chunks.size())) * 100.0;
+
+    // 1. Generate Whisper Accuracy HTML report
+    WhisperAccuracyVisualizer whisper_vis;
+    WhisperAccuracyInput whisper_input;
+    whisper_input.audio_filepath = opus_file.string();
+    whisper_input.model_name = whisper_model;
+    whisper_input.language = speech_cfg.language;
+    whisper_input.total_duration_ms = segments.empty() ? 0 : segments.back().end_time_ms;
+    whisper_input.processing_time_ms = static_cast<uint64_t>(step2_ms);
+    whisper_input.speech_rate_wpm = static_cast<float>(voice_metrics.speech_rate_wpm);
+    whisper_input.clarity_score = static_cast<float>(voice_metrics.clarity_score);
+    whisper_input.overall_confidence = static_cast<float>(voice_metrics.clarity_score / 100.0);
+    whisper_input.segments = segments;
+
+    std::string whisper_html;
+    if (whisper_vis.generate_html(whisper_input, whisper_html) == RST_OK) {
+        std::filesystem::path whisper_html_path = std::filesystem::current_path() / "whisper_accuracy_report.html";
+        std::ofstream whisper_html_file(whisper_html_path, std::ios::trunc);
+        if (whisper_html_file.is_open()) {
+            whisper_html_file << whisper_html;
+            whisper_html_file.close();
+            std::cout << "[STEP 5] Saved Whisper accuracy HTML report to: " << whisper_html_path.string() << "\n";
+        }
+    }
+
+    // 2. Generate Dual-Column Text Comparison HTML report
+    TextComparisonVisualizer comp_vis;
+    TextComparisonInput comp_input;
+    comp_input.document_title = pdf_file.filename().string();
+    comp_input.reference_filepath = pdf_file.string();
+    comp_input.audio_filepath = opus_file.string();
+    comp_input.whisper_model = whisper_model;
+    comp_input.llama_model = llama_path.filename().string();
+    comp_input.overall_coverage_pct = coverage_pct;
+    comp_input.total_ref_chunks = doc_chunks.size();
+    comp_input.mentioned_chunks = mentioned_count;
+    comp_input.not_clear_chunks = 0;
+    comp_input.not_mentioned_chunks = doc_chunks.size() - mentioned_count;
+    comp_input.threshold_mentioned = sim_threshold;
+
+    for (size_t i = 0; i < matches.size(); ++i) {
+        const auto& m = matches[i];
+        TextComparisonInput::ReferenceItem ref_item;
+        ref_item.id = i;
+        ref_item.text = (i < doc_chunks.size()) ? doc_chunks[i].text : "";
+        ref_item.importance_weight = (i < doc_chunks.size()) ? static_cast<float>(doc_chunks[i].importance_weight) : 1.0f;
+        ref_item.coverage_status = m.is_mentioned ? coverage_level_e::MENTIONED : coverage_level_e::NOT_MENTIONED;
+        ref_item.similarity_score = m.similarity_score;
+        ref_item.matched_transcript_index = m.best_transcript_chunk_index;
+        comp_input.reference_items.push_back(ref_item);
+    }
+
+    for (size_t j = 0; j < segments.size(); ++j) {
+        const auto& seg = segments[j];
+        TextComparisonInput::TranscriptItem ts_item;
+        ts_item.id = j;
+        ts_item.start_time_ms = seg.start_time_ms;
+        ts_item.end_time_ms = seg.end_time_ms;
+        ts_item.text = seg.text;
+        ts_item.confidence_score = seg.confidence_score;
+        
+        ts_item.primary_matched_ref_index = -1;
+        for (size_t i = 0; i < matches.size(); ++i) {
+            if (matches[i].best_transcript_chunk_index == static_cast<int>(j) && matches[i].is_mentioned) {
+                ts_item.primary_matched_ref_index = static_cast<int>(i);
+                break;
+            }
+        }
+        comp_input.transcript_items.push_back(ts_item);
+    }
+
+    std::string comp_html;
+    if (comp_vis.generate_html(comp_input, comp_html) == RST_OK) {
+        std::filesystem::path comp_html_path = std::filesystem::current_path() / "dual_column_comparison_report.html";
+        std::ofstream comp_html_file(comp_html_path, std::ios::trunc);
+        if (comp_html_file.is_open()) {
+            comp_html_file << comp_html;
+            comp_html_file.close();
+            std::cout << "[STEP 5] Saved dual-column text comparison HTML report to: " << comp_html_path.string() << "\n";
+        }
+    }
+
 
     auto t5_end = std::chrono::high_resolution_clock::now();
     double step5_ms = std::chrono::duration<double, std::milli>(t5_end - t5_start).count();
