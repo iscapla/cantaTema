@@ -93,11 +93,11 @@ std::filesystem::path locate_whisper_model() {
     };
 
     std::vector<std::string> preferences = {
-        // "ggml-large-v3-turbo.bin",
+        "ggml-large-v3-turbo.bin",
         // "ggml-large-v3.bin",
         // "ggml-small.bin",
         // "ggml-base.bin",
-        "ggml-tiny.bin"
+        // "ggml-tiny.bin"
     };
 
     for (const auto& dir : dirs) {
@@ -451,12 +451,18 @@ int main(int argc, char* argv[]) {
     if (pdf_comp_file.is_open()) {
         for (size_t i = 0; i < matches.size(); ++i) {
             const auto& m = matches[i];
+            std::string matched_transcript = "[NOT MENTIONED]";
+            if (m.best_transcript_chunk_index >= 0 && static_cast<size_t>(m.best_transcript_chunk_index) < segments.size()) {
+                matched_transcript = segments[m.best_transcript_chunk_index].text;
+            }
+
             pdf_comp_file << "PDF Chunk #" << std::setw(3) << (i + 1)
-                          << " -> Best Match Segment #" << std::setw(3) << (m.best_transcript_chunk_index >= 0 ? m.best_transcript_chunk_index + 1 : -1)
                           << " | Sim Score: " << std::fixed << std::setprecision(4) << m.similarity_score
                           << " | Mentioned: " << (m.is_mentioned ? "YES" : " NO")
                           << " | Missed Score: " << std::setprecision(2) << m.weighted_missed_score
-                          << " | PDF Text: " << (i < doc_chunks.size() ? doc_chunks[i].text : "") << "\n";
+                          << " | Match Seg #" << std::setw(3) << (m.best_transcript_chunk_index >= 0 ? m.best_transcript_chunk_index + 1 : -1)
+                          << " | PDF Text: " << (i < doc_chunks.size() ? doc_chunks[i].text : "")
+                          << " | Transcript Text: " << matched_transcript << "\n";
         }
         pdf_comp_file.close();
         std::cout << "[STEP 4] Saved PDF comparison results to: " << pdf_comp_path.string() << "\n\n";
