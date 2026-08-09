@@ -142,6 +142,6 @@ TEST(TextComparisonVisualizerTest, GenerateHtmlDualColumn) {
     EXPECT_NE(html.find("data-ts-id=\"0\""), std::string::npos);
 
     // Check JS script inclusion
-    EXPECT_NE(html.find("isSyncingScroll"), std::string::npos);
+    EXPECT_NE(html.find("clearSelection"), std::string::npos);
     EXPECT_NE(html.find("active-highlight"), std::string::npos);
 }
