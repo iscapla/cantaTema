@@ -1,9 +1,5 @@
-/**
- * @file faiss_similarity_search.cpp
- * @brief Implements the FaissSimilaritySearch class.
- */
-
 #include "similarity/faiss_similarity_search.hpp"
+#include "file_handler/numerical_entity_extractor.hpp"
 #include "primitives/utils_logger.hpp"
 #include <cmath>
 #include <algorithm>
@@ -43,6 +39,20 @@ std::vector<SimilarityResult> FaissSimilaritySearch::search_pdf_matches(
     const std::vector<std::vector<float>>& pdf_embeddings,
     const std::vector<float>& importance_weights,
     float similarity_threshold) {
+
+    SimilaritySearchOptions options;
+    options.similarity_threshold = similarity_threshold;
+
+    std::vector<std::string> empty_texts;
+    return search_pdf_matches_advanced(pdf_embeddings, empty_texts, empty_texts, importance_weights, options);
+}
+
+std::vector<SimilarityResult> FaissSimilaritySearch::search_pdf_matches_advanced(
+    const std::vector<std::vector<float>>& pdf_embeddings,
+    const std::vector<std::string>& pdf_texts,
+    const std::vector<std::string>& transcript_texts,
+    const std::vector<float>& importance_weights,
+    const SimilaritySearchOptions& options) {
     
     std::lock_guard<std::mutex> lock(m_mutex);
     std::vector<SimilarityResult> results;
@@ -60,8 +70,10 @@ std::vector<SimilarityResult> FaissSimilaritySearch::search_pdf_matches(
             SimilarityResult res;
             res.pdf_chunk_index = i;
             res.best_transcript_chunk_index = -1;
+            res.candidate_transcript_chunk_index = -1;
             res.similarity_score = 0.0f;
             res.is_mentioned = false;
+            res.has_numeric_warning = false;
             
             float weight = (i < importance_weights.size()) ? importance_weights[i] : 1.0f;
             res.weighted_missed_score = weight;
@@ -70,15 +82,25 @@ std::vector<SimilarityResult> FaissSimilaritySearch::search_pdf_matches(
         return results;
     }
 
+    int last_matched_j = -1;
+
     for (size_t i = 0; i < pdf_embeddings.size(); ++i) {
         const auto& pdf_vec = pdf_embeddings[i];
         float weight = (i < importance_weights.size()) ? importance_weights[i] : 1.0f;
+        std::string ref_text = (i < pdf_texts.size()) ? pdf_texts[i] : "";
+
+        bool is_list_item = false;
+        if (!ref_text.empty()) {
+            is_list_item = NumericalEntityExtractor::is_enumerated_item(ref_text);
+        }
 
         SimilarityResult res;
         res.pdf_chunk_index = i;
         res.best_transcript_chunk_index = -1;
+        res.candidate_transcript_chunk_index = -1;
         res.similarity_score = 0.0f;
         res.is_mentioned = false;
+        res.has_numeric_warning = false;
         res.weighted_missed_score = weight; // Default to full weight missed
 
         if (pdf_vec.size() != m_dimension) {
@@ -100,11 +122,14 @@ std::vector<SimilarityResult> FaissSimilaritySearch::search_pdf_matches(
             continue;
         }
 
-        float best_score = -2.0f; // Cosine similarity ranges from -1 to 1
-        int best_idx = -1;
+        float best_effective_score = -2.0f;
+        float best_raw_similarity = -2.0f;
+        int best_j = -1;
+        bool best_has_warning = false;
 
         for (size_t j = 0; j < m_indexed_embeddings.size(); ++j) {
             const auto& trans_vec = m_indexed_embeddings[j];
+            std::string trans_text = (j < transcript_texts.size()) ? transcript_texts[j] : "";
 
             double dot_product = 0.0;
             double trans_norm_sq = 0.0;
@@ -118,25 +143,49 @@ std::vector<SimilarityResult> FaissSimilaritySearch::search_pdf_matches(
                 continue;
             }
 
-            float score = static_cast<float>(dot_product / (pdf_norm * trans_norm));
-            if (score > best_score) {
-                best_score = score;
-                best_idx = static_cast<int>(j);
+            float raw_cosine = static_cast<float>(dot_product / (pdf_norm * trans_norm));
+            raw_cosine = std::max(-1.0f, std::min(1.0f, raw_cosine));
+
+            // Numerical entity analysis
+            NumericMatchAnalysis num_analysis;
+            if (!ref_text.empty() && !trans_text.empty()) {
+                num_analysis = NumericalEntityExtractor::compare_entities(
+                    ref_text, trans_text, options.numeric_boost, options.numeric_mismatch_penalty
+                );
+            }
+
+            float score_adjusted = raw_cosine + num_analysis.score_modifier;
+
+            // Order-aware temporal distance penalty
+            float temporal_penalty = 0.0f;
+            if (!is_list_item && last_matched_j >= 0 && static_cast<int>(j) < last_matched_j) {
+                int dist = last_matched_j - static_cast<int>(j);
+                temporal_penalty = options.temporal_penalty_weight * std::min(1.0f, static_cast<float>(dist) / 10.0f);
+            }
+
+            float effective_score = score_adjusted - temporal_penalty;
+
+            if (effective_score > best_effective_score) {
+                best_effective_score = effective_score;
+                best_raw_similarity = raw_cosine;
+                best_j = static_cast<int>(j);
+                best_has_warning = num_analysis.has_warning;
             }
         }
 
-        if (best_idx != -1) {
-            // Clamp score to [-1.0, 1.0] range
-            best_score = std::max(-1.0f, std::min(1.0f, best_score));
-            
-            res.best_transcript_chunk_index = best_idx;
-            res.similarity_score = best_score;
-            res.is_mentioned = (best_score >= similarity_threshold);
-            
+        if (best_j != -1) {
+            res.candidate_transcript_chunk_index = best_j;
+            res.similarity_score = std::max(-1.0f, std::min(1.0f, best_effective_score));
+            res.is_mentioned = (res.similarity_score >= options.similarity_threshold);
+            res.has_numeric_warning = best_has_warning;
+
             if (res.is_mentioned) {
+                res.best_transcript_chunk_index = best_j;
                 res.weighted_missed_score = 0.0f;
+                last_matched_j = best_j;
             } else {
-                res.weighted_missed_score = weight * (1.0f - std::max(0.0f, best_score));
+                res.best_transcript_chunk_index = -1; // Unassigned / missing!
+                res.weighted_missed_score = weight * (1.0f - std::max(0.0f, res.similarity_score));
             }
         }
 

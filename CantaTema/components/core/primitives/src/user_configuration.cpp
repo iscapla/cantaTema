@@ -28,6 +28,9 @@ void UserConfiguration::set_default_values() {
     comparison.embedding_model_name = "AUTO";
     comparison.embedding_gpu_offload_layers = 0;
     comparison.similarity_threshold = 0.65f;
+    comparison.numeric_boost = 0.10f;
+    comparison.numeric_mismatch_penalty = 0.15f;
+    comparison.temporal_penalty_weight = 0.05f;
     comparison.speed_weight = 0.3f;
     comparison.clarity_weight = 0.4f;
     comparison.pacing_weight = 0.3f;
@@ -57,6 +60,9 @@ std::string UserConfiguration::to_json() const {
        << "\"embedding_model_name\":\"" << comparison.embedding_model_name << "\","
        << "\"embedding_gpu_offload_layers\":" << comparison.embedding_gpu_offload_layers << ","
        << "\"similarity_threshold\":" << comparison.similarity_threshold << ","
+       << "\"numeric_boost\":" << comparison.numeric_boost << ","
+       << "\"numeric_mismatch_penalty\":" << comparison.numeric_mismatch_penalty << ","
+       << "\"temporal_penalty_weight\":" << comparison.temporal_penalty_weight << ","
        << "\"speed_weight\":" << comparison.speed_weight << ","
        << "\"clarity_weight\":" << comparison.clarity_weight << ","
        << "\"pacing_weight\":" << comparison.pacing_weight
@@ -137,6 +143,9 @@ bool UserConfiguration::from_json(const std::string& json_str) {
 
     comparison.embedding_gpu_offload_layers = extract_int_val(json_str, "embedding_gpu_offload_layers", comparison.embedding_gpu_offload_layers);
     comparison.similarity_threshold = extract_float_val(json_str, "similarity_threshold", comparison.similarity_threshold);
+    comparison.numeric_boost = extract_float_val(json_str, "numeric_boost", comparison.numeric_boost);
+    comparison.numeric_mismatch_penalty = extract_float_val(json_str, "numeric_mismatch_penalty", comparison.numeric_mismatch_penalty);
+    comparison.temporal_penalty_weight = extract_float_val(json_str, "temporal_penalty_weight", comparison.temporal_penalty_weight);
     comparison.speed_weight = extract_float_val(json_str, "speed_weight", comparison.speed_weight);
     comparison.clarity_weight = extract_float_val(json_str, "clarity_weight", comparison.clarity_weight);
     comparison.pacing_weight = extract_float_val(json_str, "pacing_weight", comparison.pacing_weight);

@@ -40,6 +40,16 @@ public:
         float similarity_threshold) override;
 
     /**
+     * @brief Advanced query with temporal order alignment and numerical entity verification.
+     */
+    std::vector<SimilarityResult> search_pdf_matches_advanced(
+        const std::vector<std::vector<float>>& pdf_embeddings,
+        const std::vector<std::string>& pdf_texts,
+        const std::vector<std::string>& transcript_texts,
+        const std::vector<float>& importance_weights,
+        const SimilaritySearchOptions& options) override;
+
+    /**
      * @brief Clears the current indexed transcript embeddings.
      */
     void reset() override;

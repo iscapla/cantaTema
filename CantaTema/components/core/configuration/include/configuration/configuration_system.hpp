@@ -83,6 +83,21 @@ public:
     float get_coverage_similarity_threshold() const;
 
     /**
+     * @brief Retrieves the similarity score boost for matching dates/numbers.
+     */
+    float get_coverage_numeric_boost() const;
+
+    /**
+     * @brief Retrieves the penalty applied when dates/numbers conflict.
+     */
+    float get_coverage_numeric_mismatch_penalty() const;
+
+    /**
+     * @brief Retrieves the position distance penalty weight for macroscopic prose ordering.
+     */
+    float get_coverage_temporal_penalty_weight() const;
+
+    /**
      * @brief Retrieves the weight multiplier for bold formatted text.
      */
     float get_importance_weight_bold() const;

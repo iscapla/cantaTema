@@ -11,6 +11,7 @@ create_test_exec(
         t_extension_type_pdf.cxx
         t_text_chunk_extractor.cxx
         t_text_conversion_coverage.cxx
+        t_numerical_entity_extractor.cxx
     INC_PRIVATE
         CORE::PRIMITIVES
         CORE::CONFIGURATION

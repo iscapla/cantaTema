@@ -7,6 +7,7 @@
 #define I_SIMILARITY_SEARCH_HPP
 
 #include <vector>
+#include <string>
 #include <cstddef>
 
 /**
@@ -16,17 +17,33 @@ struct SimilarityResult {
     /// Index of the PDF reference chunk.
     size_t pdf_chunk_index = 0;
     
-    /// Index of the best matching transcript chunk in the index. -1 if no match.
+    /// Index of the best matching transcript chunk in the index. -1 if no match or below threshold.
     int best_transcript_chunk_index = -1;
     
+    /// Index of top candidate transcript chunk, even if similarity is below threshold. -1 if no candidates.
+    int candidate_transcript_chunk_index = -1;
+
     /// The cosine/inner product similarity score between the two chunks.
     float similarity_score = 0.0f;
     
     /// True if similarity_score >= similarity_threshold.
     bool is_mentioned = false;
     
+    /// True if numerical entities (dates, numbers) were misquoted or contradicted.
+    bool has_numeric_warning = false;
+
     /// Weighted score calculated as: importance_weight * (1.0 - similarity_score) if not mentioned, or 0.0 if mentioned.
     float weighted_missed_score = 0.0f;
+};
+
+/**
+ * @brief Advanced options for order alignment and numerical entity scoring.
+ */
+struct SimilaritySearchOptions {
+    float similarity_threshold = 0.65f;
+    float numeric_boost = 0.10f;
+    float numeric_mismatch_penalty = 0.15f;
+    float temporal_penalty_weight = 0.05f;
 };
 
 /**
@@ -56,6 +73,18 @@ public:
         const std::vector<std::vector<float>>& pdf_embeddings,
         const std::vector<float>& importance_weights,
         float similarity_threshold) = 0;
+
+    /**
+     * @brief Queries indexed transcript embeddings with order-awareness and numerical entity validation.
+     */
+    virtual std::vector<SimilarityResult> search_pdf_matches_advanced(
+        const std::vector<std::vector<float>>& pdf_embeddings,
+        const std::vector<std::string>& pdf_texts,
+        const std::vector<std::string>& transcript_texts,
+        const std::vector<float>& importance_weights,
+        const SimilaritySearchOptions& options) {
+        return search_pdf_matches(pdf_embeddings, importance_weights, options.similarity_threshold);
+    }
 
     /**
      * @brief Clears the current indexed transcript embeddings.

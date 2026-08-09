@@ -45,6 +45,9 @@ struct ComparisonConfig {
     std::string embedding_model_name{"AUTO"};
     int embedding_gpu_offload_layers{0};
     float similarity_threshold{0.65f};
+    float numeric_boost{0.10f};
+    float numeric_mismatch_penalty{0.15f};
+    float temporal_penalty_weight{0.05f};
     float speed_weight{0.3f};
     float clarity_weight{0.4f};
     float pacing_weight{0.3f};

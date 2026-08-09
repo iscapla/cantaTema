@@ -33,6 +33,9 @@ ConfigurationSystem::ConfigurationSystem() : IConfigurationBase() {
     set_default_if_not_present("EMBEDDINGS", "gpu_offload_layers", "99");
 
     set_default_if_not_present("COVERAGE", "similarity_threshold", "0.75");
+    set_default_if_not_present("COVERAGE", "numeric_boost", "0.10");
+    set_default_if_not_present("COVERAGE", "numeric_mismatch_penalty", "0.15");
+    set_default_if_not_present("COVERAGE", "temporal_penalty_weight", "0.05");
     set_default_if_not_present("COVERAGE", "importance_weight_bold", "1.5");
     set_default_if_not_present("COVERAGE", "importance_weight_italic", "1.2");
     set_default_if_not_present("COVERAGE", "importance_weight_underline", "1.3");
@@ -164,6 +167,33 @@ float ConfigurationSystem::get_coverage_similarity_threshold() const {
         return std::stof(value);
     } catch (...) {
         return 0.75f; // Default fallback
+    }
+}
+
+float ConfigurationSystem::get_coverage_numeric_boost() const {
+    std::string value = const_cast<ConfigurationSystem*>(this)->get_or_default("COVERAGE", "numeric_boost", "0.10");
+    try {
+        return std::stof(value);
+    } catch (...) {
+        return 0.10f; // Default fallback
+    }
+}
+
+float ConfigurationSystem::get_coverage_numeric_mismatch_penalty() const {
+    std::string value = const_cast<ConfigurationSystem*>(this)->get_or_default("COVERAGE", "numeric_mismatch_penalty", "0.15");
+    try {
+        return std::stof(value);
+    } catch (...) {
+        return 0.15f; // Default fallback
+    }
+}
+
+float ConfigurationSystem::get_coverage_temporal_penalty_weight() const {
+    std::string value = const_cast<ConfigurationSystem*>(this)->get_or_default("COVERAGE", "temporal_penalty_weight", "0.05");
+    try {
+        return std::stof(value);
+    } catch (...) {
+        return 0.05f; // Default fallback
     }
 }
 

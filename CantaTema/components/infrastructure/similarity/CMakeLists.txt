@@ -8,6 +8,7 @@ create_infra_library(
     INC_PUBLIC
     INC_PRIVATE
     CORE::PRIMITIVES
+    INFRASTRUCTURE::FILE_HANDLER
 )
 
 add_subdirectory(test)

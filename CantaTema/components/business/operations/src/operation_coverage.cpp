@@ -207,12 +207,28 @@ rst_code_e OperationCoverage::analyze_practice_coverage(
     m_similarity_search->reset();
     m_similarity_search->index_transcript_embeddings(transcript_embeddings);
 
-    auto matches = m_similarity_search->search_pdf_matches(pdf_embeddings, pdf_weights, resolved_threshold);
+    SimilaritySearchOptions search_options;
+    search_options.similarity_threshold = resolved_threshold;
+    search_options.numeric_boost = ConfigurationSystem::getInstance().get_coverage_numeric_boost();
+    search_options.numeric_mismatch_penalty = ConfigurationSystem::getInstance().get_coverage_numeric_mismatch_penalty();
+    search_options.temporal_penalty_weight = ConfigurationSystem::getInstance().get_coverage_temporal_penalty_weight();
+
+    auto matches = m_similarity_search->search_pdf_matches_advanced(
+        pdf_embeddings,
+        pdf_texts,
+        transcript_texts,
+        pdf_weights,
+        search_options
+    );
 
     size_t mentioned_count = 0;
+    size_t warning_count = 0;
     for (const auto& match : matches) {
         if (match.is_mentioned) {
             mentioned_count++;
+        }
+        if (match.has_numeric_warning) {
+            warning_count++;
         }
     }
 
@@ -227,11 +243,15 @@ rst_code_e OperationCoverage::analyze_practice_coverage(
               << "\"whisper_model\":\"" << resolved_whisper_model << "\","
               << "\"llama_model\":\"" << resolved_llama_model << "\","
               << "\"language\":\"" << resolved_language << "\","
-              << "\"similarity_threshold\":" << resolved_threshold
+              << "\"similarity_threshold\":" << resolved_threshold << ","
+              << "\"numeric_boost\":" << search_options.numeric_boost << ","
+              << "\"numeric_mismatch_penalty\":" << search_options.numeric_mismatch_penalty << ","
+              << "\"temporal_penalty_weight\":" << search_options.temporal_penalty_weight
               << "}";
     std::string config_snapshot_json = config_ss.str();
 
     std::ostringstream report_ss;
+    report_ss << std::boolalpha;
     report_ss << "{"
               << "\"practice_id\":" << practice_id << ","
               << "\"coverage_percentage\":" << std::fixed << std::setprecision(2) << coverage_pct << ","
@@ -242,8 +262,24 @@ rst_code_e OperationCoverage::analyze_practice_coverage(
               << "\"overall_score\":" << voice_metrics.overall_quality_score
               << "},"
               << "\"total_pdf_chunks\":" << doc_chunks.size() << ","
-              << "\"mentioned_chunks\":" << mentioned_count
-              << "}";
+              << "\"mentioned_chunks\":" << mentioned_count << ","
+              << "\"numeric_warning_chunks\":" << warning_count << ","
+              << "\"chunk_matches\":[";
+
+    for (size_t i = 0; i < matches.size(); ++i) {
+        const auto& m = matches[i];
+        if (i > 0) report_ss << ",";
+        report_ss << "{"
+                  << "\"pdf_chunk_index\":" << m.pdf_chunk_index << ","
+                  << "\"best_transcript_chunk_index\":" << m.best_transcript_chunk_index << ","
+                  << "\"candidate_transcript_chunk_index\":" << m.candidate_transcript_chunk_index << ","
+                  << "\"similarity_score\":" << std::setprecision(4) << m.similarity_score << ","
+                  << "\"is_mentioned\":" << m.is_mentioned << ","
+                  << "\"has_numeric_warning\":" << m.has_numeric_warning
+                  << "}";
+    }
+
+    report_ss << "]}";
     std::string report_json = report_ss.str();
 
     // 10. Persist execution record in SQLite

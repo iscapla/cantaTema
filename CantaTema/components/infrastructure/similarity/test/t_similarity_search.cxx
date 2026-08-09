@@ -98,9 +98,10 @@ TEST(FaissSimilaritySearchTest, ExactMatchAndSimilarityScoring) {
     EXPECT_TRUE(results[1].is_mentioned);
     EXPECT_FLOAT_EQ(results[1].weighted_missed_score, 0.0f);
 
-    // PDF 2 doesn't match either, similarity score should be 0.0, is_mentioned false
+    // PDF 2 doesn't match either (similarity score 0.0 < threshold 0.75), best_transcript_chunk_index should be -1
     EXPECT_EQ(results[2].pdf_chunk_index, 2);
-    EXPECT_EQ(results[2].best_transcript_chunk_index, 0); // Can be either 0 or 1 since both score 0.0
+    EXPECT_EQ(results[2].best_transcript_chunk_index, -1);
+    EXPECT_GE(results[2].candidate_transcript_chunk_index, 0);
     EXPECT_NEAR(results[2].similarity_score, 0.0f, 1e-5f);
     EXPECT_FALSE(results[2].is_mentioned);
     // missed score = weight * (1.0 - similarity) = 2.0 * (1.0 - 0.0) = 2.0
@@ -196,3 +197,71 @@ TEST(FaissSimilaritySearchTest, NonNormalizedInputs) {
     EXPECT_NEAR(results[1].similarity_score, 1.0f, 1e-5f);
     EXPECT_TRUE(results[1].is_mentioned);
 }
+
+TEST(FaissSimilaritySearchTest, AdvancedSearchCandidateTrackingAndNumericWarnings) {
+    FaissSimilaritySearch search;
+    std::vector<std::vector<float>> trans = {
+        {1.0f, 0.0f, 0.0f} // index 0
+    };
+    EXPECT_TRUE(search.index_transcript_embeddings(trans));
+
+    std::vector<std::vector<float>> pdfs = {
+        {0.5f, 0.5f, 0.0f} // similarity ~0.707
+    };
+    std::vector<std::string> pdf_texts = {"Ocurrió en 1978 según el artículo 14."};
+    std::vector<std::string> transcript_texts = {"Menciona el año 1995."};
+    std::vector<float> weights = {1.0f};
+
+    SimilaritySearchOptions options;
+    options.similarity_threshold = 0.90f; // High threshold -> best_transcript_chunk_index should be -1
+    options.numeric_boost = 0.10f;
+    options.numeric_mismatch_penalty = 0.15f;
+
+    auto results = search.search_pdf_matches_advanced(pdfs, pdf_texts, transcript_texts, weights, options);
+    ASSERT_EQ(results.size(), 1);
+
+    // Should NOT be mentioned because 0.707 - 0.15 = 0.557 < 0.90
+    EXPECT_FALSE(results[0].is_mentioned);
+    EXPECT_EQ(results[0].best_transcript_chunk_index, -1);
+    EXPECT_EQ(results[0].candidate_transcript_chunk_index, 0);
+    EXPECT_TRUE(results[0].has_numeric_warning);
+}
+
+TEST(FaissSimilaritySearchTest, EnumerationSequenceOrderTolerance) {
+    FaissSimilaritySearch search;
+    std::vector<std::vector<float>> trans = {
+        {0.0f, 1.0f, 0.0f}, // segment 0 (matches item B)
+        {1.0f, 0.0f, 0.0f}  // segment 1 (matches item A)
+    };
+    EXPECT_TRUE(search.index_transcript_embeddings(trans));
+
+    std::vector<std::vector<float>> pdfs = {
+        {1.0f, 0.0f, 0.0f}, // pdf 0: item A
+        {0.0f, 1.0f, 0.0f}  // pdf 1: item B
+    };
+    std::vector<std::string> pdf_texts = {
+        "1. Primer punto fundamental",
+        "2. Segundo punto clave"
+    };
+    std::vector<std::string> transcript_texts = {
+        "Segundo punto clave expuesto.",
+        "Primer punto fundamental detallado."
+    };
+    std::vector<float> weights = {1.0f, 1.0f};
+
+    SimilaritySearchOptions options;
+    options.similarity_threshold = 0.50f;
+    options.temporal_penalty_weight = 0.20f; // Strong penalty if order enforced
+
+    auto results = search.search_pdf_matches_advanced(pdfs, pdf_texts, transcript_texts, weights, options);
+    ASSERT_EQ(results.size(), 2);
+
+    // Item A (PDF 0) should match transcript segment 1
+    EXPECT_TRUE(results[0].is_mentioned);
+    EXPECT_EQ(results[0].best_transcript_chunk_index, 1);
+
+    // Item B (PDF 1) should match transcript segment 0 (out of order, but NO penalty because it's enumerated!)
+    EXPECT_TRUE(results[1].is_mentioned);
+    EXPECT_EQ(results[1].best_transcript_chunk_index, 0);
+}
+
