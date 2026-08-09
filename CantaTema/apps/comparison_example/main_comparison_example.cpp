@@ -13,6 +13,8 @@
 #include <chrono>
 #include <memory>
 #include <sstream>
+#include <algorithm>
+#include <cctype>
 
 #include <whisper.h>
 #include <llama.h>
@@ -167,14 +169,17 @@ int main(int argc, char* argv[]) {
     // -------------------------------------------------------------------------
     // Resolve sample files from example_data
     // -------------------------------------------------------------------------
-    std::filesystem::path opus_file = locate_example_file("subject_es_1_p_1.opus");
-    std::filesystem::path pdf_file = locate_example_file("subject_es_1.pdf");
+    // std::filesystem::path input_sound_file = locate_example_file("subject_es_1_p_1.opus");
+    // std::filesystem::path pdf_file = locate_example_file("subject_es_1.pdf");
 
-    std::cout << "[INIT] Target OPUS Audio : " << opus_file.string() << "\n";
+    std::filesystem::path input_sound_file{ "C:\\Users\\iscap\\Desktop\\temas_inspeccion\\tema_28.wav" };
+    std::filesystem::path pdf_file{ "C:\\Users\\iscap\\Desktop\\temas_inspeccion\\tema_28.pdf" };
+
+    std::cout << "[INIT] Target Sound File   : " << input_sound_file.string() << "\n";
     std::cout << "[INIT] Target PDF Reference: " << pdf_file.string() << "\n\n";
 
-    if (!std::filesystem::exists(opus_file)) {
-        std::cerr << "[ERROR] OPUS file not found at: " << opus_file.string() << "\n";
+    if (!std::filesystem::exists(input_sound_file)) {
+        std::cerr << "[ERROR] Sound file not found at: " << input_sound_file.string() << "\n";
         return 1;
     }
     if (!std::filesystem::exists(pdf_file)) {
@@ -182,31 +187,48 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    // Prepare RAII temporary WAV file guard
-    std::filesystem::path temp_wav_path = std::filesystem::temp_directory_path() /
-        ("comparison_example_" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) + ".wav");
-    TempFileGuard wav_guard(temp_wav_path);
+    std::string ext = input_sound_file.extension().string();
+    std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
 
-    // =========================================================================
-    // STEP 1: Convert OPUS file into WAV
-    // =========================================================================
-    std::cout << "========================================================================\n";
-    std::cout << "  [STEP 1/5] Converting OPUS File into WAV Audio                       \n";
-    std::cout << "========================================================================\n";
-    auto t1_start = std::chrono::high_resolution_clock::now();
+    std::filesystem::path target_wav_path;
+    std::unique_ptr<TempFileGuard> wav_guard;
+    double step1_ms = 0.0;
 
-    bool conv_ok = SoundConverter::convert_opus_to_wav(opus_file.string(), temp_wav_path.string());
-    auto t1_end = std::chrono::high_resolution_clock::now();
-    double step1_ms = std::chrono::duration<double, std::milli>(t1_end - t1_start).count();
+    if (ext == ".opus") {
+        std::cout << "========================================================================\n";
+        std::cout << "  [STEP 1/5] Converting OPUS File into WAV Audio                       \n";
+        std::cout << "========================================================================\n";
+        auto t1_start = std::chrono::high_resolution_clock::now();
 
-    if (!conv_ok || !std::filesystem::exists(temp_wav_path)) {
-        std::cerr << "[ERROR] Failed to convert OPUS audio to WAV.\n";
+        std::filesystem::path temp_wav_path = std::filesystem::temp_directory_path() /
+            ("comparison_example_" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) + ".wav");
+        wav_guard = std::make_unique<TempFileGuard>(temp_wav_path);
+
+        bool conv_ok = SoundConverter::convert_opus_to_wav(input_sound_file.string(), temp_wav_path.string());
+        auto t1_end = std::chrono::high_resolution_clock::now();
+        step1_ms = std::chrono::duration<double, std::milli>(t1_end - t1_start).count();
+
+        if (!conv_ok || !std::filesystem::exists(temp_wav_path)) {
+            std::cerr << "[ERROR] Failed to convert OPUS audio to WAV.\n";
+            return 1;
+        }
+
+        auto wav_size_bytes = std::filesystem::file_size(temp_wav_path);
+        std::cout << "[STEP 1] OPUS -> WAV conversion complete in " << std::fixed << std::setprecision(2) << step1_ms << " ms.\n";
+        std::cout << "[STEP 1] Generated Temporary WAV: " << temp_wav_path.string() << " (" << wav_size_bytes << " bytes)\n\n";
+
+        target_wav_path = temp_wav_path;
+    } else if (ext == ".wav") {
+        std::cout << "========================================================================\n";
+        std::cout << "  [STEP 1/5] Audio is WAV format (No Conversion Required)             \n";
+        std::cout << "========================================================================\n";
+        std::cout << "[STEP 1] Using input WAV file directly: " << input_sound_file.string() << "\n\n";
+
+        target_wav_path = input_sound_file;
+    } else {
+        std::cerr << "[ERROR] Unsupported audio format/extension '" << ext << "'. Finalizing execution.\n";
         return 1;
     }
-
-    auto wav_size_bytes = std::filesystem::file_size(temp_wav_path);
-    std::cout << "[STEP 1] OPUS -> WAV conversion complete in " << std::fixed << std::setprecision(2) << step1_ms << " ms.\n";
-    std::cout << "[STEP 1] Generated Temporary WAV: " << temp_wav_path.string() << " (" << wav_size_bytes << " bytes)\n\n";
 
     // =========================================================================
     // STEP 2: Convert Audio to Text via Whisper
@@ -256,7 +278,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    rst = speech_rec.submit_task(temp_wav_path.string());
+    rst = speech_rec.submit_task(target_wav_path.string());
     std::cout << "\n";
     if (rst != RST_OK) {
         std::cerr << "[ERROR] Speech transcription task failed: " << get_rst_txt(rst) << "\n";
@@ -491,7 +513,7 @@ int main(int argc, char* argv[]) {
     // 1. Generate Whisper Accuracy HTML report
     WhisperAccuracyVisualizer whisper_vis;
     WhisperAccuracyInput whisper_input;
-    whisper_input.audio_filepath = opus_file.string();
+    whisper_input.audio_filepath = input_sound_file.string();
     whisper_input.model_name = whisper_model;
     whisper_input.language = speech_cfg.language;
     whisper_input.total_duration_ms = segments.empty() ? 0 : segments.back().end_time_ms;
@@ -517,7 +539,7 @@ int main(int argc, char* argv[]) {
     TextComparisonInput comp_input;
     comp_input.document_title = pdf_file.filename().string();
     comp_input.reference_filepath = pdf_file.string();
-    comp_input.audio_filepath = opus_file.string();
+    comp_input.audio_filepath = input_sound_file.string();
     comp_input.whisper_model = whisper_model;
     comp_input.llama_model = llama_path.filename().string();
     comp_input.overall_coverage_pct = coverage_pct;
