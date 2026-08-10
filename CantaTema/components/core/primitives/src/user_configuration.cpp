@@ -27,10 +27,15 @@ void UserConfiguration::set_default_values() {
     // 3. Comparison defaults
     comparison.embedding_model_name = "AUTO";
     comparison.embedding_gpu_offload_layers = 0;
+    comparison.use_role_prefixes = true;
+    comparison.passage_prefix = "passage: ";
+    comparison.query_prefix = "query: ";
     comparison.similarity_threshold = 0.65f;
     comparison.numeric_boost = 0.10f;
     comparison.numeric_mismatch_penalty = 0.15f;
     comparison.temporal_penalty_weight = 0.05f;
+    comparison.short_chunk_word_threshold = 10u;
+    comparison.lexical_mismatch_scaling_factor = 0.60f;
     comparison.speed_weight = 0.3f;
     comparison.clarity_weight = 0.4f;
     comparison.pacing_weight = 0.3f;
@@ -59,10 +64,15 @@ std::string UserConfiguration::to_json() const {
        << "\"comparison\":{"
        << "\"embedding_model_name\":\"" << comparison.embedding_model_name << "\","
        << "\"embedding_gpu_offload_layers\":" << comparison.embedding_gpu_offload_layers << ","
+       << "\"use_role_prefixes\":" << comparison.use_role_prefixes << ","
+       << "\"passage_prefix\":\"" << comparison.passage_prefix << "\","
+       << "\"query_prefix\":\"" << comparison.query_prefix << "\","
        << "\"similarity_threshold\":" << comparison.similarity_threshold << ","
        << "\"numeric_boost\":" << comparison.numeric_boost << ","
        << "\"numeric_mismatch_penalty\":" << comparison.numeric_mismatch_penalty << ","
        << "\"temporal_penalty_weight\":" << comparison.temporal_penalty_weight << ","
+       << "\"short_chunk_word_threshold\":" << comparison.short_chunk_word_threshold << ","
+       << "\"lexical_mismatch_scaling_factor\":" << comparison.lexical_mismatch_scaling_factor << ","
        << "\"speed_weight\":" << comparison.speed_weight << ","
        << "\"clarity_weight\":" << comparison.clarity_weight << ","
        << "\"pacing_weight\":" << comparison.pacing_weight
@@ -142,10 +152,20 @@ bool UserConfiguration::from_json(const std::string& json_str) {
     if (!e_model.empty()) comparison.embedding_model_name = e_model;
 
     comparison.embedding_gpu_offload_layers = extract_int_val(json_str, "embedding_gpu_offload_layers", comparison.embedding_gpu_offload_layers);
+    comparison.use_role_prefixes = extract_bool_val(json_str, "use_role_prefixes", comparison.use_role_prefixes);
+
+    std::string p_prefix = extract_string_val(json_str, "passage_prefix");
+    if (!p_prefix.empty()) comparison.passage_prefix = p_prefix;
+
+    std::string q_prefix = extract_string_val(json_str, "query_prefix");
+    if (!q_prefix.empty()) comparison.query_prefix = q_prefix;
+
     comparison.similarity_threshold = extract_float_val(json_str, "similarity_threshold", comparison.similarity_threshold);
     comparison.numeric_boost = extract_float_val(json_str, "numeric_boost", comparison.numeric_boost);
     comparison.numeric_mismatch_penalty = extract_float_val(json_str, "numeric_mismatch_penalty", comparison.numeric_mismatch_penalty);
     comparison.temporal_penalty_weight = extract_float_val(json_str, "temporal_penalty_weight", comparison.temporal_penalty_weight);
+    comparison.short_chunk_word_threshold = extract_int_val(json_str, "short_chunk_word_threshold", static_cast<int>(comparison.short_chunk_word_threshold));
+    comparison.lexical_mismatch_scaling_factor = extract_float_val(json_str, "lexical_mismatch_scaling_factor", comparison.lexical_mismatch_scaling_factor);
     comparison.speed_weight = extract_float_val(json_str, "speed_weight", comparison.speed_weight);
     comparison.clarity_weight = extract_float_val(json_str, "clarity_weight", comparison.clarity_weight);
     comparison.pacing_weight = extract_float_val(json_str, "pacing_weight", comparison.pacing_weight);

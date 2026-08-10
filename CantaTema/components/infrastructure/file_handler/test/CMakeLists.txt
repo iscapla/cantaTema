@@ -12,6 +12,7 @@ create_test_exec(
         t_text_chunk_extractor.cxx
         t_text_conversion_coverage.cxx
         t_numerical_entity_extractor.cxx
+        t_lexical_keyword_extractor.cxx
     INC_PRIVATE
         CORE::PRIMITIVES
         CORE::CONFIGURATION

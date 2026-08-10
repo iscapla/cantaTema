@@ -6,9 +6,12 @@
 
 class MockEmbeddingEngine : public IEmbeddingEngine {
 public:
-    MOCK_METHOD(bool, load_model, (const std::filesystem::path& model_path), (override));
-    MOCK_METHOD(std::vector<float>, generate_embedding, (const std::string& text), (override));
-    MOCK_METHOD(std::vector<std::vector<float>>, generate_embeddings_batch, (const std::vector<std::string>& texts), (override));
+    using FloatVector = std::vector<float>;
+    using FloatVectorBatch = std::vector<std::vector<float>>;
+
+    MOCK_METHOD(bool, load_model, (const std::filesystem::path&), (override));
+    MOCK_METHOD(FloatVector, generate_embedding, (const std::string&, EmbeddingRole), (override));
+    MOCK_METHOD(FloatVectorBatch, generate_embeddings_batch, (const std::vector<std::string>&, EmbeddingRole), (override));
     MOCK_METHOD(size_t, get_embedding_dimension, (), (const, override));
 };
 

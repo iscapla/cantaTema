@@ -62,6 +62,29 @@ TEST_F(LlamaEmbeddingEngineTest, GenerateEmbeddingSuccess) {
     EXPECT_EQ(emb, expected_emb);
 }
 
+TEST_F(LlamaEmbeddingEngineTest, RolePrefixPassageAndQuery) {
+    std::string passage_text = "Texto Pasaje";
+    std::string query_text = "Texto Consulta";
+    std::vector<int32_t> tokens = {1, 2};
+    std::vector<float> expected_emb = {0.8f};
+
+    EXPECT_CALL(*mock_ctx_ptr, tokenize("passage: Texto Pasaje", _))
+        .WillOnce(::testing::DoAll(SetArgReferee<1>(tokens), Return(2)));
+    EXPECT_CALL(*mock_ctx_ptr, decode_and_get_embedding(tokens))
+        .WillOnce(Return(expected_emb));
+
+    auto passage_emb = engine->generate_embedding(passage_text, EmbeddingRole::PASSAGE);
+    EXPECT_EQ(passage_emb, expected_emb);
+
+    EXPECT_CALL(*mock_ctx_ptr, tokenize("query: Texto Consulta", _))
+        .WillOnce(::testing::DoAll(SetArgReferee<1>(tokens), Return(2)));
+    EXPECT_CALL(*mock_ctx_ptr, decode_and_get_embedding(tokens))
+        .WillOnce(Return(expected_emb));
+
+    auto query_emb = engine->generate_embedding(query_text, EmbeddingRole::QUERY);
+    EXPECT_EQ(query_emb, expected_emb);
+}
+
 TEST_F(LlamaEmbeddingEngineTest, GenerateEmbeddingTokenizeFailure) {
     std::string text = "Error text";
 

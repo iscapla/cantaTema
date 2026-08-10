@@ -31,11 +31,17 @@ ConfigurationSystem::ConfigurationSystem() : IConfigurationBase() {
 
     set_default_if_not_present("EMBEDDINGS", "default_model", "AUTO");
     set_default_if_not_present("EMBEDDINGS", "gpu_offload_layers", "99");
+    set_default_if_not_present("EMBEDDINGS", "use_role_prefixes", "true");
+    set_default_if_not_present("EMBEDDINGS", "passage_prefix", "passage: ");
+    set_default_if_not_present("EMBEDDINGS", "query_prefix", "query: ");
 
     set_default_if_not_present("COVERAGE", "similarity_threshold", "0.75");
+    set_default_if_not_present("COVERAGE", "min_chunk_word_count", "4");
     set_default_if_not_present("COVERAGE", "numeric_boost", "0.10");
     set_default_if_not_present("COVERAGE", "numeric_mismatch_penalty", "0.15");
     set_default_if_not_present("COVERAGE", "temporal_penalty_weight", "0.05");
+    set_default_if_not_present("COVERAGE", "short_chunk_word_threshold", "10");
+    set_default_if_not_present("COVERAGE", "lexical_mismatch_scaling_factor", "0.60");
     set_default_if_not_present("COVERAGE", "importance_weight_bold", "1.5");
     set_default_if_not_present("COVERAGE", "importance_weight_italic", "1.2");
     set_default_if_not_present("COVERAGE", "importance_weight_underline", "1.3");
@@ -161,12 +167,34 @@ int ConfigurationSystem::get_embeddings_gpu_offload_layers() const {
     }
 }
 
+bool ConfigurationSystem::get_embeddings_use_role_prefixes() const {
+    std::string value = const_cast<ConfigurationSystem*>(this)->get_or_default("EMBEDDINGS", "use_role_prefixes", "true");
+    return (value == "true" || value == "1" || value == "TRUE");
+}
+
+std::string ConfigurationSystem::get_embeddings_passage_prefix() const {
+    return const_cast<ConfigurationSystem*>(this)->get_or_default("EMBEDDINGS", "passage_prefix", "passage: ");
+}
+
+std::string ConfigurationSystem::get_embeddings_query_prefix() const {
+    return const_cast<ConfigurationSystem*>(this)->get_or_default("EMBEDDINGS", "query_prefix", "query: ");
+}
+
 float ConfigurationSystem::get_coverage_similarity_threshold() const {
     std::string value = const_cast<ConfigurationSystem*>(this)->get_or_default("COVERAGE", "similarity_threshold", "0.75");
     try {
         return std::stof(value);
     } catch (...) {
         return 0.75f; // Default fallback
+    }
+}
+
+unsigned int ConfigurationSystem::get_coverage_min_chunk_word_count() const {
+    std::string value = const_cast<ConfigurationSystem*>(this)->get_or_default("COVERAGE", "min_chunk_word_count", "4");
+    try {
+        return std::stoul(value);
+    } catch (...) {
+        return 4u; // Default fallback
     }
 }
 
@@ -194,6 +222,24 @@ float ConfigurationSystem::get_coverage_temporal_penalty_weight() const {
         return std::stof(value);
     } catch (...) {
         return 0.05f; // Default fallback
+    }
+}
+
+unsigned int ConfigurationSystem::get_coverage_short_chunk_word_threshold() const {
+    std::string value = const_cast<ConfigurationSystem*>(this)->get_or_default("COVERAGE", "short_chunk_word_threshold", "10");
+    try {
+        return std::stoul(value);
+    } catch (...) {
+        return 10u; // Default fallback
+    }
+}
+
+float ConfigurationSystem::get_coverage_lexical_mismatch_scaling_factor() const {
+    std::string value = const_cast<ConfigurationSystem*>(this)->get_or_default("COVERAGE", "lexical_mismatch_scaling_factor", "0.60");
+    try {
+        return std::stof(value);
+    } catch (...) {
+        return 0.60f; // Default fallback
     }
 }
 

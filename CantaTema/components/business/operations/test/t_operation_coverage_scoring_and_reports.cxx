@@ -108,8 +108,9 @@ TEST_F(OperationCoverageScoringAndReportsTest, FullPipeline100PercentCoverage) {
     EXPECT_CALL(*mock_speech, get_segments(_))
         .WillOnce(DoAll(SetArgReferee<0>(mock_segments), Return(RST_OK)));
 
-    EXPECT_CALL(*mock_embedding, generate_embeddings_batch(_))
-        .WillRepeatedly([](const std::vector<std::string>& texts) {
+    EXPECT_CALL(*mock_embedding, generate_embeddings_batch(_, _))
+        .WillRepeatedly([](const std::vector<std::string>& texts, EmbeddingRole role) {
+            (void)role;
             return std::vector<std::vector<float>>(texts.size(), std::vector<float>{0.5f, 0.5f});
         });
 
@@ -127,7 +128,7 @@ TEST_F(OperationCoverageScoringAndReportsTest, FullPipeline100PercentCoverage) {
     sim2.similarity_score = 0.88f;
     mock_matches.push_back(sim2);
 
-    EXPECT_CALL(*mock_similarity, search_pdf_matches(_, _, _)).WillOnce(Return(mock_matches));
+    EXPECT_CALL(*mock_similarity, search_pdf_matches_advanced(_, _, _, _, _)).WillOnce(Return(mock_matches));
 
     EXPECT_CALL(*mock_db, save_coverage_analysis_execution(1, _, 100.0, _, _, _, _, _, _, _, _, _))
         .WillOnce(Return(RST_OK));
@@ -173,8 +174,9 @@ TEST_F(OperationCoverageScoringAndReportsTest, FullPipelineZeroPercentCoverage) 
     EXPECT_CALL(*mock_speech, get_segments(_))
         .WillOnce(DoAll(SetArgReferee<0>(mock_segments), Return(RST_OK)));
 
-    EXPECT_CALL(*mock_embedding, generate_embeddings_batch(_))
-        .WillRepeatedly([](const std::vector<std::string>& texts) {
+    EXPECT_CALL(*mock_embedding, generate_embeddings_batch(_, _))
+        .WillRepeatedly([](const std::vector<std::string>& texts, EmbeddingRole role) {
+            (void)role;
             return std::vector<std::vector<float>>(texts.size(), std::vector<float>{0.1f, 0.1f});
         });
 
@@ -192,7 +194,7 @@ TEST_F(OperationCoverageScoringAndReportsTest, FullPipelineZeroPercentCoverage) 
     sim2.similarity_score = 0.15f;
     mock_matches.push_back(sim2);
 
-    EXPECT_CALL(*mock_similarity, search_pdf_matches(_, _, _)).WillOnce(Return(mock_matches));
+    EXPECT_CALL(*mock_similarity, search_pdf_matches_advanced(_, _, _, _, _)).WillOnce(Return(mock_matches));
 
     EXPECT_CALL(*mock_db, save_coverage_analysis_execution(1, _, 0.0, _, _, _, _, _, _, _, _, _))
         .WillOnce(Return(RST_OK));

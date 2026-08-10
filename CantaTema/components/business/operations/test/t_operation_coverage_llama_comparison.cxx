@@ -122,7 +122,7 @@ TEST_F(OperationCoverageLlamaComparisonTest, ComparisonModelConversionErrors) {
     EXPECT_CALL(*mock_speech, get_segments(_)).WillOnce(DoAll(SetArgReferee<0>(mock_segments), Return(RST_OK)));
 
     // Embedding engine returns empty vectors (conversion error)
-    EXPECT_CALL(*mock_embedding, generate_embeddings_batch(_))
+    EXPECT_CALL(*mock_embedding, generate_embeddings_batch(_, _))
         .WillRepeatedly(Return(std::vector<std::vector<float>>{}));
 
     std::string exec_id;
@@ -152,8 +152,9 @@ TEST_F(OperationCoverageLlamaComparisonTest, Comparison100Accuracy) {
     mock_segments.push_back({0, 5000, "Chunk one text. Chunk two text.", 0.95f});
     EXPECT_CALL(*mock_speech, get_segments(_)).WillOnce(DoAll(SetArgReferee<0>(mock_segments), Return(RST_OK)));
 
-    EXPECT_CALL(*mock_embedding, generate_embeddings_batch(_))
-        .WillRepeatedly([](const std::vector<std::string>& texts) {
+    EXPECT_CALL(*mock_embedding, generate_embeddings_batch(_, _))
+        .WillRepeatedly([](const std::vector<std::string>& texts, EmbeddingRole role) {
+            (void)role;
             return std::vector<std::vector<float>>(texts.size(), std::vector<float>{1.0f, 0.0f});
         });
 
@@ -169,7 +170,7 @@ TEST_F(OperationCoverageLlamaComparisonTest, Comparison100Accuracy) {
         mock_matches[i].weighted_missed_score = 0.0f;
     }
 
-    EXPECT_CALL(*mock_similarity, search_pdf_matches(_, _, _)).WillOnce(Return(mock_matches));
+    EXPECT_CALL(*mock_similarity, search_pdf_matches_advanced(_, _, _, _, _)).WillOnce(Return(mock_matches));
     EXPECT_CALL(*mock_db, save_coverage_analysis_execution(302, _, ::testing::DoubleEq(100.0), _, _, _, _, _, _, _, _, _)).WillOnce(Return(RST_OK));
     EXPECT_CALL(*mock_practice_op, practice_event_update(user, _)).WillOnce(Return(RST_OK));
 
@@ -199,8 +200,9 @@ TEST_F(OperationCoverageLlamaComparisonTest, ComparisonSingleDifference) {
     mock_segments.push_back({0, 4000, "Chunks 1, 2, 3, 4.", 0.90f});
     EXPECT_CALL(*mock_speech, get_segments(_)).WillOnce(DoAll(SetArgReferee<0>(mock_segments), Return(RST_OK)));
 
-    EXPECT_CALL(*mock_embedding, generate_embeddings_batch(_))
-        .WillRepeatedly([](const std::vector<std::string>& texts) {
+    EXPECT_CALL(*mock_embedding, generate_embeddings_batch(_, _))
+        .WillRepeatedly([](const std::vector<std::string>& texts, EmbeddingRole role) {
+            (void)role;
             return std::vector<std::vector<float>>(texts.size(), std::vector<float>{0.5f, 0.5f});
         });
 
@@ -221,7 +223,7 @@ TEST_F(OperationCoverageLlamaComparisonTest, ComparisonSingleDifference) {
     mock_matches[4].is_mentioned = false;
     mock_matches[4].weighted_missed_score = 0.80f;
 
-    EXPECT_CALL(*mock_similarity, search_pdf_matches(_, _, _)).WillOnce(Return(mock_matches));
+    EXPECT_CALL(*mock_similarity, search_pdf_matches_advanced(_, _, _, _, _)).WillOnce(Return(mock_matches));
     // 4 out of 5 chunks covered = 80% coverage
     EXPECT_CALL(*mock_db, save_coverage_analysis_execution(303, _, ::testing::DoubleEq(80.0), _, _, _, _, _, _, _, _, _)).WillOnce(Return(RST_OK));
     EXPECT_CALL(*mock_practice_op, practice_event_update(user, _)).WillOnce(Return(RST_OK));
@@ -252,8 +254,9 @@ TEST_F(OperationCoverageLlamaComparisonTest, ComparisonSomeDifferences) {
     mock_segments.push_back({0, 2000, "Chunks 1 and 2.", 0.90f});
     EXPECT_CALL(*mock_speech, get_segments(_)).WillOnce(DoAll(SetArgReferee<0>(mock_segments), Return(RST_OK)));
 
-    EXPECT_CALL(*mock_embedding, generate_embeddings_batch(_))
-        .WillRepeatedly([](const std::vector<std::string>& texts) {
+    EXPECT_CALL(*mock_embedding, generate_embeddings_batch(_, _))
+        .WillRepeatedly([](const std::vector<std::string>& texts, EmbeddingRole role) {
+            (void)role;
             return std::vector<std::vector<float>>(texts.size(), std::vector<float>{0.5f, 0.5f});
         });
 
@@ -275,7 +278,7 @@ TEST_F(OperationCoverageLlamaComparisonTest, ComparisonSomeDifferences) {
         mock_matches[i].weighted_missed_score = 0.85f;
     }
 
-    EXPECT_CALL(*mock_similarity, search_pdf_matches(_, _, _)).WillOnce(Return(mock_matches));
+    EXPECT_CALL(*mock_similarity, search_pdf_matches_advanced(_, _, _, _, _)).WillOnce(Return(mock_matches));
     // 2 out of 5 chunks = 40% coverage
     EXPECT_CALL(*mock_db, save_coverage_analysis_execution(304, _, ::testing::DoubleEq(40.0), _, _, _, _, _, _, _, _, _)).WillOnce(Return(RST_OK));
     EXPECT_CALL(*mock_practice_op, practice_event_update(user, _)).WillOnce(Return(RST_OK));
@@ -308,8 +311,9 @@ TEST_F(OperationCoverageLlamaComparisonTest, ComparisonDifferentTextOrders) {
     mock_segments.push_back({2000, 4000, "Chunk one text.", 0.94f});
     EXPECT_CALL(*mock_speech, get_segments(_)).WillOnce(DoAll(SetArgReferee<0>(mock_segments), Return(RST_OK)));
 
-    EXPECT_CALL(*mock_embedding, generate_embeddings_batch(_))
-        .WillRepeatedly([](const std::vector<std::string>& texts) {
+    EXPECT_CALL(*mock_embedding, generate_embeddings_batch(_, _))
+        .WillRepeatedly([](const std::vector<std::string>& texts, EmbeddingRole role) {
+            (void)role;
             return std::vector<std::vector<float>>(texts.size(), std::vector<float>{0.6f, 0.6f});
         });
 
@@ -328,7 +332,7 @@ TEST_F(OperationCoverageLlamaComparisonTest, ComparisonDifferentTextOrders) {
     mock_matches[4].similarity_score = 0.92f;
     mock_matches[4].is_mentioned = true;
 
-    EXPECT_CALL(*mock_similarity, search_pdf_matches(_, _, _)).WillOnce(Return(mock_matches));
+    EXPECT_CALL(*mock_similarity, search_pdf_matches_advanced(_, _, _, _, _)).WillOnce(Return(mock_matches));
     EXPECT_CALL(*mock_db, save_coverage_analysis_execution(305, _, _, _, _, _, _, _, _, _, _, _)).WillOnce(Return(RST_OK));
     EXPECT_CALL(*mock_practice_op, practice_event_update(user, _)).WillOnce(Return(RST_OK));
 
@@ -375,8 +379,9 @@ TEST_F(OperationCoverageLlamaComparisonTest, ComparisonMetricsVerification) {
     mock_segments.push_back({0, 3000, "Segment test metrics.", 0.98f});
     EXPECT_CALL(*mock_speech, get_segments(_)).WillOnce(DoAll(SetArgReferee<0>(mock_segments), Return(RST_OK)));
 
-    EXPECT_CALL(*mock_embedding, generate_embeddings_batch(_))
-        .WillRepeatedly([](const std::vector<std::string>& texts) {
+    EXPECT_CALL(*mock_embedding, generate_embeddings_batch(_, _))
+        .WillRepeatedly([](const std::vector<std::string>& texts, EmbeddingRole role) {
+            (void)role;
             return std::vector<std::vector<float>>(texts.size(), std::vector<float>{0.5f, 0.5f});
         });
 
@@ -384,7 +389,7 @@ TEST_F(OperationCoverageLlamaComparisonTest, ComparisonMetricsVerification) {
     EXPECT_CALL(*mock_similarity, index_transcript_embeddings(_)).WillOnce(Return(true));
 
     std::vector<SimilarityResult> mock_matches(5);
-    EXPECT_CALL(*mock_similarity, search_pdf_matches(_, _, _)).WillOnce(Return(mock_matches));
+    EXPECT_CALL(*mock_similarity, search_pdf_matches_advanced(_, _, _, _, _)).WillOnce(Return(mock_matches));
 
     // Verify speed score > 0, clarity score > 0, and metrics saved to database
     EXPECT_CALL(*mock_db, save_coverage_analysis_execution(

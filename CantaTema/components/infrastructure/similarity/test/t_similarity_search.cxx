@@ -265,3 +265,35 @@ TEST(FaissSimilaritySearchTest, EnumerationSequenceOrderTolerance) {
     EXPECT_EQ(results[1].best_transcript_chunk_index, 0);
 }
 
+TEST(FaissSimilaritySearchTest, ShortHeadingFalsePositiveResolution) {
+    FaissSimilaritySearch search;
+    // Single transcript embedding with high cosine vector similarity (~0.834)
+    std::vector<std::vector<float>> trans = {
+        {0.834f, 0.551f, 0.0f}
+    };
+    EXPECT_TRUE(search.index_transcript_embeddings(trans));
+
+    // PDF 0: Short heading "Naturaleza del Impuesto." (3 words <= 10)
+    std::vector<std::vector<float>> pdfs = {
+        {1.0f, 0.0f, 0.0f}
+    };
+    std::vector<std::string> pdf_texts = {"Naturaleza del Impuesto."};
+    std::vector<std::string> transcript_texts = {"cuando el contribuyente hubiera renunciado a su aplicación."};
+    std::vector<float> weights = {1.0f};
+
+    SimilaritySearchOptions options;
+    options.similarity_threshold = 0.65f;
+    options.short_chunk_word_threshold = 10u;
+    options.lexical_mismatch_scaling_factor = 0.60f;
+
+    auto results = search.search_pdf_matches_advanced(pdfs, pdf_texts, transcript_texts, weights, options);
+    ASSERT_EQ(results.size(), 1);
+
+    // Raw similarity 0.834 scaled by 0.60 = 0.5004 < 0.65 threshold -> should NOT be mentioned!
+    EXPECT_FALSE(results[0].is_mentioned);
+    EXPECT_EQ(results[0].best_transcript_chunk_index, -1);
+    EXPECT_EQ(results[0].candidate_transcript_chunk_index, 0);
+    EXPECT_NEAR(results[0].similarity_score, 0.5004f, 1e-3f);
+}
+
+

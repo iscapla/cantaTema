@@ -441,7 +441,7 @@ int main(int argc, char* argv[]) {
     std::vector<std::vector<float>> pdf_embeddings;
     pdf_embeddings.reserve(pdf_texts.size());
     for (size_t i = 0; i < pdf_texts.size(); ++i) {
-        pdf_embeddings.push_back(embedding_engine.generate_embedding(pdf_texts[i]));
+        pdf_embeddings.push_back(embedding_engine.generate_embedding(pdf_texts[i], EmbeddingRole::PASSAGE));
         int pct = static_cast<int>((i + 1) * 100 / pdf_texts.size());
         std::cout << "\r[STEP 4] Processing PDF Embeddings (" << (i + 1) << "/" << pdf_texts.size() << "): " << std::setw(3) << pct << "%" << std::flush;
     }
@@ -450,7 +450,7 @@ int main(int argc, char* argv[]) {
     std::vector<std::vector<float>> transcript_embeddings;
     transcript_embeddings.reserve(transcript_texts.size());
     for (size_t i = 0; i < transcript_texts.size(); ++i) {
-        transcript_embeddings.push_back(embedding_engine.generate_embedding(transcript_texts[i]));
+        transcript_embeddings.push_back(embedding_engine.generate_embedding(transcript_texts[i], EmbeddingRole::QUERY));
         int pct = static_cast<int>((i + 1) * 100 / transcript_texts.size());
         std::cout << "\r[STEP 4] Processing Transcript Embeddings (" << (i + 1) << "/" << transcript_texts.size() << "): " << std::setw(3) << pct << "%" << std::flush;
     }
@@ -460,7 +460,21 @@ int main(int argc, char* argv[]) {
     similarity_search.index_transcript_embeddings(transcript_embeddings);
 
     float sim_threshold = ConfigurationSystem::getInstance().get_coverage_similarity_threshold();
-    auto matches = similarity_search.search_pdf_matches(pdf_embeddings, pdf_weights, sim_threshold);
+    SimilaritySearchOptions options;
+    options.similarity_threshold = sim_threshold;
+    options.numeric_boost = ConfigurationSystem::getInstance().get_coverage_numeric_boost();
+    options.numeric_mismatch_penalty = ConfigurationSystem::getInstance().get_coverage_numeric_mismatch_penalty();
+    options.temporal_penalty_weight = ConfigurationSystem::getInstance().get_coverage_temporal_penalty_weight();
+    options.short_chunk_word_threshold = ConfigurationSystem::getInstance().get_coverage_short_chunk_word_threshold();
+    options.lexical_mismatch_scaling_factor = ConfigurationSystem::getInstance().get_coverage_lexical_mismatch_scaling_factor();
+
+    auto matches = similarity_search.search_pdf_matches_advanced(
+        pdf_embeddings,
+        pdf_texts,
+        transcript_texts,
+        pdf_weights,
+        options
+    );
 
     auto t4_end = std::chrono::high_resolution_clock::now();
     double step4_ms = std::chrono::duration<double, std::milli>(t4_end - t4_start).count();
@@ -558,6 +572,8 @@ int main(int argc, char* argv[]) {
         ref_item.coverage_status = m.is_mentioned ? coverage_level_e::MENTIONED : coverage_level_e::NOT_MENTIONED;
         ref_item.similarity_score = m.similarity_score;
         ref_item.matched_transcript_index = m.best_transcript_chunk_index;
+        ref_item.word_alignment = m.word_alignment;
+        ref_item.word_recall_score = m.word_recall_score;
         comp_input.reference_items.push_back(ref_item);
     }
 

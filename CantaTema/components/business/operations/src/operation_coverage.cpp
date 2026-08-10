@@ -180,12 +180,15 @@ rst_code_e OperationCoverage::analyze_practice_coverage(
     }
 
     // 6. Vector embeddings
-    std::vector<std::string> pdf_texts;
+    std::vector<std::string> pdf_embedding_texts;
+    std::vector<std::string> pdf_display_texts;
     std::vector<float> pdf_weights;
-    pdf_texts.reserve(doc_chunks.size());
+    pdf_embedding_texts.reserve(doc_chunks.size());
+    pdf_display_texts.reserve(doc_chunks.size());
     pdf_weights.reserve(doc_chunks.size());
     for (const auto& chunk : doc_chunks) {
-        pdf_texts.push_back(chunk.text);
+        pdf_embedding_texts.push_back(chunk.contextual_text.empty() ? chunk.text : chunk.contextual_text);
+        pdf_display_texts.push_back(chunk.text);
         pdf_weights.push_back(static_cast<float>(chunk.importance_weight));
     }
 
@@ -195,8 +198,8 @@ rst_code_e OperationCoverage::analyze_practice_coverage(
         transcript_texts.push_back(seg.text);
     }
 
-    auto pdf_embeddings = m_embedding_engine->generate_embeddings_batch(pdf_texts);
-    auto transcript_embeddings = m_embedding_engine->generate_embeddings_batch(transcript_texts);
+    auto pdf_embeddings = m_embedding_engine->generate_embeddings_batch(pdf_embedding_texts, EmbeddingRole::PASSAGE);
+    auto transcript_embeddings = m_embedding_engine->generate_embeddings_batch(transcript_texts, EmbeddingRole::QUERY);
 
     if (pdf_embeddings.size() != doc_chunks.size() || transcript_embeddings.size() != segments.size()) {
         if (logger) logger->error("OperationCoverage::analyze_practice_coverage - Embedding generation size mismatch");
@@ -212,10 +215,12 @@ rst_code_e OperationCoverage::analyze_practice_coverage(
     search_options.numeric_boost = ConfigurationSystem::getInstance().get_coverage_numeric_boost();
     search_options.numeric_mismatch_penalty = ConfigurationSystem::getInstance().get_coverage_numeric_mismatch_penalty();
     search_options.temporal_penalty_weight = ConfigurationSystem::getInstance().get_coverage_temporal_penalty_weight();
+    search_options.short_chunk_word_threshold = ConfigurationSystem::getInstance().get_coverage_short_chunk_word_threshold();
+    search_options.lexical_mismatch_scaling_factor = ConfigurationSystem::getInstance().get_coverage_lexical_mismatch_scaling_factor();
 
     auto matches = m_similarity_search->search_pdf_matches_advanced(
         pdf_embeddings,
-        pdf_texts,
+        pdf_display_texts,
         transcript_texts,
         pdf_weights,
         search_options

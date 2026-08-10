@@ -71,9 +71,16 @@ rst_code_e TextChunkExtractor::extract_chunks(const TextFileHandler& handler, st
         while (end < len) {
             char c = full_text[end];
             if (c == '\n') {
-                end++;
-                found_delimiter = true;
-                break;
+                size_t next_idx = end + 1;
+                while (next_idx < len && (full_text[next_idx] == '\r' || full_text[next_idx] == ' ' || full_text[next_idx] == '\t')) {
+                    next_idx++;
+                }
+                // Break on double newline (\n\n) or line break before an uppercase letter
+                if (next_idx < len && (full_text[next_idx] == '\n' || std::isupper(static_cast<unsigned char>(full_text[next_idx])))) {
+                    end = next_idx;
+                    found_delimiter = true;
+                    break;
+                }
             }
             if (c == '.' || c == '?' || c == '!') {
                 // Check if it's a period representing an abbreviation
@@ -144,6 +151,7 @@ rst_code_e TextChunkExtractor::extract_chunks(const TextFileHandler& handler, st
     double italic_mult = config.get_importance_weight_italic();
     double underline_mult = config.get_importance_weight_underline();
     double bg_color_mult = config.get_importance_weight_bg_color();
+    unsigned int min_words = config.get_coverage_min_chunk_word_count();
 
     unsigned int chunk_id_counter = 1;
     unsigned int sentence_idx = 0;
@@ -151,6 +159,86 @@ rst_code_e TextChunkExtractor::extract_chunks(const TextFileHandler& handler, st
     for (const auto& range : sentence_ranges) {
         size_t s_start = range.first;
         size_t s_end = range.second;
+
+        std::string raw_chunk_text = full_text.substr(s_start, s_end - s_start);
+
+        // Replace internal single newlines with spaces for clean continuous prose
+        std::string clean_chunk_text;
+        clean_chunk_text.reserve(raw_chunk_text.length());
+        for (size_t i = 0; i < raw_chunk_text.length(); ++i) {
+            if (raw_chunk_text[i] == '\n' || raw_chunk_text[i] == '\r') {
+                if (clean_chunk_text.empty() || clean_chunk_text.back() != ' ') {
+                    clean_chunk_text += ' ';
+                }
+            } else {
+                clean_chunk_text += raw_chunk_text[i];
+            }
+        }
+
+        size_t word_count = 0;
+        {
+            std::stringstream ss(clean_chunk_text);
+            std::string w;
+            while (ss >> w) word_count++;
+        }
+
+        // Helper lambdas for document artifact cleaning
+        auto is_page_header_artifact = [](const std::string& str) -> bool {
+            std::string s = str;
+            std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return std::tolower(c); });
+            return (s.find("página ") != std::string::npos || s.find("pagina ") != std::string::npos || s.find("pág. ") != std::string::npos)
+                   && s.find(" de ") != std::string::npos;
+        };
+
+        auto is_list_label = [](const std::string& str) -> bool {
+            std::string s;
+            for (char c : str) {
+                if (!std::isspace(static_cast<unsigned char>(c))) s += c;
+            }
+            if (s.empty() || s.length() > 6) return false;
+            // Matches "1.", "2.", "3.", "1º.", "2º.", "a)", "b)", "1º", "2º", etc.
+            bool all_label = true;
+            for (char c : s) {
+                if (!std::isalnum(static_cast<unsigned char>(c)) && c != '.' && c != ')' && c != '(' && c != '-' && static_cast<unsigned char>(c) != 0xba && static_cast<unsigned char>(c) != 0xaa) {
+                    all_label = false;
+                    break;
+                }
+            }
+            return all_label;
+        };
+
+        if (is_page_header_artifact(clean_chunk_text)) {
+            continue; // Skip PDF header/footer artifacts
+        }
+
+        // Split number rejoining (e.g. previous chunk ends with "60." or "180." and current chunk starts with "000")
+        if (!out_chunks.empty() && !clean_chunk_text.empty()) {
+            std::string& prev_text = out_chunks.back().text;
+            if (prev_text.length() >= 3 && std::isdigit(static_cast<unsigned char>(prev_text[prev_text.length() - 2])) && prev_text.back() == '.') {
+                if (clean_chunk_text.rfind("000", 0) == 0) {
+                    // Rejoin "60." + "000 euros" -> "60.000 euros"
+                    prev_text.pop_back(); // remove period
+                    prev_text += "." + clean_chunk_text;
+                    out_chunks.back().contextual_text = prev_text;
+                    continue;
+                }
+            }
+        }
+
+        // Micro-chunk merging: merge small incomplete chunks (< min_words without sentence-ending punctuation or list labels)
+        bool has_sentence_punct = false;
+        if (!clean_chunk_text.empty()) {
+            char last_c = clean_chunk_text.back();
+            if (last_c == '.' || last_c == '?' || last_c == '!') {
+                has_sentence_punct = true;
+            }
+        }
+
+        if ((is_list_label(clean_chunk_text) || (word_count < min_words && !has_sentence_punct)) && !out_chunks.empty()) {
+            out_chunks.back().text += " " + clean_chunk_text;
+            out_chunks.back().contextual_text = out_chunks.back().text;
+            continue;
+        }
 
         bool is_bold = false;
         bool is_italic = false;
@@ -173,7 +261,8 @@ rst_code_e TextChunkExtractor::extract_chunks(const TextFileHandler& handler, st
 
         DocumentChunk chunk;
         chunk.chunk_id = chunk_id_counter++;
-        chunk.text = full_text.substr(s_start, s_end - s_start);
+        chunk.text = clean_chunk_text;
+        chunk.contextual_text = chunk.text; // default to text
         chunk.sentence_index = sentence_idx++;
         chunk.importance_weight = importance_weight;
         chunk.is_bold = is_bold;
@@ -182,6 +271,18 @@ rst_code_e TextChunkExtractor::extract_chunks(const TextFileHandler& handler, st
         chunk.has_bg_color = has_bg_color;
 
         out_chunks.push_back(chunk);
+    }
+
+    // Post-processing: For short headings (<= 10 words or bold), expand contextual_text with subsequent chunk text
+    for (size_t i = 0; i < out_chunks.size(); ++i) {
+        size_t word_count = 0;
+        std::stringstream ss(out_chunks[i].text);
+        std::string word;
+        while (ss >> word) word_count++;
+
+        if ((word_count <= 10 || out_chunks[i].is_bold) && (i + 1 < out_chunks.size())) {
+            out_chunks[i].contextual_text = out_chunks[i].text + " " + out_chunks[i + 1].text;
+        }
     }
 
     return RST_OK;

@@ -11,6 +11,7 @@ create_infra_library(
     src/sound_handler.cpp
     src/text_chunk_extractor.cpp
     src/numerical_entity_extractor.cpp
+    src/lexical_keyword_extractor.cpp
     INC_PUBLIC
     INC_PRIVATE
     mupdf::mupdf

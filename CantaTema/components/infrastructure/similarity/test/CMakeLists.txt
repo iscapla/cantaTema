@@ -6,6 +6,7 @@ create_test_exec(
     SRCS
         t_similarity_main.cxx
         t_similarity_search.cxx
+        t_word_sequence_aligner.cxx
     INC_PRIVATE
         CORE::PRIMITIVES
         INFRASTRUCTURE::SIMILARITY

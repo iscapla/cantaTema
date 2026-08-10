@@ -5,6 +5,7 @@ create_infra_library(
     "similarity"
     SRCS
     src/faiss_similarity_search.cpp
+    src/word_sequence_aligner.cpp
     INC_PUBLIC
     INC_PRIVATE
     CORE::PRIMITIVES

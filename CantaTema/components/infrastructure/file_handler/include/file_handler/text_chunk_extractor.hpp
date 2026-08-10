@@ -8,6 +8,7 @@
 struct DocumentChunk {
     unsigned int chunk_id;
     std::string text;
+    std::string contextual_text;
     unsigned int sentence_index;
     double importance_weight;
     bool is_bold = false;

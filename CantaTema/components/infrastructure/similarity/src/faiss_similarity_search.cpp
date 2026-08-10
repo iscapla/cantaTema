@@ -1,5 +1,6 @@
 #include "similarity/faiss_similarity_search.hpp"
 #include "file_handler/numerical_entity_extractor.hpp"
+#include "file_handler/lexical_keyword_extractor.hpp"
 #include "primitives/utils_logger.hpp"
 #include <cmath>
 #include <algorithm>
@@ -90,8 +91,13 @@ std::vector<SimilarityResult> FaissSimilaritySearch::search_pdf_matches_advanced
         std::string ref_text = (i < pdf_texts.size()) ? pdf_texts[i] : "";
 
         bool is_list_item = false;
+        std::unordered_set<std::string> ref_keywords;
+        size_t ref_word_count = 0;
+
         if (!ref_text.empty()) {
             is_list_item = NumericalEntityExtractor::is_enumerated_item(ref_text);
+            ref_keywords = LexicalKeywordExtractor::extract_keywords(ref_text);
+            ref_word_count = LexicalKeywordExtractor::count_words(ref_text);
         }
 
         SimilarityResult res;
@@ -146,6 +152,16 @@ std::vector<SimilarityResult> FaissSimilaritySearch::search_pdf_matches_advanced
             float raw_cosine = static_cast<float>(dot_product / (pdf_norm * trans_norm));
             raw_cosine = std::max(-1.0f, std::min(1.0f, raw_cosine));
 
+            // Hybrid Lexical Gating: for short reference chunks (<= short_chunk_word_threshold), verify keyword overlap
+            if (ref_word_count > 0 && ref_word_count <= options.short_chunk_word_threshold && !ref_keywords.empty() && !trans_text.empty()) {
+                auto trans_keywords = LexicalKeywordExtractor::extract_keywords(trans_text);
+                size_t overlap = LexicalKeywordExtractor::count_keyword_overlap(ref_keywords, trans_keywords);
+                if (overlap == 0) {
+                    // Zero keyword overlap on a short chunk -> scale raw score down by scaling factor
+                    raw_cosine *= options.lexical_mismatch_scaling_factor;
+                }
+            }
+
             // Numerical entity analysis
             NumericMatchAnalysis num_analysis;
             if (!ref_text.empty() && !trans_text.empty()) {
@@ -156,11 +172,25 @@ std::vector<SimilarityResult> FaissSimilaritySearch::search_pdf_matches_advanced
 
             float score_adjusted = raw_cosine + num_analysis.score_modifier;
 
-            // Order-aware temporal distance penalty
+            // Order-aware temporal distance penalty (bidirectional)
             float temporal_penalty = 0.0f;
-            if (!is_list_item && last_matched_j >= 0 && static_cast<int>(j) < last_matched_j) {
-                int dist = last_matched_j - static_cast<int>(j);
-                temporal_penalty = options.temporal_penalty_weight * std::min(1.0f, static_cast<float>(dist) / 10.0f);
+            if (!is_list_item) {
+                // Backward jump penalty
+                if (last_matched_j >= 0 && static_cast<int>(j) < last_matched_j) {
+                    int dist = last_matched_j - static_cast<int>(j);
+                    temporal_penalty += options.temporal_penalty_weight * std::min(1.0f, static_cast<float>(dist) / 10.0f);
+                }
+                // Unnatural far forward jump penalty relative to estimated position
+                if (!pdf_embeddings.empty() && !m_indexed_embeddings.empty()) {
+                    int expected_j = static_cast<int>((i * m_indexed_embeddings.size()) / pdf_embeddings.size());
+                    if (last_matched_j >= 0) {
+                        expected_j = std::max(expected_j, last_matched_j);
+                    }
+                    if (static_cast<int>(j) > expected_j + 15) {
+                        int fwd_dist = static_cast<int>(j) - (expected_j + 15);
+                        temporal_penalty += options.temporal_penalty_weight * std::min(1.0f, static_cast<float>(fwd_dist) / 15.0f);
+                    }
+                }
             }
 
             float effective_score = score_adjusted - temporal_penalty;
@@ -178,6 +208,11 @@ std::vector<SimilarityResult> FaissSimilaritySearch::search_pdf_matches_advanced
             res.similarity_score = std::max(-1.0f, std::min(1.0f, best_effective_score));
             res.is_mentioned = (res.similarity_score >= options.similarity_threshold);
             res.has_numeric_warning = best_has_warning;
+
+            if (best_j >= 0 && best_j < static_cast<int>(transcript_texts.size())) {
+                res.word_alignment = WordSequenceAligner::align(ref_text, transcript_texts[best_j]);
+                res.word_recall_score = res.word_alignment.word_recall_score;
+            }
 
             if (res.is_mentioned) {
                 res.best_transcript_chunk_index = best_j;

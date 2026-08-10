@@ -130,8 +130,9 @@ TEST_F(OperationCoverageQuijoteTest, QuijoteFullCoverage100Percent) {
     EXPECT_CALL(*mock_speech, get_segments(_))
         .WillOnce(DoAll(SetArgReferee<0>(mock_segments), Return(RST_OK)));
 
-    EXPECT_CALL(*mock_embedding, generate_embeddings_batch(_))
-        .WillRepeatedly([](const std::vector<std::string>& texts) {
+    EXPECT_CALL(*mock_embedding, generate_embeddings_batch(_, _))
+        .WillRepeatedly([](const std::vector<std::string>& texts, EmbeddingRole role) {
+            (void)role;
             return std::vector<std::vector<float>>(texts.size(), std::vector<float>{0.8f, 0.6f});
         });
 
@@ -164,7 +165,7 @@ TEST_F(OperationCoverageQuijoteTest, QuijoteFullCoverage100Percent) {
     mock_matches.push_back(sim2);
     mock_matches.push_back(sim3);
 
-    EXPECT_CALL(*mock_similarity, search_pdf_matches(_, _, _)).WillOnce(Return(mock_matches));
+    EXPECT_CALL(*mock_similarity, search_pdf_matches_advanced(_, _, _, _, _)).WillOnce(Return(mock_matches));
 
     EXPECT_CALL(*mock_db, save_coverage_analysis_execution(201, _, ::testing::DoubleEq(100.0), _, _, _, _, _, _, _, _, _))
         .WillOnce(Return(RST_OK));
@@ -210,8 +211,9 @@ TEST_F(OperationCoverageQuijoteTest, QuijotePartialCoverageMissingSentence2) {
     EXPECT_CALL(*mock_speech, get_segments(_))
         .WillOnce(DoAll(SetArgReferee<0>(mock_segments), Return(RST_OK)));
 
-    EXPECT_CALL(*mock_embedding, generate_embeddings_batch(_))
-        .WillRepeatedly([](const std::vector<std::string>& texts) {
+    EXPECT_CALL(*mock_embedding, generate_embeddings_batch(_, _))
+        .WillRepeatedly([](const std::vector<std::string>& texts, EmbeddingRole role) {
+            (void)role;
             return std::vector<std::vector<float>>(texts.size(), std::vector<float>{0.7f, 0.7f});
         });
 
@@ -245,7 +247,7 @@ TEST_F(OperationCoverageQuijoteTest, QuijotePartialCoverageMissingSentence2) {
     mock_matches.push_back(sim2);
     mock_matches.push_back(sim3);
 
-    EXPECT_CALL(*mock_similarity, search_pdf_matches(_, _, _)).WillOnce(Return(mock_matches));
+    EXPECT_CALL(*mock_similarity, search_pdf_matches_advanced(_, _, _, _, _)).WillOnce(Return(mock_matches));
 
     // Coverage is 2 out of 3 sentences (66.666...%)
     EXPECT_CALL(*mock_db, save_coverage_analysis_execution(202, _, ::testing::DoubleNear(66.666, 0.5), _, _, _, _, _, _, _, _, _))
@@ -293,8 +295,9 @@ TEST_F(OperationCoverageQuijoteTest, QuijoteVoiceQualityAndPacingMetrics) {
     EXPECT_CALL(*mock_speech, get_segments(_))
         .WillOnce(DoAll(SetArgReferee<0>(mock_segments), Return(RST_OK)));
 
-    EXPECT_CALL(*mock_embedding, generate_embeddings_batch(_))
-        .WillRepeatedly([](const std::vector<std::string>& texts) {
+    EXPECT_CALL(*mock_embedding, generate_embeddings_batch(_, _))
+        .WillRepeatedly([](const std::vector<std::string>& texts, EmbeddingRole role) {
+            (void)role;
             return std::vector<std::vector<float>>(texts.size(), std::vector<float>{0.9f, 0.9f});
         });
 
@@ -327,7 +330,7 @@ TEST_F(OperationCoverageQuijoteTest, QuijoteVoiceQualityAndPacingMetrics) {
     mock_matches.push_back(sim2);
     mock_matches.push_back(sim3);
 
-    EXPECT_CALL(*mock_similarity, search_pdf_matches(_, _, _)).WillOnce(Return(mock_matches));
+    EXPECT_CALL(*mock_similarity, search_pdf_matches_advanced(_, _, _, _, _)).WillOnce(Return(mock_matches));
 
     // Verify speed score > 0 and clarity score > 0 saved to database
     EXPECT_CALL(*mock_db, save_coverage_analysis_execution(

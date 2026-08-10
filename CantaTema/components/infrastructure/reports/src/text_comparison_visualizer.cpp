@@ -305,12 +305,40 @@ rst_code_e TextComparisonVisualizer::generate_html(const TextComparisonInput& in
             status_color = "#fbbf24";
         }
 
+        std::string text_html;
+        if (!item.word_alignment.reference_words.empty()) {
+            std::ostringstream text_ss;
+            for (size_t k = 0; k < item.word_alignment.reference_words.size(); ++k) {
+                const auto& token = item.word_alignment.reference_words[k];
+                if (token.status == WordDiffStatus::MATCHED) {
+                    text_ss << "<span style=\"color: #34d399; font-weight: 500;\">" << escape_html(token.original_word) << "</span>";
+                } else if (token.is_legal_citation) {
+                    text_ss << "⚠️ <span style=\"color: #ef4444; font-weight: 700; text-decoration: line-through; background-color: rgba(239, 68, 68, 0.25); padding: 0 4px; border-radius: 3px;\" title=\"Legal Article/Citation missing in spoken audio!\">" << escape_html(token.original_word) << "</span>";
+                } else {
+                    text_ss << "<span style=\"color: #f87171; text-decoration: line-through; background-color: rgba(239, 68, 68, 0.18); padding: 0 3px; border-radius: 3px;\" title=\"Word missing in spoken audio\">" << escape_html(token.original_word) << "</span>";
+                }
+                if (k + 1 < item.word_alignment.reference_words.size()) {
+                    text_ss << " ";
+                }
+            }
+            text_html = text_ss.str();
+        } else {
+            text_html = escape_html(item.text);
+        }
+
+        std::string citation_badge;
+        if (item.word_alignment.has_missing_legal_citation) {
+            citation_badge = " <span class=\"badge-tag\" style=\"color: #ef4444; border: 1px solid #ef4444; background: rgba(239, 68, 68, 0.15);\">⚠️ MISSING CITATION</span>";
+        }
+
+        float recall_display = (item.word_alignment.total_reference_weight > 0.0f) ? item.word_alignment.weighted_recall_score : item.word_recall_score;
+
         ss << "        <div class=\"item-card " << lvl_cls << "\" data-ref-id=\"" << item.id << "\" data-match-ts-idx=\"" << item.matched_transcript_index << "\">\n"
            << "          <div class=\"card-meta\">\n"
-           << "            <span>Ref Chunk #" << (item.id + 1) << " (Weight: " << std::fixed << std::setprecision(1) << item.importance_weight << ")</span>\n"
-           << "            <span class=\"badge-tag\" style=\"color: " << status_color << "; border: 1px solid " << status_color << ";\">" << status_label << " (" << std::setprecision(1) << (item.similarity_score * 100.0f) << "%)</span>\n"
+           << "            <span>Ref Chunk #" << (item.id + 1) << " (Weight: " << std::fixed << std::setprecision(1) << item.importance_weight << ")" << citation_badge << "</span>\n"
+           << "            <span class=\"badge-tag\" style=\"color: " << status_color << "; border: 1px solid " << status_color << ";\">" << status_label << " (Sim: " << std::setprecision(0) << (item.similarity_score * 100.0f) << "% | W-Recall: " << (recall_display * 100.0f) << "%)</span>\n"
            << "          </div>\n"
-           << "          <div class=\"card-text\">" << escape_html(item.text) << "</div>\n"
+           << "          <div class=\"card-text\">" << text_html << "</div>\n"
            << "        </div>\n";
     }
 

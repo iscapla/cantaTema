@@ -11,6 +11,12 @@ public:
         const std::vector<std::vector<float>>& pdf_embeddings,
         const std::vector<float>& importance_weights,
         float similarity_threshold), (override));
+    MOCK_METHOD(std::vector<SimilarityResult>, search_pdf_matches_advanced, (
+        const std::vector<std::vector<float>>& pdf_embeddings,
+        const std::vector<std::string>& pdf_texts,
+        const std::vector<std::string>& transcript_texts,
+        const std::vector<float>& importance_weights,
+        const SimilaritySearchOptions& options), (override));
     MOCK_METHOD(void, reset, (), (override));
     MOCK_METHOD(size_t, get_indexed_count, (), (const, override));
 };

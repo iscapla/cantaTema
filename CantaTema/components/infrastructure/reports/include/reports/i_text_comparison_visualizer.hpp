@@ -11,6 +11,8 @@
 #include <cstdint>
 #include "primitives/definitions.hpp"
 
+#include "similarity/word_sequence_aligner.hpp"
+
 /**
  * @enum coverage_level_e
  * @brief Coverage match status levels for reference document chunks.
@@ -51,6 +53,8 @@ struct TextComparisonInput {
         coverage_level_e coverage_status{coverage_level_e::NOT_MENTIONED};///< Classified coverage status level.
         float similarity_score{0.0f};                                     ///< Maximum vector similarity score against transcript.
         int matched_transcript_index{-1};                                 ///< Index of best matching transcript item (-1 if unmentioned).
+        WordAlignmentResult word_alignment;                               ///< Word-level diff breakdown (matched vs omitted words).
+        float word_recall_score{0.0f};                                    ///< Percentage of reference words spoken (0.0 to 1.0).
     };
     std::vector<ReferenceItem> reference_items;                           ///< Collection of reference document items.
 

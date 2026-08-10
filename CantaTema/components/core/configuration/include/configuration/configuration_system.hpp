@@ -78,9 +78,29 @@ public:
     int get_embeddings_gpu_offload_layers() const;
 
     /**
+     * @brief Retrieves whether asymmetric prompt prefixes (passage:/query:) are enabled for embedding generation.
+     */
+    bool get_embeddings_use_role_prefixes() const;
+
+    /**
+     * @brief Retrieves the prefix prepended to reference document passage texts.
+     */
+    std::string get_embeddings_passage_prefix() const;
+
+    /**
+     * @brief Retrieves the prefix prepended to voice transcript query texts.
+     */
+    std::string get_embeddings_query_prefix() const;
+
+    /**
      * @brief Retrieves the threshold score for cosine similarity.
      */
     float get_coverage_similarity_threshold() const;
+
+    /**
+     * @brief Retrieves the minimum word count required for an extracted reference chunk.
+     */
+    unsigned int get_coverage_min_chunk_word_count() const;
 
     /**
      * @brief Retrieves the similarity score boost for matching dates/numbers.
@@ -96,6 +116,16 @@ public:
      * @brief Retrieves the position distance penalty weight for macroscopic prose ordering.
      */
     float get_coverage_temporal_penalty_weight() const;
+
+    /**
+     * @brief Retrieves the maximum word count to classify a chunk as a short chunk / heading requiring keyword validation.
+     */
+    unsigned int get_coverage_short_chunk_word_threshold() const;
+
+    /**
+     * @brief Retrieves the scaling factor multiplier applied when zero keyword overlap occurs for a short chunk.
+     */
+    float get_coverage_lexical_mismatch_scaling_factor() const;
 
     /**
      * @brief Retrieves the weight multiplier for bold formatted text.

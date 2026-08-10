@@ -12,6 +12,16 @@
 #include "primitives/definitions.hpp"
 
 /**
+ * @enum EmbeddingRole
+ * @brief Role / context type of text for asymmetric embedding models (e.g. e5 models requiring passage: or query: prefixes).
+ */
+enum class EmbeddingRole {
+    DEFAULT = 0,
+    PASSAGE,
+    QUERY
+};
+
+/**
  * @class IEmbeddingEngine
  * @brief Abstract interface for loading text embedding models and calculating vector embeddings for text chunks.
  */
@@ -34,17 +44,19 @@ public:
      * @brief Generates a vector embedding for a single string text.
      * 
      * @param text The input text to vectorize.
+     * @param role Context role (DEFAULT, PASSAGE, QUERY) for optional prompt prefixing.
      * @return std::vector<float> Normalized embedding vector. Returns empty vector on error.
      */
-    virtual std::vector<float> generate_embedding(const std::string& text) = 0;
+    virtual std::vector<float> generate_embedding(const std::string& text, EmbeddingRole role = EmbeddingRole::DEFAULT) = 0;
 
     /**
      * @brief Generates vector embeddings for a batch of strings.
      * 
      * @param texts Input strings to vectorize.
+     * @param role Context role (DEFAULT, PASSAGE, QUERY) for optional prompt prefixing.
      * @return std::vector<std::vector<float>> Normalized embedding vectors. Returns empty vector on error.
      */
-    virtual std::vector<std::vector<float>> generate_embeddings_batch(const std::vector<std::string>& texts) = 0;
+    virtual std::vector<std::vector<float>> generate_embeddings_batch(const std::vector<std::string>& texts, EmbeddingRole role = EmbeddingRole::DEFAULT) = 0;
 
     /**
      * @brief Returns the dimension size of the embedding vectors produced by the loaded model.

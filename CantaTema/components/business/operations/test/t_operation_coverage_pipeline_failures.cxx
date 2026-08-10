@@ -152,7 +152,7 @@ TEST_F(OperationCoveragePipelineFailuresTest, EmbeddingSizeMismatchReturnsUnknow
         .WillOnce(DoAll(SetArgReferee<0>(mock_segments), Return(RST_OK)));
 
     // Embedding engine returns empty vector (size mismatch)
-    EXPECT_CALL(*mock_embedding, generate_embeddings_batch(_))
+    EXPECT_CALL(*mock_embedding, generate_embeddings_batch(_, _))
         .WillRepeatedly(Return(std::vector<std::vector<float>>{}));
 
     std::string exec_id;
@@ -186,8 +186,9 @@ TEST_F(OperationCoveragePipelineFailuresTest, DatabaseSaveFailurePropagatesError
     EXPECT_CALL(*mock_speech, get_segments(_))
         .WillOnce(DoAll(SetArgReferee<0>(mock_segments), Return(RST_OK)));
 
-    EXPECT_CALL(*mock_embedding, generate_embeddings_batch(_))
-        .WillRepeatedly([](const std::vector<std::string>& texts) {
+    EXPECT_CALL(*mock_embedding, generate_embeddings_batch(_, _))
+        .WillRepeatedly([](const std::vector<std::string>& texts, EmbeddingRole role) {
+            (void)role;
             return std::vector<std::vector<float>>(texts.size(), std::vector<float>{0.1f, 0.2f});
         });
 
@@ -199,7 +200,7 @@ TEST_F(OperationCoveragePipelineFailuresTest, DatabaseSaveFailurePropagatesError
     sim.is_mentioned = true;
     mock_matches.push_back(sim);
 
-    EXPECT_CALL(*mock_similarity, search_pdf_matches(_, _, _)).WillOnce(Return(mock_matches));
+    EXPECT_CALL(*mock_similarity, search_pdf_matches_advanced(_, _, _, _, _)).WillOnce(Return(mock_matches));
 
     // Database save fails
     EXPECT_CALL(*mock_db, save_coverage_analysis_execution(1, _, _, _, _, _, _, _, _, _, _, _))

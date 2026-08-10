@@ -42,16 +42,18 @@ public:
     /**
      * @brief Generates a vector embedding for a single text string.
      * @param text Input text chunk.
+     * @param role Context role (DEFAULT, PASSAGE, QUERY) for optional prompt prefixing.
      * @return std::vector<float> Normalized vector embedding output.
      */
-    std::vector<float> generate_embedding(const std::string& text) override;
+    std::vector<float> generate_embedding(const std::string& text, EmbeddingRole role = EmbeddingRole::DEFAULT) override;
 
     /**
      * @brief Generates vector embeddings for a batch array of text strings.
      * @param texts Array of input text chunks.
+     * @param role Context role (DEFAULT, PASSAGE, QUERY) for optional prompt prefixing.
      * @return std::vector<std::vector<float>> Vector array of normalized embeddings.
      */
-    std::vector<std::vector<float>> generate_embeddings_batch(const std::vector<std::string>& texts) override;
+    std::vector<std::vector<float>> generate_embeddings_batch(const std::vector<std::string>& texts, EmbeddingRole role = EmbeddingRole::DEFAULT) override;
 
     /**
      * @brief Returns the vector dimension produced by the loaded embedding model.

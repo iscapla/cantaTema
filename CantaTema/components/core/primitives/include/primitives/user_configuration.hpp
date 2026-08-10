@@ -44,10 +44,15 @@ struct ReferenceExtractionConfig {
 struct ComparisonConfig {
     std::string embedding_model_name{"AUTO"};
     int embedding_gpu_offload_layers{0};
+    bool use_role_prefixes{true};
+    std::string passage_prefix{"passage: "};
+    std::string query_prefix{"query: "};
     float similarity_threshold{0.65f};
     float numeric_boost{0.10f};
     float numeric_mismatch_penalty{0.15f};
     float temporal_penalty_weight{0.05f};
+    unsigned int short_chunk_word_threshold{10u};
+    float lexical_mismatch_scaling_factor{0.60f};
     float speed_weight{0.3f};
     float clarity_weight{0.4f};
     float pacing_weight{0.3f};

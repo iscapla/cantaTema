@@ -10,6 +10,8 @@
 #include <string>
 #include <cstddef>
 
+#include "similarity/word_sequence_aligner.hpp"
+
 /**
  * @brief Struct representing the match result for a single PDF chunk.
  */
@@ -34,6 +36,12 @@ struct SimilarityResult {
 
     /// Weighted score calculated as: importance_weight * (1.0 - similarity_score) if not mentioned, or 0.0 if mentioned.
     float weighted_missed_score = 0.0f;
+
+    /// Granular word-level alignment result (matched vs omitted words)
+    WordAlignmentResult word_alignment;
+
+    /// Percentage of reference words spoken correctly in the matched transcript segment (0.0 to 1.0)
+    float word_recall_score = 0.0f;
 };
 
 /**
@@ -44,6 +52,8 @@ struct SimilaritySearchOptions {
     float numeric_boost = 0.10f;
     float numeric_mismatch_penalty = 0.15f;
     float temporal_penalty_weight = 0.05f;
+    unsigned int short_chunk_word_threshold = 10u;
+    float lexical_mismatch_scaling_factor = 0.60f;
 };
 
 /**
