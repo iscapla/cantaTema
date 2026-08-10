@@ -295,6 +295,7 @@ To run the interactive shell of the CantaTema project:
 - **Interface & Schema Changes:** If database schemas, configuration files, or core component interfaces change, update the documentation in the `docs` folder or add relevant annotations.
 - **Developer Guide:** Refer to [docs/dev.md](file:///c:/Users/iscap/Desktop/Projects/cantaTema/docs/dev.md) for detailed configuration, compilation, unit testing, coverage reporting, and CLI usage instructions.
 - **Roadmap & Subphases:** Refer to [docs/phases.md](file:///c:/Users/iscap/Desktop/Projects/cantaTema/docs/phases.md) for the complete implementation schedule, architectural layout, QA/testing thresholds, and design FAQs.
+- **Future Comparison Engine Architecture:** Refer to [docs/future_plans.md](file:///c:/Users/iscap/Desktop/Projects/cantaTema/docs/future_plans.md) for multi-language profile abstraction (`ILanguageProfile`), orthogonal subject domain profiles (`IDomainProfile` for Law, Economics, Science, History, General), configurable INI token weighting, weighted recall metrics, and lemmatization roadmap.
 
 ## 📱 Future GUI & Mobile Packaging Vision (Planned Post-v1.0)
 - **Framework Choice:** Flutter (Dart) for cross-platform UI (Windows, macOS, Linux, Android, iOS).
