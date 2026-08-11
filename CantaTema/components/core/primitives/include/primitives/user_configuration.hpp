@@ -16,7 +16,7 @@
 struct WhisperConfig {
     std::string model_name{"AUTO"};
     std::string language{"es"};
-    bool use_gpu{false};
+    bool use_gpu{true};
     bool enable_timestamps{true};
     bool enable_confidence{true};
     int thread_count{4};
@@ -28,12 +28,12 @@ struct WhisperConfig {
  * @brief Configuration parameters for reference text extraction (PDF / text).
  */
 struct ReferenceExtractionConfig {
-    unsigned int max_pdf_page_count{50};
+    unsigned int max_pdf_page_count{100};
     float importance_weight_bold{1.5f};
     float importance_weight_italic{1.2f};
     float importance_weight_underline{1.3f};
-    float importance_weight_bg_color{2.0f};
-    size_t min_chunk_word_count{3};
+    float importance_weight_bg_color{1.4f};
+    size_t min_chunk_word_count{4};
 
     bool operator==(const ReferenceExtractionConfig& other) const = default;
 };
@@ -43,11 +43,11 @@ struct ReferenceExtractionConfig {
  */
 struct ComparisonConfig {
     std::string embedding_model_name{"AUTO"};
-    int embedding_gpu_offload_layers{0};
+    int embedding_gpu_offload_layers{99};
     bool use_role_prefixes{true};
     std::string passage_prefix{"passage: "};
     std::string query_prefix{"query: "};
-    float similarity_threshold{0.65f};
+    float similarity_threshold{0.75f};
     float numeric_boost{0.10f};
     float numeric_mismatch_penalty{0.15f};
     float temporal_penalty_weight{0.05f};

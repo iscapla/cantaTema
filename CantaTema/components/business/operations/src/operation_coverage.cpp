@@ -65,10 +65,7 @@ std::string OperationCoverage::generate_execution_uuid() const
 rst_code_e OperationCoverage::analyze_practice_coverage(
     const std::shared_ptr<const User>& user,
     int practice_id,
-    const std::string& whisper_model,
-    const std::string& llama_model,
-    float similarity_threshold,
-    const std::string& language,
+    const UserConfiguration& config,
     std::string& out_analysis_execution_id
 )
 {
@@ -110,11 +107,11 @@ rst_code_e OperationCoverage::analyze_practice_coverage(
         return FILE_NOT_FOUND;
     }
 
-    // 3. Inspect PDF/TXT page count and extract reference chunks
+    // 3. Inspect PDF/TXT page count and extract reference chunks using per-execution config
     TextFileHandler text_handler(reference_path);
     text_handler.parse();
 
-    unsigned int max_page_limit = ConfigurationSystem::getInstance().get_max_pdf_page_count();
+    unsigned int max_page_limit = config.reference_extraction.max_pdf_page_count;
     if (text_handler.get_number_of_pages() > static_cast<int>(max_page_limit)) {
         if (logger) logger->error("OperationCoverage::analyze_practice_coverage - Reference document page count ({}) exceeds limit ({})",
                                   text_handler.get_number_of_pages(), max_page_limit);
@@ -123,25 +120,25 @@ rst_code_e OperationCoverage::analyze_practice_coverage(
 
     TextChunkExtractor chunk_extractor;
     std::vector<DocumentChunk> doc_chunks;
-    res = chunk_extractor.extract_chunks(text_handler, doc_chunks);
+    res = chunk_extractor.extract_chunks(text_handler, doc_chunks, config);
     if (res != RST_OK || doc_chunks.empty()) {
         if (logger) logger->error("OperationCoverage::analyze_practice_coverage - Extraction failed or reference file empty");
         return (res != RST_OK) ? res : FILE_EMPTY_OR_INVALID;
     }
 
-    // 4. Resolve parameters
+    // 4. Resolve model & language parameters from per-execution config
     ManagerModels model_mgr;
-    std::string resolved_whisper_model = whisper_model;
+    std::string resolved_whisper_model = config.whisper.model_name;
     if (resolved_whisper_model.empty() || resolved_whisper_model == "AUTO" || resolved_whisper_model == "auto") {
         resolved_whisper_model = model_mgr.auto_select_whisper_model();
     }
 
-    std::string resolved_llama_model = llama_model;
+    std::string resolved_llama_model = config.comparison.embedding_model_name;
     if (resolved_llama_model.empty() || resolved_llama_model == "AUTO" || resolved_llama_model == "auto") {
         resolved_llama_model = model_mgr.auto_select_llama_model();
     }
 
-    std::string resolved_language = language;
+    std::string resolved_language = config.whisper.language;
     if (resolved_language.empty()) {
         resolved_language = subject->get_language();
         if (resolved_language.empty()) {
@@ -149,16 +146,13 @@ rst_code_e OperationCoverage::analyze_practice_coverage(
         }
     }
 
-    float resolved_threshold = similarity_threshold;
-    if (resolved_threshold <= 0.0f) {
-        resolved_threshold = ConfigurationSystem::getInstance().get_coverage_similarity_threshold();
-    }
+    float resolved_threshold = config.comparison.similarity_threshold;
 
     // 5. Speech recognition transcription
     ISpeechRecognition::speech_recognition_config_t speech_config;
     speech_config.model_name = resolved_whisper_model;
     speech_config.language = resolved_language;
-    speech_config.use_gpu = ConfigurationSystem::getInstance().get_whisper_use_gpu();
+    speech_config.use_gpu = config.whisper.use_gpu;
     
     res = m_speech_recognition->initialize(speech_config);
     if (res != RST_OK) {
@@ -206,17 +200,17 @@ rst_code_e OperationCoverage::analyze_practice_coverage(
         return UNKNOWN;
     }
 
-    // 7. Vector Similarity Search
+    // 7. Vector Similarity Search using per-execution search options
     m_similarity_search->reset();
     m_similarity_search->index_transcript_embeddings(transcript_embeddings);
 
     SimilaritySearchOptions search_options;
     search_options.similarity_threshold = resolved_threshold;
-    search_options.numeric_boost = ConfigurationSystem::getInstance().get_coverage_numeric_boost();
-    search_options.numeric_mismatch_penalty = ConfigurationSystem::getInstance().get_coverage_numeric_mismatch_penalty();
-    search_options.temporal_penalty_weight = ConfigurationSystem::getInstance().get_coverage_temporal_penalty_weight();
-    search_options.short_chunk_word_threshold = ConfigurationSystem::getInstance().get_coverage_short_chunk_word_threshold();
-    search_options.lexical_mismatch_scaling_factor = ConfigurationSystem::getInstance().get_coverage_lexical_mismatch_scaling_factor();
+    search_options.numeric_boost = config.comparison.numeric_boost;
+    search_options.numeric_mismatch_penalty = config.comparison.numeric_mismatch_penalty;
+    search_options.temporal_penalty_weight = config.comparison.temporal_penalty_weight;
+    search_options.short_chunk_word_threshold = config.comparison.short_chunk_word_threshold;
+    search_options.lexical_mismatch_scaling_factor = config.comparison.lexical_mismatch_scaling_factor;
 
     auto matches = m_similarity_search->search_pdf_matches_advanced(
         pdf_embeddings,
@@ -243,17 +237,7 @@ rst_code_e OperationCoverage::analyze_practice_coverage(
     VoiceQualityMetrics voice_metrics = VoiceQualityAnalyzer::analyze(segments);
 
     // 9. Build JSON config snapshot and detailed report
-    std::ostringstream config_ss;
-    config_ss << "{"
-              << "\"whisper_model\":\"" << resolved_whisper_model << "\","
-              << "\"llama_model\":\"" << resolved_llama_model << "\","
-              << "\"language\":\"" << resolved_language << "\","
-              << "\"similarity_threshold\":" << resolved_threshold << ","
-              << "\"numeric_boost\":" << search_options.numeric_boost << ","
-              << "\"numeric_mismatch_penalty\":" << search_options.numeric_mismatch_penalty << ","
-              << "\"temporal_penalty_weight\":" << search_options.temporal_penalty_weight
-              << "}";
-    std::string config_snapshot_json = config_ss.str();
+    std::string config_snapshot_json = config.to_json();
 
     std::ostringstream report_ss;
     report_ss << std::boolalpha;
@@ -321,16 +305,26 @@ rst_code_e OperationCoverage::analyze_practice_coverage(
 rst_code_e OperationCoverage::analyze_practice_coverage(
     const std::shared_ptr<const User>& user,
     int practice_id,
-    const UserConfiguration& config,
+    const std::string& whisper_model,
+    const std::string& llama_model,
+    float similarity_threshold,
+    const std::string& language,
     std::string& out_analysis_execution_id
-) {
-    return analyze_practice_coverage(
-        user,
-        practice_id,
-        config.whisper.model_name,
-        config.comparison.embedding_model_name,
-        config.comparison.similarity_threshold,
-        config.whisper.language,
-        out_analysis_execution_id
-    );
+)
+{
+    UserConfiguration config;
+    if (!whisper_model.empty() && whisper_model != "AUTO" && whisper_model != "auto") {
+        config.whisper.model_name = whisper_model;
+    }
+    if (!llama_model.empty() && llama_model != "AUTO" && llama_model != "auto") {
+        config.comparison.embedding_model_name = llama_model;
+    }
+    if (similarity_threshold > 0.0f) {
+        config.comparison.similarity_threshold = similarity_threshold;
+    }
+    if (!language.empty()) {
+        config.whisper.language = language;
+    }
+
+    return analyze_practice_coverage(user, practice_id, config, out_analysis_execution_id);
 }

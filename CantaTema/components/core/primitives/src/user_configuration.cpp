@@ -8,37 +8,9 @@ UserConfiguration::UserConfiguration() {
 }
 
 void UserConfiguration::set_default_values() {
-    // 1. Whisper speech recognition defaults
-    whisper.model_name = "AUTO";
-    whisper.language = "es";
-    whisper.use_gpu = false;
-    whisper.enable_timestamps = true;
-    whisper.enable_confidence = true;
-    whisper.thread_count = 4;
-
-    // 2. Reference extraction defaults
-    reference_extraction.max_pdf_page_count = 50;
-    reference_extraction.importance_weight_bold = 1.5f;
-    reference_extraction.importance_weight_italic = 1.2f;
-    reference_extraction.importance_weight_underline = 1.3f;
-    reference_extraction.importance_weight_bg_color = 2.0f;
-    reference_extraction.min_chunk_word_count = 3;
-
-    // 3. Comparison defaults
-    comparison.embedding_model_name = "AUTO";
-    comparison.embedding_gpu_offload_layers = 0;
-    comparison.use_role_prefixes = true;
-    comparison.passage_prefix = "passage: ";
-    comparison.query_prefix = "query: ";
-    comparison.similarity_threshold = 0.65f;
-    comparison.numeric_boost = 0.10f;
-    comparison.numeric_mismatch_penalty = 0.15f;
-    comparison.temporal_penalty_weight = 0.05f;
-    comparison.short_chunk_word_threshold = 10u;
-    comparison.lexical_mismatch_scaling_factor = 0.60f;
-    comparison.speed_weight = 0.3f;
-    comparison.clarity_weight = 0.4f;
-    comparison.pacing_weight = 0.3f;
+    whisper = WhisperConfig{};
+    reference_extraction = ReferenceExtractionConfig{};
+    comparison = ComparisonConfig{};
 }
 
 std::string UserConfiguration::to_json() const {
