@@ -32,7 +32,6 @@ rst_code_e ManagerModels::get_whisper_models(bool check_network, std::vector<Mod
     std::map<std::string, ModelInfo> model_map;
 
     // 1. Local models
-    std::vector<std::string> local_names;
     try {
         for (const auto & entry : std::filesystem::directory_iterator(ToolPath::get_path_for_models_whisper())) {
             if (entry.is_regular_file()) {
@@ -56,54 +55,75 @@ rst_code_e ManagerModels::get_whisper_models(bool check_network, std::vector<Mod
         // Directory might not exist or be empty
     }
 
-    // 2. Network models (predefined common Whisper models or network scan)
+    // 2. Network models (Hugging Face API or fallback page scan)
     std::vector<std::string> network_names = {"tiny", "base", "small", "medium", "large-v3"};
     if (check_network) {
-        CURL *curl = curl_easy_init();
-        if (curl) {
-            std::string html_content;
-            curl_easy_setopt(curl, CURLOPT_URL, WHISPER_BASE_URL);
-            curl_easy_setopt(curl, CURLOPT_USERAGENT, "CantaTema/1.0");
-            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_to_string);
-            curl_easy_setopt(curl, CURLOPT_WRITEDATA, &html_content);
-            curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-            curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
-            CURLcode res = curl_easy_perform(curl);
-            curl_easy_cleanup(curl);
-            if (res == CURLE_OK) {
-                std::vector<std::string> parsed_names;
-                size_t pos = html_content.find(">Model<");
-                if (pos != std::string::npos) {
-                    while (true) {
-                        size_t tr_start = html_content.find("<tr", pos);
-                        if (tr_start == std::string::npos) break;
-                        size_t tr_end = html_content.find("</tr>", tr_start);
-                        if (tr_end == std::string::npos) break;
-                        size_t td_start = html_content.find("<td", tr_start);
-                        if (td_start != std::string::npos && td_start < tr_end) {
-                            size_t content_start = html_content.find(">", td_start) + 1;
-                            size_t td_end = html_content.find("</td>", content_start);
-                            if (td_end != std::string::npos) {
-                                std::string raw = html_content.substr(content_start, td_end - content_start);
-                                std::string name;
-                                bool in_tag = false;
-                                for (char c : raw) {
-                                    if (c == '<') in_tag = true;
-                                    else if (c == '>') in_tag = false;
-                                    else if (!in_tag && !std::isspace(static_cast<unsigned char>(c))) name += c;
-                                }
-                                if (!name.empty() &&
-                                    name.find_first_not_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_") == std::string::npos &&
-                                    name.find(".en") == std::string::npos) {
-                                    parsed_names.push_back(name);
-                                }
-                            }
-                        }
-                        pos = tr_end;
+        std::vector<std::string> tree_files;
+        if (fetch_hf_tree_files("ggerganov/whisper.cpp", tree_files) == RST_OK) {
+            std::vector<std::string> parsed_names;
+            std::string prefix = WHISPER_FILE_PREFIX;
+            std::string ext = WHISPER_FILE_EXT;
+            for (const auto &f : tree_files) {
+                if (f.length() > prefix.length() + ext.length() &&
+                    f.compare(0, prefix.length(), prefix) == 0 &&
+                    f.compare(f.length() - ext.length(), ext.length(), ext) == 0) {
+                    std::string name = f.substr(prefix.length(), f.length() - prefix.length() - ext.length());
+                    if (name.find(".en") == std::string::npos && name.find(".mlmodelc") == std::string::npos) {
+                        parsed_names.push_back(name);
                     }
                 }
-                if (!parsed_names.empty()) {
-                    network_names = parsed_names;
+            }
+            if (!parsed_names.empty()) {
+                network_names = parsed_names;
+            }
+        } else {
+            // HTML fallback if tree API fails
+            CURL *curl = curl_easy_init();
+            if (curl) {
+                std::string html_content;
+                curl_easy_setopt(curl, CURLOPT_URL, WHISPER_BASE_URL);
+                curl_easy_setopt(curl, CURLOPT_USERAGENT, "CantaTema/1.0");
+                curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_to_string);
+                curl_easy_setopt(curl, CURLOPT_WRITEDATA, &html_content);
+                curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+                curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
+                CURLcode res = curl_easy_perform(curl);
+                curl_easy_cleanup(curl);
+                if (res == CURLE_OK) {
+                    std::vector<std::string> parsed_names;
+                    size_t pos = html_content.find(">Model<");
+                    if (pos != std::string::npos) {
+                        while (true) {
+                            size_t tr_start = html_content.find("<tr", pos);
+                            if (tr_start == std::string::npos) break;
+                            size_t tr_end = html_content.find("</tr>", tr_start);
+                            if (tr_end == std::string::npos) break;
+                            size_t td_start = html_content.find("<td", tr_start);
+                            if (td_start != std::string::npos && td_start < tr_end) {
+                                size_t content_start = html_content.find(">", td_start) + 1;
+                                size_t td_end = html_content.find("</td>", content_start);
+                                if (td_end != std::string::npos) {
+                                    std::string raw = html_content.substr(content_start, td_end - content_start);
+                                    std::string name;
+                                    bool in_tag = false;
+                                    for (char c : raw) {
+                                        if (c == '<') in_tag = true;
+                                        else if (c == '>') in_tag = false;
+                                        else if (!in_tag && !std::isspace(static_cast<unsigned char>(c))) name += c;
+                                    }
+                                    if (!name.empty() &&
+                                        name.find_first_not_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_") == std::string::npos &&
+                                        name.find(".en") == std::string::npos) {
+                                        parsed_names.push_back(name);
+                                    }
+                                }
+                            }
+                            pos = tr_end;
+                        }
+                    }
+                    if (!parsed_names.empty()) {
+                        network_names = parsed_names;
+                    }
                 }
             }
         }
@@ -153,8 +173,39 @@ rst_code_e ManagerModels::get_llama_models(bool check_network, std::vector<Model
         // Directory empty or doesn't exist
     }
 
-    // 2. Predefined Llama network models
-    std::vector<std::string> network_names = {"multilingual-e5-large-q8_0", "multilingual-e5-large-f16"};
+    // 2. Network Llama embedding models queried from Hugging Face repositories
+    std::vector<std::string> network_names = {
+        "bge-m3-Q8_0", "bge-m3-Q4_K_M",
+        "multilingual-e5-large-q8_0", "multilingual-e5-large-f16", "multilingual-e5-large-q4_k_m",
+        "nomic-embed-text-v1.5.Q8_0", "nomic-embed-text-v1.5.Q4_K_M",
+        "paraphrase-multilingual-mpnet-base-v2.Q8_0"
+    };
+    if (check_network) {
+        std::vector<std::string> repos = {
+            "gpustack/bge-m3-GGUF",
+            "Zenabius/multilingual-e5-large-Q8_0-GGUF",
+            "phate334/multilingual-e5-large-gguf",
+            "nomic-ai/nomic-embed-text-v1.5-GGUF",
+            "mradermacher/paraphrase-multilingual-mpnet-base-v2-GGUF",
+            "mradermacher/multilingual-e5-base-GGUF"
+        };
+        std::vector<std::string> discovered_names;
+        for (const auto &repo : repos) {
+            std::vector<std::string> tree_files;
+            if (fetch_hf_tree_files(repo, tree_files) == RST_OK) {
+                for (const auto &f : tree_files) {
+                    if (f.length() > 5 && f.compare(f.length() - 5, 5, ".gguf") == 0) {
+                        std::string model_name = f.substr(0, f.length() - 5);
+                        discovered_names.push_back(model_name);
+                    }
+                }
+            }
+        }
+        if (!discovered_names.empty()) {
+            network_names = discovered_names;
+        }
+    }
+
     for (const auto &name : network_names) {
         if (model_map.find(name) != model_map.end()) {
             model_map[name].available_network = true;
@@ -341,7 +392,10 @@ std::string ManagerModels::auto_select_whisper_model() const {
 }
 
 std::string ManagerModels::auto_select_llama_model() const {
-    std::vector<std::string> preferences = {"multilingual-e5-large-q8_0", "multilingual-e5-large-f16"};
+    std::vector<std::string> preferences = {
+        "bge-m3-Q8_0", "multilingual-e5-large-q8_0",
+        "nomic-embed-text-v1.5.Q8_0", "multilingual-e5-large-f16"
+    };
     for (const auto &pref : preferences) {
         if (local_is_llama_model_available(pref) == RST_OK) {
             return pref;
@@ -357,7 +411,7 @@ std::string ManagerModels::auto_select_llama_model() const {
             }
         }
     }
-    return "multilingual-e5-large-q8_0"; // Default network model name to download
+    return "bge-m3-Q8_0"; // Default network model name to download
 }
 
 size_t ManagerModels::write_data(void *ptr, size_t size, size_t nmemb, FILE *stream) {
@@ -384,19 +438,30 @@ rst_code_e ManagerModels::get_model_download_info(ModelType type, const std::str
         out_url = fmt::format("{}/{}/{}", WHISPER_BASE_URL, WHISPER_URL_PREFIX, out_filename);
         return RST_OK;
     } else {
-        std::string repo = "Zenabius/multilingual-e5-large-Q8_0-GGUF";
-        std::string file = "multilingual-e5-large-q8_0.gguf";
+        std::string repo = "gpustack/bge-m3-GGUF";
+        std::string file = model_name;
+        if (file.find(".gguf") == std::string::npos) {
+            file += ".gguf";
+        }
 
-        if (model_name == "multilingual-e5-large-q4_k_m") {
+        std::string lower_name = model_name;
+        std::transform(lower_name.begin(), lower_name.end(), lower_name.begin(), ::tolower);
+
+        if (lower_name.rfind("bge-m3", 0) == 0) {
+            repo = "gpustack/bge-m3-GGUF";
+        } else if (lower_name.rfind("nomic-embed-text", 0) == 0) {
+            repo = "nomic-ai/nomic-embed-text-v1.5-GGUF";
+        } else if (lower_name.rfind("paraphrase-multilingual-mpnet", 0) == 0) {
+            repo = "mradermacher/paraphrase-multilingual-mpnet-base-v2-GGUF";
+        } else if (lower_name.rfind("multilingual-e5-base", 0) == 0) {
+            repo = "mradermacher/multilingual-e5-base-GGUF";
+        } else if (model_name == "multilingual-e5-large-q4_k_m") {
             repo = "phate334/multilingual-e5-large-gguf";
             file = "multilingual-e5-large-q4_k_m.gguf";
         } else if (model_name == "multilingual-e5-large-f16") {
-            repo = "Zenabius/multilingual-e5-large-Q8_0-GGUF"; // Fallback to Q8 if F16 is not in Zenabius
-            file = "multilingual-e5-large-q8_0.gguf";
-        } else if (model_name == "multilingual-e5-large-q8_0") {
-            repo = "Zenabius/multilingual-e5-large-Q8_0-GGUF";
-            file = "multilingual-e5-large-q8_0.gguf";
-        } else if (model_name == "multilingual-e5-large") {
+            repo = "phate334/multilingual-e5-large-gguf";
+            file = "multilingual-e5-large-f16.gguf";
+        } else if (model_name == "multilingual-e5-large-q8_0" || model_name == "multilingual-e5-large") {
             repo = "Zenabius/multilingual-e5-large-Q8_0-GGUF";
             file = "multilingual-e5-large-q8_0.gguf";
         } else if (model_name.find('/') != std::string::npos) {
@@ -404,8 +469,6 @@ rst_code_e ManagerModels::get_model_download_info(ModelType type, const std::str
             size_t last_slash = model_name.rfind('/');
             repo = model_name.substr(0, last_slash);
             file = model_name.substr(last_slash + 1);
-        } else {
-            file = model_name;
             if (file.find(".gguf") == std::string::npos) {
                 file += ".gguf";
             }
@@ -414,4 +477,47 @@ rst_code_e ManagerModels::get_model_download_info(ModelType type, const std::str
         out_url = fmt::format("https://huggingface.co/{}/resolve/main/{}", repo, file);
         return RST_OK;
     }
+}
+
+rst_code_e ManagerModels::fetch_hf_tree_files(const std::string& owner_repo, std::vector<std::string>& out_files) const {
+    out_files.clear();
+    std::string url = fmt::format("https://huggingface.co/api/models/{}/tree/main", owner_repo);
+
+    CURL *curl = curl_easy_init();
+    if (!curl) return MODELS_FILE_DOWNLOAD_FAIL;
+
+    std::string json_content;
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_USERAGENT, "CantaTema/1.0");
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_to_string);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &json_content);
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+    curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
+
+    CURLcode res = curl_easy_perform(curl);
+    curl_easy_cleanup(curl);
+
+    if (res != CURLE_OK || json_content.empty()) {
+        return MODELS_FILE_DOWNLOAD_FAIL;
+    }
+
+    size_t pos = 0;
+    std::string key = "\"path\":";
+    while ((pos = json_content.find(key, pos)) != std::string::npos) {
+        pos += key.length();
+        while (pos < json_content.length() && std::isspace(static_cast<unsigned char>(json_content[pos]))) {
+            pos++;
+        }
+        if (pos < json_content.length() && json_content[pos] == '"') {
+            pos++;
+            size_t end_quote = json_content.find('"', pos);
+            if (end_quote != std::string::npos) {
+                std::string path_val = json_content.substr(pos, end_quote - pos);
+                out_files.push_back(path_val);
+                pos = end_quote + 1;
+            }
+        }
+    }
+
+    return out_files.empty() ? MODELS_FILE_NOT_FOUND : RST_OK;
 }

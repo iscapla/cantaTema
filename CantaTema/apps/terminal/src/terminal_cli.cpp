@@ -480,6 +480,14 @@ rst_code_e terminal_init_coverage(std::unique_ptr<cli::Menu> &rootMenu)
             "Analyze coverage for practice session using default configuration");
 
         coverageMenu->Insert(
+            "analyze_with_models", {"practice_id", "whisper_model", "llama_model"},
+            [](std::ostream &out, unsigned int practice_id, const std::string &whisper_model, const std::string &llama_model)
+            {
+                terminal_session->coverage_analyze(out, practice_id, whisper_model, llama_model);
+            },
+            "Analyze coverage for practice session using specified Whisper and Llama models");
+
+        coverageMenu->Insert(
             "report", {"execution_id"},
             [](std::ostream &out, const std::string &execution_id)
             {

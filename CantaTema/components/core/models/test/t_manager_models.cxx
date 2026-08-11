@@ -129,3 +129,21 @@ TEST_F(ManagerModelsTest, DownloadModelFailure) {
     std::filesystem::path expected_temp = ToolPath::get_path_for_models_whisper() / "ggml-invalid_model_123.bin.tmp";
     EXPECT_FALSE(std::filesystem::exists(expected_temp));
 }
+
+TEST_F(ManagerModelsTest, NetworkGetAvailableLlamaModels) {
+    ManagerModels manager;
+    std::vector<ManagerModels::ModelInfo> llama_models;
+    
+    rst_code_e rst = manager.get_llama_models(true, llama_models);
+    EXPECT_EQ(rst, RST_OK);
+    EXPECT_FALSE(llama_models.empty());
+    
+    bool found_q8 = false;
+    for (const auto& m : llama_models) {
+        if (m.type == ModelType::Llama && m.name == "multilingual-e5-large-q8_0") {
+            found_q8 = m.available_network;
+        }
+    }
+    EXPECT_TRUE(found_q8);
+}
+

@@ -126,6 +126,9 @@ private:
 
     // Resolves model repository URL and filename on Hugging Face
     rst_code_e get_model_download_info(ModelType type, const std::string& model_name, std::string& out_url, std::string& out_filename) const;
+
+    // Helper to query Hugging Face API tree for files in a repository
+    rst_code_e fetch_hf_tree_files(const std::string& owner_repo, std::vector<std::string>& out_files) const;
 };
 
 #endif // __MANAGER_MODELS_HPP__
