@@ -28,6 +28,7 @@ protected:
         mock_file_handler = std::make_shared<MockFileHandler>();
         mock_speech = std::make_shared<MockSpeechRecognition>();
         mock_embedding = std::make_shared<MockEmbeddingEngine>();
+        EXPECT_CALL(*mock_embedding, load_model(_)).WillRepeatedly(Return(true));
         mock_similarity = std::make_shared<MockSimilaritySearch>();
 
         auto mutable_user = std::make_shared<User>("test_user");

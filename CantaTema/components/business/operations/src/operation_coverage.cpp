@@ -12,6 +12,7 @@
 #include "file_handler/text_chunk_extractor.hpp"
 #include "speech_recognition/voice_quality_analyzer.hpp"
 #include "primitives/utils_logger.hpp"
+#include "primitives/tool_paths.hpp"
 
 #include "database/db_coverage.hpp"
 #include "file_handler/file_handler.hpp"
@@ -174,6 +175,35 @@ rst_code_e OperationCoverage::analyze_practice_coverage(
     }
 
     // 6. Vector embeddings
+    std::filesystem::path llama_model_path;
+    if (std::filesystem::exists(resolved_llama_model)) {
+        llama_model_path = resolved_llama_model;
+    } else {
+        std::string fname = resolved_llama_model;
+        if (fname.find(".gguf") == std::string::npos) {
+            fname += ".gguf";
+        }
+        llama_model_path = ToolPath::get_path_for_models_llama() / fname;
+    }
+
+    if (!m_embedding_engine->load_model(llama_model_path)) {
+        if (model_mgr.local_is_llama_model_available(resolved_llama_model) != RST_OK) {
+            if (logger) logger->info("OperationCoverage::analyze_practice_coverage - Attempting download for Llama model: {}", resolved_llama_model);
+            rst_code_e dl_res = model_mgr.network_download_model(ModelType::Llama, resolved_llama_model);
+            if (dl_res != RST_OK) {
+                if (logger) logger->error("OperationCoverage::analyze_practice_coverage - Failed to download Llama model: {}", resolved_llama_model);
+                return dl_res;
+            }
+            if (!m_embedding_engine->load_model(llama_model_path)) {
+                if (logger) logger->error("OperationCoverage::analyze_practice_coverage - Failed to load Llama embedding model after download from: {}", llama_model_path.string());
+                return MODELS_FILE_NOT_FOUND;
+            }
+        } else {
+            if (logger) logger->error("OperationCoverage::analyze_practice_coverage - Failed to load Llama embedding model from: {}", llama_model_path.string());
+            return MODELS_FILE_NOT_FOUND;
+        }
+    }
+
     std::vector<std::string> pdf_embedding_texts;
     std::vector<std::string> pdf_display_texts;
     std::vector<float> pdf_weights;
