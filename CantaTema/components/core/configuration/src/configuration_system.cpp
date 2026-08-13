@@ -50,8 +50,13 @@ ConfigurationSystem::ConfigurationSystem() : IConfigurationBase() {
     set_default_if_not_present("COMPARISON_PROFILE", "active_language", "es");
     set_default_if_not_present("COMPARISON_PROFILE", "active_domain", "general");
 
+    set_default_if_not_present("ALIGNMENT", "enable_ctc_pass", "true");
+    set_default_if_not_present("ALIGNMENT", "alignment_mode", "AUTO");
+    set_default_if_not_present("ALIGNMENT", "max_drift_tolerance_ms", "500");
+
     update_values_to_file();
 }
+
 
 ConfigurationSystem::~ConfigurationSystem() {
 }
@@ -309,7 +314,27 @@ std::string ConfigurationSystem::get_comparison_active_domain() const {
     return const_cast<ConfigurationSystem*>(this)->get_or_default("COMPARISON_PROFILE", "active_domain", "general");
 }
 
+bool ConfigurationSystem::get_alignment_enable_ctc_pass() const {
+    std::string value = const_cast<ConfigurationSystem*>(this)->get_or_default("ALIGNMENT", "enable_ctc_pass", "true");
+    std::transform(value.begin(), value.end(), value.begin(), ::tolower);
+    return (value == "true" || value == "1" || value == "yes");
+}
+
+std::string ConfigurationSystem::get_alignment_mode() const {
+    return const_cast<ConfigurationSystem*>(this)->get_or_default("ALIGNMENT", "alignment_mode", "AUTO");
+}
+
+unsigned int ConfigurationSystem::get_alignment_max_drift_tolerance_ms() const {
+    std::string value = const_cast<ConfigurationSystem*>(this)->get_or_default("ALIGNMENT", "max_drift_tolerance_ms", "500");
+    try {
+        return std::stoul(value);
+    } catch (...) {
+        return 500u; // Default fallback
+    }
+}
+
 rst_code_e ConfigurationSystem::set_value(const std::string& section, const std::string& field, const std::string& value) {
     return set(section, field, value);
 }
+
 

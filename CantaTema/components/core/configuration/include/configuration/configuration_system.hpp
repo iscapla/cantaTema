@@ -168,9 +168,25 @@ public:
     std::string get_comparison_active_domain() const;
 
     /**
+     * @brief Retrieves whether 2nd-pass CTC forced alignment is enabled.
+     */
+    bool get_alignment_enable_ctc_pass() const;
+
+    /**
+     * @brief Retrieves the alignment mode (e.g. "AUTO", "whisper_ctc").
+     */
+    std::string get_alignment_mode() const;
+
+    /**
+     * @brief Retrieves the maximum drift tolerance in milliseconds for CTC alignment.
+     */
+    unsigned int get_alignment_max_drift_tolerance_ms() const;
+
+    /**
      * @brief Sets a configuration value at runtime (primarily for testing).
      */
     rst_code_e set_value(const std::string& section, const std::string& field, const std::string& value);
+
 
 
 private:

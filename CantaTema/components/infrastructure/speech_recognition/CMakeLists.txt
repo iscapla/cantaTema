@@ -8,6 +8,8 @@ create_infra_library(
     src/whisper_engine_wrapper.cpp
     src/voice_quality_analyzer.cpp
     src/gpu_detector.cpp
+    src/whisper_ctc_aligner.cpp
+    src/ctc_alignment_manager.cpp
     INC_PUBLIC
     INFRASTRUCTURE::SOUND_SYSTEM
     whisper
@@ -17,5 +19,6 @@ create_infra_library(
     CORE::PRIMITIVES
     CORE::CONFIGURATION
 )
+
 
 add_subdirectory(test)
