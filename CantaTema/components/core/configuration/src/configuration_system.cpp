@@ -47,11 +47,15 @@ ConfigurationSystem::ConfigurationSystem() : IConfigurationBase() {
     set_default_if_not_present("COVERAGE", "importance_weight_underline", "1.3");
     set_default_if_not_present("COVERAGE", "importance_weight_bg_color", "1.4");
 
+    set_default_if_not_present("COMPARISON_PROFILE", "active_language", "es");
+    set_default_if_not_present("COMPARISON_PROFILE", "active_domain", "general");
+
     update_values_to_file();
 }
 
 ConfigurationSystem::~ConfigurationSystem() {
 }
+
 
 /**
  * @brief Retrieves the allowed file extensions from the configuration.
@@ -297,6 +301,15 @@ unsigned int ConfigurationSystem::get_max_recording_duration_minutes() const {
     }
 }
 
+std::string ConfigurationSystem::get_comparison_active_language() const {
+    return const_cast<ConfigurationSystem*>(this)->get_or_default("COMPARISON_PROFILE", "active_language", "es");
+}
+
+std::string ConfigurationSystem::get_comparison_active_domain() const {
+    return const_cast<ConfigurationSystem*>(this)->get_or_default("COMPARISON_PROFILE", "active_domain", "general");
+}
+
 rst_code_e ConfigurationSystem::set_value(const std::string& section, const std::string& field, const std::string& value) {
     return set(section, field, value);
 }
+

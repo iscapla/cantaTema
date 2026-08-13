@@ -158,6 +158,16 @@ public:
     unsigned int get_max_recording_duration_minutes() const;
 
     /**
+     * @brief Retrieves the active language code for comparison (e.g. "es", "en").
+     */
+    std::string get_comparison_active_language() const;
+
+    /**
+     * @brief Retrieves the active domain key for comparison (e.g. "law", "economics", "history", "science", "general").
+     */
+    std::string get_comparison_active_domain() const;
+
+    /**
      * @brief Sets a configuration value at runtime (primarily for testing).
      */
     rst_code_e set_value(const std::string& section, const std::string& field, const std::string& value);

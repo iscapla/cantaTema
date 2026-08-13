@@ -34,11 +34,18 @@ create_infra_library(
     src/category.cpp
     src/practice_event.cpp
     src/user_configuration.cpp
+    src/spanish_language_profile.cpp
+    src/english_language_profile.cpp
+    src/language_profile_manager.cpp
+    src/domain_profiles.cpp
+    src/domain_profile_manager.cpp
     INC_PUBLIC
     CORE::LOGGER
+    CORE::CONFIGURATION
     INC_PRIVATE
     CORE::TOOL_PATHS
 )
+
 
 add_subdirectory(mocks)
 add_subdirectory(test)
