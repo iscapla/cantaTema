@@ -15,10 +15,12 @@
  * @brief Categorization status of a word in a reference text chunk.
  */
 enum class WordDiffStatus {
-    MATCHED = 0,     /// Word spoken correctly by user
-    OMITTED,         /// Word present in reference but missing in spoken audio
-    SUBSTITUTED      /// Word replaced or misquoted
+    MATCHED = 0,                 /// Word spoken correctly by user
+    OMITTED,                     /// Word present in reference but missing in spoken audio
+    SUBSTITUTED,                 /// Word replaced or misquoted
+    PHONETIC_MISPRONUNCIATION    /// Word misheard or mispronounced but matching phonetically
 };
+
 
 /**
  * @struct WordDiffToken

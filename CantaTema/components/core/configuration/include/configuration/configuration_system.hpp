@@ -183,9 +183,25 @@ public:
     unsigned int get_alignment_max_drift_tolerance_ms() const;
 
     /**
+     * @brief Retrieves whether phonetic ASR noise compensation is enabled.
+     */
+    bool get_phonetic_enable_matching() const;
+
+    /**
+     * @brief Retrieves the default phonetic matcher algorithm (e.g. "double_metaphone", "soundex").
+     */
+    std::string get_phonetic_default_matcher() const;
+
+    /**
+     * @brief Retrieves the similarity score threshold for classifying phonetic mispronunciations.
+     */
+    float get_phonetic_similarity_threshold() const;
+
+    /**
      * @brief Sets a configuration value at runtime (primarily for testing).
      */
     rst_code_e set_value(const std::string& section, const std::string& field, const std::string& value);
+
 
 
 

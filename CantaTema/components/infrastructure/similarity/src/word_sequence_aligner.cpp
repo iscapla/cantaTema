@@ -1,4 +1,6 @@
 #include "similarity/word_sequence_aligner.hpp"
+#include "similarity/phonetic_matcher_manager.hpp"
+#include "configuration/configuration_system.hpp"
 #include <sstream>
 #include <algorithm>
 #include <cctype>
@@ -94,12 +96,14 @@ WordAlignmentResult WordSequenceAligner::align(const std::string& reference_text
 
     // Backtrack to identify matched reference indices
     std::vector<bool> ref_matched(m, false);
+    std::vector<bool> trans_matched(n, false);
     size_t i = m;
     size_t j = n;
 
     while (i > 0 && j > 0) {
         if (!ref_norm[i - 1].empty() && ref_norm[i - 1] == trans_norm[j - 1]) {
             ref_matched[i - 1] = true;
+            trans_matched[j - 1] = true;
             i--;
             j--;
         } else if (dp[i - 1][j] >= dp[i][j - 1]) {
@@ -108,6 +112,10 @@ WordAlignmentResult WordSequenceAligner::align(const std::string& reference_text
             j--;
         }
     }
+
+    // Check if phonetic matching is enabled
+    bool enable_phonetic = ConfigurationSystem::getInstance().get_phonetic_enable_matching();
+    auto phonetic_matcher = enable_phonetic ? PhoneticMatcherManager::getInstance().get_active_matcher() : nullptr;
 
     // Token weighting classifier lambda
     auto classify_token = [](const std::string& orig_word, const std::string& norm_word, WordDiffToken& token) {
@@ -168,7 +176,7 @@ WordAlignmentResult WordSequenceAligner::align(const std::string& reference_text
         token.weight = 1.0f;
     };
 
-    // Construct final WordDiffToken array
+    // Construct final WordDiffToken array with 2nd-pass phonetic alignment
     result.reference_words.reserve(m);
     for (size_t idx = 0; idx < m; ++idx) {
         WordDiffToken token;
@@ -183,10 +191,31 @@ WordAlignmentResult WordSequenceAligner::align(const std::string& reference_text
             result.matched_word_count++;
             result.matched_reference_weight += token.weight;
         } else {
-            token.status = WordDiffStatus::OMITTED;
-            result.omitted_word_count++;
-            if (token.is_legal_citation) {
-                result.has_missing_legal_citation = true;
+            // 2nd-pass Phonetic matching check
+            bool found_phonetic_match = false;
+            if (phonetic_matcher && !ref_norm[idx].empty()) {
+                for (size_t tj = 0; tj < n; ++tj) {
+                    if (!trans_matched[tj] && !trans_norm[tj].empty()) {
+                        auto p_res = phonetic_matcher->compare_words(ref_norm[idx], trans_norm[tj]);
+                        if (p_res.is_match) {
+                            found_phonetic_match = true;
+                            trans_matched[tj] = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (found_phonetic_match) {
+                token.status = WordDiffStatus::PHONETIC_MISPRONUNCIATION;
+                result.matched_word_count++;
+                result.matched_reference_weight += (token.weight * 0.85f); // 85% partial credit
+            } else {
+                token.status = WordDiffStatus::OMITTED;
+                result.omitted_word_count++;
+                if (token.is_legal_citation) {
+                    result.has_missing_legal_citation = true;
+                }
             }
         }
 
@@ -203,3 +232,4 @@ WordAlignmentResult WordSequenceAligner::align(const std::string& reference_text
 
     return result;
 }
+

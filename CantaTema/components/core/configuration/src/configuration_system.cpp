@@ -54,8 +54,13 @@ ConfigurationSystem::ConfigurationSystem() : IConfigurationBase() {
     set_default_if_not_present("ALIGNMENT", "alignment_mode", "AUTO");
     set_default_if_not_present("ALIGNMENT", "max_drift_tolerance_ms", "500");
 
+    set_default_if_not_present("PHONETIC", "enable_phonetic_matching", "true");
+    set_default_if_not_present("PHONETIC", "default_matcher", "double_metaphone");
+    set_default_if_not_present("PHONETIC", "similarity_threshold", "0.85");
+
     update_values_to_file();
 }
+
 
 
 ConfigurationSystem::~ConfigurationSystem() {
@@ -333,8 +338,28 @@ unsigned int ConfigurationSystem::get_alignment_max_drift_tolerance_ms() const {
     }
 }
 
+bool ConfigurationSystem::get_phonetic_enable_matching() const {
+    std::string value = const_cast<ConfigurationSystem*>(this)->get_or_default("PHONETIC", "enable_phonetic_matching", "true");
+    std::transform(value.begin(), value.end(), value.begin(), ::tolower);
+    return (value == "true" || value == "1" || value == "yes");
+}
+
+std::string ConfigurationSystem::get_phonetic_default_matcher() const {
+    return const_cast<ConfigurationSystem*>(this)->get_or_default("PHONETIC", "default_matcher", "double_metaphone");
+}
+
+float ConfigurationSystem::get_phonetic_similarity_threshold() const {
+    std::string value = const_cast<ConfigurationSystem*>(this)->get_or_default("PHONETIC", "similarity_threshold", "0.85");
+    try {
+        return std::stof(value);
+    } catch (...) {
+        return 0.85f; // Default fallback
+    }
+}
+
 rst_code_e ConfigurationSystem::set_value(const std::string& section, const std::string& field, const std::string& value) {
     return set(section, field, value);
 }
+
 
 
