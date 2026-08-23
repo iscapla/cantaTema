@@ -2,7 +2,6 @@
 #include "primitives/utils_prints.hpp"
 #include "file_handler/file_handler.hpp"
 #include "terminal/terminal_session.hpp"
-#include "sound_system/sound_system.hpp"
 
 #include <thread>
 #include <chrono>
@@ -14,10 +13,8 @@
 
 void TerminalSession::practice_event_add_recorded(std::ostream &out, unsigned int subject_id, const std::string name){
 
-    ISoundSystem::SoundSystemConfig config;
-    SoundSystem sound(config);
-
-    auto devices = sound.getCaptureDevices();
+    std::vector<ISoundSystem::SoundSystemDeviceInfo> devices;
+    op->audio_get_capture_devices(devices);
     int device_index = -1;
     std::string device_name;
 
@@ -65,10 +62,10 @@ void TerminalSession::practice_event_add_recorded(std::ostream &out, unsigned in
     }
 
     std::string temp_file = "temp_recording.opus";
-    SoundFileHandler handler(temp_file);
-    if (!sound.startRecording(handler, device_index))
+    rst_code_e rst_rec = op->audio_start_recording(temp_file, device_index);
+    if (rst_rec != RST_OK)
     {
-        out << "Error: Could not start recording." << std::endl;
+        out << "Error: Could not start recording: " << get_rst_txt(rst_rec) << std::endl;
         return;
     }
 
@@ -76,11 +73,11 @@ void TerminalSession::practice_event_add_recorded(std::ostream &out, unsigned in
 
     std::atomic<bool> running{true};
 
-    std::thread timer_thread([&out, &running, &sound]() {
+    std::thread timer_thread([this, &out, &running]() {
         char old_fill = out.fill('0');
         while (running)
         {
-            unsigned long long ms = sound.get_recording_timestamp();
+            unsigned long long ms = op->audio_get_recording_timestamp();
             unsigned long long s = ms / 1000;
             int mm = s / 60;
             int ss = s % 60;
@@ -108,8 +105,8 @@ void TerminalSession::practice_event_add_recorded(std::ostream &out, unsigned in
     if (timer_thread.joinable())
         timer_thread.join();
 
-    unsigned long long duration_ms = sound.get_recording_timestamp();
-    sound.stopRecording();
+    unsigned long long duration_ms = op->audio_get_recording_timestamp();
+    op->audio_stop_recording();
     out << std::endl << "Recording stopped." << std::endl;
 
     out << "Do you want to save the recording? (y/n): ";
@@ -178,9 +175,6 @@ void TerminalSession::practice_event_play(std::ostream &out, unsigned int id)
         return;
     }
 
-    ISoundSystem::SoundSystemConfig config;
-    SoundSystem sound(config);
-
     std::atomic<bool> running{true};
 
     auto callback = [&](ISoundSystem::PlaybackEvent event, unsigned int timestamp) {
@@ -197,22 +191,22 @@ void TerminalSession::practice_event_play(std::ostream &out, unsigned int id)
         }
     };
 
-    SoundFileHandler handler(file_path);
-    if (!sound.play(handler, callback))
+    rst_code_e rst_play = op->audio_play(file_path, callback);
+    if (rst_play != RST_OK)
     {
-        out << "Error: Could not start playback." << std::endl;
+        out << "Error: Could not start playback: " << get_rst_txt(rst_play) << std::endl;
         return;
     }
 
     out << "Playing... Press 'q' to stop." << std::endl;
 
     // Run input in a separate thread so it doesn't block the UI updates or the exit condition
-    std::thread input_thread([&]() {
+    std::thread input_thread([this, &running]() {
         char input;
         while (running) {
             std::cin >> input;
             if (input == 'q') {
-                sound.stopPlaying();
+                op->audio_stop_playing();
                 running = false;
                 break;
             }

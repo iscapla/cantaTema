@@ -8,12 +8,11 @@
 
 void TerminalSession::models_list(std::ostream &out)
 {
-    ManagerModels manager;
     std::vector<ManagerModels::ModelInfo> whisper_models;
     std::vector<ManagerModels::ModelInfo> llama_models;
 
-    manager.get_whisper_models(true, whisper_models);
-    manager.get_llama_models(true, llama_models);
+    op->models_get_whisper(true, whisper_models);
+    op->models_get_llama(true, llama_models);
 
     out << "--- Whisper Speech Recognition Models ---" << std::endl;
     out << std::left << std::setw(25) << "Model Name" << std::setw(10) << "Local" << std::setw(10) << "Remote" << "Path" << std::endl;
@@ -34,9 +33,8 @@ void TerminalSession::models_list(std::ostream &out)
 
 void TerminalSession::models_download_whisper(std::ostream &out, const std::string &model_name)
 {
-    ManagerModels manager;
     out << "Downloading Whisper model '" << model_name << "'..." << std::endl;
-    rst_code_e rst = manager.network_download_model(ModelType::Whisper, model_name, [&out](const DownloadProgress &progress) {
+    rst_code_e rst = op->models_download_whisper(model_name, [&out](const DownloadProgress &progress) {
         if (progress.total_bytes > 0) {
             float percent = (float)progress.downloaded_bytes / (float)progress.total_bytes * 100.0f;
             out << "\rDownloading " << progress.file_name << ": " << (int)percent << "%" << std::flush;
@@ -54,9 +52,8 @@ void TerminalSession::models_download_whisper(std::ostream &out, const std::stri
 
 void TerminalSession::models_download_llama(std::ostream &out, const std::string &model_name)
 {
-    ManagerModels manager;
     out << "Downloading Llama embedding model '" << model_name << "'..." << std::endl;
-    rst_code_e rst = manager.network_download_model(ModelType::Llama, model_name, [&out](const DownloadProgress &progress) {
+    rst_code_e rst = op->models_download_llama(model_name, [&out](const DownloadProgress &progress) {
         if (progress.total_bytes > 0) {
             float percent = (float)progress.downloaded_bytes / (float)progress.total_bytes * 100.0f;
             out << "\rDownloading " << progress.file_name << ": " << (int)percent << "%" << std::flush;
@@ -74,8 +71,7 @@ void TerminalSession::models_download_llama(std::ostream &out, const std::string
 
 void TerminalSession::models_remove_whisper(std::ostream &out, const std::string &model_name)
 {
-    ManagerModels manager;
-    rst_code_e rst = manager.local_remove_whisper_model(model_name);
+    rst_code_e rst = op->models_remove_whisper(model_name);
     if (rst != RST_OK) {
         logger->error("Failed to remove Whisper model '{}': {}", model_name, get_rst_txt(rst));
         out << "Failed to remove Whisper model: " << get_rst_txt(rst) << std::endl;
@@ -87,8 +83,7 @@ void TerminalSession::models_remove_whisper(std::ostream &out, const std::string
 
 void TerminalSession::models_remove_llama(std::ostream &out, const std::string &model_name)
 {
-    ManagerModels manager;
-    rst_code_e rst = manager.local_remove_llama_model(model_name);
+    rst_code_e rst = op->models_remove_llama(model_name);
     if (rst != RST_OK) {
         logger->error("Failed to remove Llama model '{}': {}", model_name, get_rst_txt(rst));
         out << "Failed to remove Llama model: " << get_rst_txt(rst) << std::endl;
@@ -150,19 +145,17 @@ void TerminalSession::coverage_report(std::ostream &out, const std::string &exec
 
 void TerminalSession::coverage_report_by_practice(std::ostream &out, unsigned int practice_id)
 {
-    std::shared_ptr<PracticeEvent> practice;
-    rst_code_e rst = op->practice_event_get_by_id(practice_id, practice);
-
-    if (rst != RST_OK || !practice) {
-        out << "Practice ID " << practice_id << " not found." << std::endl;
+    std::string report_json, config_json;
+    rst_code_e rst = op->get_analysis_execution_details_by_practice(practice_id, report_json, config_json);
+    if (rst != RST_OK) {
+        out << "No analysis report found for practice ID " << practice_id << " (Error: " << get_rst_txt(rst) << ")." << std::endl;
         return;
     }
 
-    std::string exec_id = practice->get_analysis_execution_id();
-    if (exec_id.empty()) {
-        out << "No analysis has been executed for practice ID " << practice_id << "." << std::endl;
-        return;
-    }
-
-    coverage_report(out, exec_id);
+    out << "=== COVERAGE ANALYSIS REPORT ===" << std::endl;
+    out << "Practice ID: " << practice_id << std::endl;
+    out << "--- Report JSON ---" << std::endl;
+    out << report_json << std::endl;
+    out << "--- Configuration Snapshot ---" << std::endl;
+    out << config_json << std::endl;
 }
