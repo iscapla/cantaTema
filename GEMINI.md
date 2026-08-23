@@ -31,8 +31,9 @@ You are an Expert C++ Developer and Software Architect. Your task is to assist i
 
 ## 📂 Target Project Structure
 The project is modularized into discrete CMake components using a custom `create_infra_library` helper. The architecture is divided into the following layout:
-- `CantaTema/apps/`: Contains executable targets.
+- `CantaTema/apps/`: Contains executable and client targets.
   - `terminal/`: Core terminal console application handling terminal CLI loop, session, record loops, and speech commands.
+  - `flutter_ui/`: Cross-platform Flutter UI application (Desktop, Mobile, Web client).
 - `CantaTema/components/core/`: Shared foundation layer — basic primitives, configurations, and models.
   - `primitives/`: Domain models (`User`, `Category`, `Subject`, `PracticeEvent`), logging utilities (`utils_logger`), thread pools (`utils_thread_pool`), and paths manager (`tool_paths`).
   - `configuration/`: `ConfigurationSystem` wrapper loaded from `system.ini` which sets default limits (e.g. max sound/text file size, default allowed extensions).
@@ -47,6 +48,7 @@ The project is modularized into discrete CMake components using a custom `create
   - `speech_recognition/`: Transcription implementing `ISpeechRecognition` to integrate local Whisper-based decoding.
   - `embeddings/`: Text embedding engine implementing `IEmbeddingEngine`, wrapping llama.cpp in embedding mode for vectorizing PDF and transcript chunks.
   - `similarity/`: Similarity search implementing `ISimilaritySearch`, wrapping Faiss C++ API for nearest-neighbor matching between embedding vectors.
+- `CantaTema/components/c_api/`: C ABI export layer exposing `cantatema_c_api.h` and shared dynamic library (`cantatema_bridge`) for foreign language and FFI bindings (Flutter/Dart).
 - `docs/`: Diagram drafts, notes, and schemas.
 - `cmake/`: Installation templates and FetchContent wrappers (e.g., `add_sqlite3_library.cmake`, `library_install_test.cmake`).
 - `CantaTema/example_data/`: Sample reference PDFs and recorded audio files (`.opus`) used for manual testing and development.
@@ -58,30 +60,34 @@ The project is modularized into discrete CMake components using a custom `create
 The project follows a strict layered dependency model. Each layer may only depend on the layers **below** it, never on layers above. The layers, from bottom to top, are:
 
 ```
-┌─────────────────────────────────────────────┐
-│              CLI / Terminal App              │  ← Top layer (apps/terminal/)
-├─────────────────────────────────────────────┤
-│                  Session                    │  ← Facade for business logic
-├─────────────────────────────────────────────┤
-│                Operations                   │  ← Business rules & coordination
-├─────────────────────────────────────────────┤
-│              Infrastructure                 │  ← Database, Sound, Files, Speech,
-│                                             │    Embeddings, Similarity
-├─────────────────────────────────────────────┤
-│          Core (shared foundation)           │  ← Primitives, Configuration, Models
-└─────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────┐
+│  Presentation Layer: Terminal CLI  |  Flutter App (UI) │  ← Top layer (apps/)
+├────────────────────────────────────────────────────────┤
+│           Bridge Layer: C ABI (cantatema_c_api.h)      │  ← C-linkage export boundary
+├────────────────────────────────────────────────────────┤
+│                  Session                               │  ← Facade for business logic
+├────────────────────────────────────────────────────────┤
+│                Operations                              │  ← Business rules & coordination
+├────────────────────────────────────────────────────────┤
+│              Infrastructure                            │  ← Database, Sound, Files, Speech,
+│                                                        │    Embeddings, Similarity
+├────────────────────────────────────────────────────────┤
+│          Core (shared foundation)                      │  ← Primitives, Configuration, Models
+└────────────────────────────────────────────────────────┘
 ```
 
 #### Dependency Rules
 
-| Source Layer        | May Depend On                                    | Must NOT Depend On              |
-|---------------------|--------------------------------------------------|---------------------------------|
-| **Core**            | Standard library, external libs only             | Any higher layer                |
-| **Infrastructure**  | Core, external libs                              | Operations, Session, CLI        |
-| **Operations**      | Core, Infrastructure **interfaces only**         | Session, CLI, concrete infra    |
-| **Session**         | Core, Operations                                 | Infrastructure directly, CLI    |
-| **CLI (normal)**    | Core, Session                                    | Operations, Infrastructure      |
-| **CLI (test/debug)**| Core, Session, Operations, Infrastructure        | — (relaxed for manual testing)  |
+| Source Layer          | May Depend On                                    | Must NOT Depend On              |
+|-----------------------|--------------------------------------------------|---------------------------------|
+| **Core**              | Standard library, external libs only             | Any higher layer                |
+| **Infrastructure**    | Core, external libs                              | Operations, Session, CLI, Bridge|
+| **Operations**        | Core, Infrastructure **interfaces only**         | Session, CLI, concrete infra    |
+| **Session**           | Core, Operations                                 | Infrastructure directly, CLI    |
+| **C ABI Bridge**      | Core, Session                                    | Operations, Infrastructure      |
+| **CLI (normal)**      | Core, Session                                    | Operations, Infrastructure      |
+| **Flutter UI (Dart)** | C ABI Bridge (`dart:ffi`) / Web API Service      | Internal C++ headers/classes    |
+| **CLI (test/debug)**  | Core, Session, Operations, Infrastructure        | — (relaxed for manual testing)  |
 
 > **CLI Flexibility Exception:** The CLI terminal app (`apps/terminal/`) is also used for manual testing and debug operations. Test/debug-only commands (e.g., `test_start`, `db_purge`) are permitted to access lower layers (operations, infrastructure) directly. Normal user-facing commands must go through Session.
 
@@ -301,9 +307,72 @@ To run the interactive shell of the CantaTema project:
 - **Roadmap & Subphases:** Refer to [docs/phases.md](file:///c:/Users/iscap/Desktop/Projects/cantaTema/docs/phases.md) for the complete implementation schedule, architectural layout, QA/testing thresholds, and design FAQs.
 - **Future Comparison Engine Architecture:** Refer to [docs/future_plans.md](file:///c:/Users/iscap/Desktop/Projects/cantaTema/docs/future_plans.md) for multi-language profile abstraction (`ILanguageProfile`), orthogonal subject domain profiles (`IDomainProfile` for Law, Economics, Science, History, General), configurable INI token weighting, weighted recall metrics, and lemmatization roadmap.
 
-## 📱 Future GUI & Mobile Packaging Vision (Planned Post-v1.0)
-- **Framework Choice:** Flutter (Dart) for cross-platform UI (Windows, macOS, Linux, Android, iOS).
-- **C++ Integration:** Flutter communicates via `dart:ffi` calling a lightweight C-wrapper (`c_session.cpp`) over the C++ `Session` facade.
-- **Single-Package Deployment:** A single installer file per OS (e.g., `.exe`/`.msi` for Windows, `.dmg` for macOS, `.apk` for Android, `.ipa` for iOS) embedding the Flutter GUI, C++ binaries, and AI engine dependencies.
-- **Core Reuse:** 95%+ C++ logic reuse without changing underlying business, AI, or database layers.
+## 📱 Flutter Cross-Platform Architecture & Integration (Desktop, Mobile, Web)
+
+The application frontends (Desktop, Mobile, and Web) use Flutter (Dart) integrated with the C++23 core through an **Interface Bridge Architecture**.
+
+### 1. Architectural Strategy & Rationale
+- **Single Source of Truth:** 100% of business logic, audio encryption (XOR/Opus), PDF chunk extraction (MuPDF), speech recognition (Whisper.cpp), embeddings (llama.cpp), and vector search (Faiss) reside exclusively in C++. Flutter is strictly a presentation and state management layer.
+- **Interface Bridge (`dart:ffi` + C ABI):** Flutter interacts with the C++ `Session` facade through an `extern "C"` wrapper (`cantatema_c_api.h` in `components/c_api/`). This avoids C++ ABI name mangling and template incompatibility while allowing automatic Dart binding generation via `ffigen`.
+- **Zero-Latency & Non-Blocking Concurrency:** Native worker threads in C++ handle long-running AI pipelines without blocking Flutter's 60/120 FPS UI thread. Asynchronous events and progress callbacks are dispatched back to Dart isolates using `Dart_PostCObject` / `NativePort`.
+
+### 2. Multiplatform Execution Models
+
+```mermaid
+flowchart TB
+    subgraph FLUTTER_LAYER["Flutter Presentation Layer (apps/flutter_ui/)"]
+        UI["Flutter UI (Widgets / Responsive Layouts)"]
+        STATE["State Management (Riverpod / BLoC)"]
+        DS["Data Service Strategy Provider"]
+    end
+
+    subgraph DESKTOP_MOBILE["Desktop & Mobile Runtime (In-Process)"]
+        FFI["dart:ffi Service Wrapper"]
+        C_LIB["cantatema_bridge (.dll / .so / .dylib / xcframework)"]
+    end
+
+    subgraph WEB_RUNTIME["Web Runtime (Client-Server)"]
+        HTTP_WS["REST / WebSocket Service Wrapper"]
+        SERVER_DAEMON["CantaTema Backend Server Daemon\n(Local or Hosted)"]
+    end
+
+    subgraph C_ENGINE["CantaTema C++23 Core Engine"]
+        SESSION["Session Facade"]
+        OPS["Operations"]
+        INFRA["Infrastructure (Whisper, llama.cpp, Faiss, MuPDF, SDL3)"]
+    end
+
+    UI --> STATE --> DS
+    DS -->|Desktop & Mobile| FFI --> C_LIB --> SESSION
+    DS -->|Web| HTTP_WS -->|Network| SERVER_DAEMON --> SESSION
+    SESSION --> OPS --> INFRA
+```
+
+- **🖥️ Desktop (Windows, macOS, Linux):**
+  - **Bridge:** In-process direct `dart:ffi` linking to dynamic shared library (`cantatema_bridge.dll` / `.dylib` / `.so`).
+  - **Acceleration:** Direct hardware acceleration with GPU backends (Vulkan / CUDA / Metal) for Whisper transcription and llama.cpp embeddings.
+- **📱 Mobile (Android & iOS):**
+  - **Bridge:** In-process direct `dart:ffi` linked to cross-compiled shared libraries (Android NDK `jniLibs` for `arm64-v8a` / `x86_64`, iOS `.xcframework` via Xcode/CocoaPods).
+  - **Model Management:** Quantized / compact model profiles (`whisper-tiny`/`base`, `q4_k_m`) managed on-demand over Wi-Fi via `ManagerModels`. Permissions and sandbox paths resolved via Flutter platform plugins and injected into `ToolPath`.
+- **🌐 Web (Flutter Web):**
+  - **Architecture:** Client-Server model. Flutter Web compiles to WebAssembly/JavaScript SPA and connects via REST / WebSockets to a lightweight CantaTema backend daemon (hosted locally or remotely).
+  - **Reusability:** The Flutter UI and state providers remain identical; only the communication adapter switches between `FFIService` (native) and `HttpWebSocketService` (web).
+
+### 3. Flutter Directory Layout (`CantaTema/apps/flutter_ui/`)
+```
+apps/flutter_ui/
+├── lib/
+│   ├── bridge/           # Generated ffigen bindings & C ABI wrapper classes
+│   ├── services/         # Data services (FFIService for Native, HttpService for Web)
+│   ├── state/            # State management (Riverpod / BLoC providers)
+│   ├── views/            # Responsive UI screens (Desktop, Tablet, Mobile)
+│   └── main.dart
+├── windows/              # Windows Runner (links cantatema_bridge.dll)
+├── macos/                # macOS Runner (links cantatema_bridge.dylib)
+├── linux/                # Linux Runner (links libcantatema_bridge.so)
+├── android/              # Android Runner (NDK jniLibs)
+├── ios/                  # iOS Runner (.xcframework)
+└── web/                  # Web Runner (SPA connecting to CantaTema server daemon)
+```
+
 
