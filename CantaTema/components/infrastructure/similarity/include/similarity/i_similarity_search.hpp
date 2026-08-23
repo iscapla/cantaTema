@@ -54,6 +54,7 @@ struct SimilaritySearchOptions {
     float temporal_penalty_weight = 0.05f;
     unsigned int short_chunk_word_threshold = 10u;
     float lexical_mismatch_scaling_factor = 0.60f;
+    float lexical_boost_weight = 0.15f;
 };
 
 /**

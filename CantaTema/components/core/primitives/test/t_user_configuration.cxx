@@ -21,6 +21,7 @@ TEST(UserConfigurationTest, DefaultValuesInitialization) {
     EXPECT_EQ(config.comparison.embedding_model_name, "AUTO");
     EXPECT_EQ(config.comparison.embedding_gpu_offload_layers, 99);
     EXPECT_FLOAT_EQ(config.comparison.similarity_threshold, 0.75f);
+    EXPECT_FLOAT_EQ(config.comparison.lexical_boost_weight, 0.15f);
     EXPECT_FLOAT_EQ(config.comparison.speed_weight, 0.3f);
     EXPECT_FLOAT_EQ(config.comparison.clarity_weight, 0.4f);
     EXPECT_FLOAT_EQ(config.comparison.pacing_weight, 0.3f);
@@ -32,6 +33,7 @@ TEST(UserConfigurationTest, ResetDefaultValues) {
     config.whisper.use_gpu = false;
     config.reference_extraction.importance_weight_bold = 3.0f;
     config.comparison.similarity_threshold = 0.85f;
+    config.comparison.lexical_boost_weight = 0.30f;
 
     config.set_default_values();
 
@@ -39,6 +41,7 @@ TEST(UserConfigurationTest, ResetDefaultValues) {
     EXPECT_TRUE(config.whisper.use_gpu);
     EXPECT_FLOAT_EQ(config.reference_extraction.importance_weight_bold, 1.5f);
     EXPECT_FLOAT_EQ(config.comparison.similarity_threshold, 0.75f);
+    EXPECT_FLOAT_EQ(config.comparison.lexical_boost_weight, 0.15f);
 }
 
 TEST(UserConfigurationTest, JsonSerializationAndDeserialization) {
@@ -48,6 +51,7 @@ TEST(UserConfigurationTest, JsonSerializationAndDeserialization) {
     original.whisper.use_gpu = true;
     original.reference_extraction.importance_weight_bold = 2.5f;
     original.comparison.similarity_threshold = 0.80f;
+    original.comparison.lexical_boost_weight = 0.25f;
 
     std::string json_output = original.to_json();
     EXPECT_FALSE(json_output.empty());
@@ -61,4 +65,5 @@ TEST(UserConfigurationTest, JsonSerializationAndDeserialization) {
     EXPECT_TRUE(restored.whisper.use_gpu);
     EXPECT_FLOAT_EQ(restored.reference_extraction.importance_weight_bold, 2.5f);
     EXPECT_FLOAT_EQ(restored.comparison.similarity_threshold, 0.80f);
+    EXPECT_FLOAT_EQ(restored.comparison.lexical_boost_weight, 0.25f);
 }

@@ -246,6 +246,7 @@ rst_code_e OperationCoverage::analyze_practice_coverage(
     search_options.temporal_penalty_weight = config.comparison.temporal_penalty_weight;
     search_options.short_chunk_word_threshold = config.comparison.short_chunk_word_threshold;
     search_options.lexical_mismatch_scaling_factor = config.comparison.lexical_mismatch_scaling_factor;
+    search_options.lexical_boost_weight = config.comparison.lexical_boost_weight;
 
     auto matches = m_similarity_search->search_pdf_matches_advanced(
         pdf_embeddings,

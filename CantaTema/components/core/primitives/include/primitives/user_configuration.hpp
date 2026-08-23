@@ -53,6 +53,7 @@ struct ComparisonConfig {
     float temporal_penalty_weight{0.05f};
     unsigned int short_chunk_word_threshold{10u};
     float lexical_mismatch_scaling_factor{0.60f};
+    float lexical_boost_weight{0.15f};
     float speed_weight{0.3f};
     float clarity_weight{0.4f};
     float pacing_weight{0.3f};

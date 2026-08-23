@@ -128,6 +128,11 @@ public:
     float get_coverage_lexical_mismatch_scaling_factor() const;
 
     /**
+     * @brief Retrieves the lexical keyword recall boost weight for candidate ranking.
+     */
+    float get_coverage_lexical_boost_weight() const;
+
+    /**
      * @brief Retrieves the weight multiplier for bold formatted text.
      */
     float get_importance_weight_bold() const;

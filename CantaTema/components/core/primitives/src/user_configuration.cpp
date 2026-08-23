@@ -45,6 +45,7 @@ std::string UserConfiguration::to_json() const {
        << "\"temporal_penalty_weight\":" << comparison.temporal_penalty_weight << ","
        << "\"short_chunk_word_threshold\":" << comparison.short_chunk_word_threshold << ","
        << "\"lexical_mismatch_scaling_factor\":" << comparison.lexical_mismatch_scaling_factor << ","
+       << "\"lexical_boost_weight\":" << comparison.lexical_boost_weight << ","
        << "\"speed_weight\":" << comparison.speed_weight << ","
        << "\"clarity_weight\":" << comparison.clarity_weight << ","
        << "\"pacing_weight\":" << comparison.pacing_weight
@@ -138,6 +139,7 @@ bool UserConfiguration::from_json(const std::string& json_str) {
     comparison.temporal_penalty_weight = extract_float_val(json_str, "temporal_penalty_weight", comparison.temporal_penalty_weight);
     comparison.short_chunk_word_threshold = extract_int_val(json_str, "short_chunk_word_threshold", static_cast<int>(comparison.short_chunk_word_threshold));
     comparison.lexical_mismatch_scaling_factor = extract_float_val(json_str, "lexical_mismatch_scaling_factor", comparison.lexical_mismatch_scaling_factor);
+    comparison.lexical_boost_weight = extract_float_val(json_str, "lexical_boost_weight", comparison.lexical_boost_weight);
     comparison.speed_weight = extract_float_val(json_str, "speed_weight", comparison.speed_weight);
     comparison.clarity_weight = extract_float_val(json_str, "clarity_weight", comparison.clarity_weight);
     comparison.pacing_weight = extract_float_val(json_str, "pacing_weight", comparison.pacing_weight);

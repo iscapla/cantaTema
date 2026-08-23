@@ -83,6 +83,13 @@ std::vector<SimilarityResult> FaissSimilaritySearch::search_pdf_matches_advanced
         return results;
     }
 
+    // Pre-extract keywords for all transcript segments once to optimize candidate evaluation
+    std::vector<std::unordered_set<std::string>> trans_keywords_list;
+    trans_keywords_list.reserve(transcript_texts.size());
+    for (const auto& t_text : transcript_texts) {
+        trans_keywords_list.push_back(LexicalKeywordExtractor::extract_keywords(t_text));
+    }
+
     int last_matched_j = -1;
 
     for (size_t i = 0; i < pdf_embeddings.size(); ++i) {
@@ -130,6 +137,7 @@ std::vector<SimilarityResult> FaissSimilaritySearch::search_pdf_matches_advanced
 
         float best_effective_score = -2.0f;
         float best_raw_similarity = -2.0f;
+        float best_keyword_recall = 0.0f;
         int best_j = -1;
         bool best_has_warning = false;
 
@@ -152,14 +160,23 @@ std::vector<SimilarityResult> FaissSimilaritySearch::search_pdf_matches_advanced
             float raw_cosine = static_cast<float>(dot_product / (pdf_norm * trans_norm));
             raw_cosine = std::max(-1.0f, std::min(1.0f, raw_cosine));
 
-            // Hybrid Lexical Gating: for short reference chunks (<= short_chunk_word_threshold), verify keyword overlap
-            if (ref_word_count > 0 && ref_word_count <= options.short_chunk_word_threshold && !ref_keywords.empty() && !trans_text.empty()) {
-                auto trans_keywords = LexicalKeywordExtractor::extract_keywords(trans_text);
-                size_t overlap = LexicalKeywordExtractor::count_keyword_overlap(ref_keywords, trans_keywords);
-                if (overlap == 0) {
-                    // Zero keyword overlap on a short chunk -> scale raw score down by scaling factor
-                    raw_cosine *= options.lexical_mismatch_scaling_factor;
+            // Hybrid Lexical Scoring: keyword overlap and recall boost
+            float lexical_boost = 0.0f;
+            float cand_keyword_recall = 0.0f;
+
+            if (!ref_keywords.empty() && j < trans_keywords_list.size()) {
+                size_t overlap = LexicalKeywordExtractor::count_keyword_overlap(ref_keywords, trans_keywords_list[j]);
+                cand_keyword_recall = static_cast<float>(overlap) / static_cast<float>(ref_keywords.size());
+
+                // For short reference chunks (<= short_chunk_word_threshold), gate if zero overlap
+                if (ref_word_count > 0 && ref_word_count <= options.short_chunk_word_threshold) {
+                    if (overlap == 0) {
+                        raw_cosine *= options.lexical_mismatch_scaling_factor;
+                    }
                 }
+
+                // Lexical keyword recall boost during candidate ranking
+                lexical_boost = options.lexical_boost_weight * cand_keyword_recall;
             }
 
             // Numerical entity analysis
@@ -170,7 +187,7 @@ std::vector<SimilarityResult> FaissSimilaritySearch::search_pdf_matches_advanced
                 );
             }
 
-            float score_adjusted = raw_cosine + num_analysis.score_modifier;
+            float score_adjusted = raw_cosine + lexical_boost + num_analysis.score_modifier;
 
             // Order-aware temporal distance penalty (bidirectional)
             float temporal_penalty = 0.0f;
@@ -198,6 +215,7 @@ std::vector<SimilarityResult> FaissSimilaritySearch::search_pdf_matches_advanced
             if (effective_score > best_effective_score) {
                 best_effective_score = effective_score;
                 best_raw_similarity = raw_cosine;
+                best_keyword_recall = cand_keyword_recall;
                 best_j = static_cast<int>(j);
                 best_has_warning = num_analysis.has_warning;
             }
@@ -217,7 +235,18 @@ std::vector<SimilarityResult> FaissSimilaritySearch::search_pdf_matches_advanced
             if (res.is_mentioned) {
                 res.best_transcript_chunk_index = best_j;
                 res.weighted_missed_score = 0.0f;
-                last_matched_j = best_j;
+
+                // Anchor Qualification: only advance last_matched_j if chunk is substantive and not an unverified leap
+                bool is_substantive = (ref_word_count >= 4 && ref_keywords.size() >= 2);
+                if (is_substantive) {
+                    bool is_reasonable_anchor = (last_matched_j < 0) || 
+                                                (best_j <= last_matched_j + 5) || 
+                                                (best_raw_similarity >= 0.88f) || 
+                                                (best_keyword_recall >= 0.50f);
+                    if (is_reasonable_anchor) {
+                        last_matched_j = best_j;
+                    }
+                }
             } else {
                 res.best_transcript_chunk_index = -1; // Unassigned / missing!
                 res.weighted_missed_score = weight * (1.0f - std::max(0.0f, res.similarity_score));
@@ -226,6 +255,7 @@ std::vector<SimilarityResult> FaissSimilaritySearch::search_pdf_matches_advanced
 
         results.push_back(res);
     }
+
 
     return results;
 }

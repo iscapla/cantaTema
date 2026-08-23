@@ -421,12 +421,15 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    std::vector<std::string> pdf_texts;
+    std::vector<std::string> pdf_embedding_texts;
+    std::vector<std::string> pdf_display_texts;
     std::vector<float> pdf_weights;
-    pdf_texts.reserve(doc_chunks.size());
+    pdf_embedding_texts.reserve(doc_chunks.size());
+    pdf_display_texts.reserve(doc_chunks.size());
     pdf_weights.reserve(doc_chunks.size());
     for (const auto& c : doc_chunks) {
-        pdf_texts.push_back(c.text);
+        pdf_embedding_texts.push_back(c.contextual_text.empty() ? c.text : c.contextual_text);
+        pdf_display_texts.push_back(c.text);
         pdf_weights.push_back(static_cast<float>(c.importance_weight));
     }
 
@@ -440,15 +443,15 @@ int main(int argc, char* argv[]) {
         transcript_texts.push_back(s.text);
     }
 
-    std::cout << "[STEP 4] Generating vector embeddings for " << pdf_texts.size() << " PDF chunks & "
+    std::cout << "[STEP 4] Generating vector embeddings for " << pdf_embedding_texts.size() << " PDF chunks & "
               << transcript_texts.size() << " transcript segments...\n";
 
     std::vector<std::vector<float>> pdf_embeddings;
-    pdf_embeddings.reserve(pdf_texts.size());
-    for (size_t i = 0; i < pdf_texts.size(); ++i) {
-        pdf_embeddings.push_back(embedding_engine.generate_embedding(pdf_texts[i], EmbeddingRole::PASSAGE));
-        int pct = static_cast<int>((i + 1) * 100 / pdf_texts.size());
-        std::cout << "\r[STEP 4] Processing PDF Embeddings (" << (i + 1) << "/" << pdf_texts.size() << "): " << std::setw(3) << pct << "%" << std::flush;
+    pdf_embeddings.reserve(pdf_embedding_texts.size());
+    for (size_t i = 0; i < pdf_embedding_texts.size(); ++i) {
+        pdf_embeddings.push_back(embedding_engine.generate_embedding(pdf_embedding_texts[i], EmbeddingRole::PASSAGE));
+        int pct = static_cast<int>((i + 1) * 100 / pdf_embedding_texts.size());
+        std::cout << "\r[STEP 4] Processing PDF Embeddings (" << (i + 1) << "/" << pdf_embedding_texts.size() << "): " << std::setw(3) << pct << "%" << std::flush;
     }
     std::cout << "\n";
 
@@ -472,10 +475,11 @@ int main(int argc, char* argv[]) {
     options.temporal_penalty_weight = ConfigurationSystem::getInstance().get_coverage_temporal_penalty_weight();
     options.short_chunk_word_threshold = ConfigurationSystem::getInstance().get_coverage_short_chunk_word_threshold();
     options.lexical_mismatch_scaling_factor = ConfigurationSystem::getInstance().get_coverage_lexical_mismatch_scaling_factor();
+    options.lexical_boost_weight = ConfigurationSystem::getInstance().get_coverage_lexical_boost_weight();
 
     auto matches = similarity_search.search_pdf_matches_advanced(
         pdf_embeddings,
-        pdf_texts,
+        pdf_display_texts,
         transcript_texts,
         pdf_weights,
         options

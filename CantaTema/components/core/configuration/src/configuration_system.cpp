@@ -257,6 +257,15 @@ float ConfigurationSystem::get_coverage_lexical_mismatch_scaling_factor() const 
     }
 }
 
+float ConfigurationSystem::get_coverage_lexical_boost_weight() const {
+    std::string value = const_cast<ConfigurationSystem*>(this)->get_or_default("COVERAGE", "lexical_boost_weight", "0.15");
+    try {
+        return std::stof(value);
+    } catch (...) {
+        return 0.15f; // Default fallback
+    }
+}
+
 float ConfigurationSystem::get_importance_weight_bold() const {
     std::string value = const_cast<ConfigurationSystem*>(this)->get_or_default("COVERAGE", "importance_weight_bold", "1.5");
     try {

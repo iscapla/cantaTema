@@ -296,4 +296,81 @@ TEST(FaissSimilaritySearchTest, ShortHeadingFalsePositiveResolution) {
     EXPECT_NEAR(results[0].similarity_score, 0.5004f, 1e-3f);
 }
 
+TEST(FaissSimilaritySearchTest, VerbatimMatchBeatsSemanticOverlapWithTemporalVariance) {
+    FaissSimilaritySearch search;
+    // Transcript 0: High verbatim match (Article 2)
+    // Transcript 1: High cosine vector similarity, but lower lexical overlap (Article 6)
+    std::vector<std::vector<float>> trans = {
+        {0.92f, 0.38f, 0.0f}, // segment 0 (raw cosine ~ 0.92)
+        {0.96f, 0.28f, 0.0f}  // segment 1 (raw cosine ~ 0.96)
+    };
+    EXPECT_TRUE(search.index_transcript_embeddings(trans));
+
+    // PDF chunk: Article 2 definition
+    std::vector<std::vector<float>> pdfs = {
+        {1.0f, 0.0f, 0.0f}
+    };
+    std::vector<std::string> pdf_texts = {
+        "Constituye el objeto de este Impuesto la renta del contribuyente entendida como totalidad de rendimientos ganancias y pérdidas patrimoniales e imputaciones."
+    };
+    std::vector<std::string> transcript_texts = {
+        "Artículo 2. Constituye el objeto de este impuesto la renta del contribuyente entendida como totalidad de rendimientos ganancias y pérdidas patrimoniales e imputaciones de renta.", // exact match
+        "Compone la renta del contribuyente los rendimientos del trabajo del capital actividades económicas." // partial semantic overlap
+    };
+    std::vector<float> weights = {1.0f};
+
+    SimilaritySearchOptions options;
+    options.similarity_threshold = 0.75f;
+    options.lexical_boost_weight = 0.15f;
+
+    auto results = search.search_pdf_matches_advanced(pdfs, pdf_texts, transcript_texts, weights, options);
+    ASSERT_EQ(results.size(), 1);
+
+    // Verbatim match (segment 0) should win over higher raw cosine (segment 1) due to lexical boost!
+    EXPECT_TRUE(results[0].is_mentioned);
+    EXPECT_EQ(results[0].best_transcript_chunk_index, 0);
+    EXPECT_GT(results[0].word_recall_score, 0.80f);
+}
+
+TEST(FaissSimilaritySearchTest, ShortHeadingDoesNotCorruptTemporalAnchor) {
+    FaissSimilaritySearch search;
+    // Segment 0: early passage
+    // Segment 1: middle passage
+    // Segment 2: far forward passage (e.g. index 10)
+    std::vector<std::vector<float>> trans = {
+        {1.0f, 0.0f, 0.0f}, // segment 0
+        {1.0f, 0.0f, 0.0f}, // segment 1
+        {1.0f, 0.0f, 0.0f}  // segment 2 (representing a forward jump)
+    };
+    EXPECT_TRUE(search.index_transcript_embeddings(trans));
+
+    // PDF 0: Short heading "Objeto del Impuesto." (3 words -> should not advance anchor!)
+    // PDF 1: Long paragraph intended to match segment 0
+    std::vector<std::vector<float>> pdfs = {
+        {1.0f, 0.0f, 0.0f},
+        {1.0f, 0.0f, 0.0f}
+    };
+    std::vector<std::string> pdf_texts = {
+        "Objeto del Impuesto.",
+        "Constituye el objeto de este Impuesto la renta del contribuyente entendida como la totalidad de sus rendimientos ganancias y pérdidas."
+    };
+    std::vector<std::string> transcript_texts = {
+        "Constituye el objeto de este Impuesto la renta del contribuyente entendida como la totalidad de sus rendimientos ganancias y pérdidas.",
+        "Artículo 1. Naturaleza y caracteres generales del tributo.",
+        "Artículo 6. Hecho imponible del impuesto sobre la renta."
+    };
+    std::vector<float> weights = {1.0f, 1.0f};
+
+    SimilaritySearchOptions options;
+    options.similarity_threshold = 0.50f;
+    options.temporal_penalty_weight = 0.20f; // High penalty if anchor jumped
+
+    auto results = search.search_pdf_matches_advanced(pdfs, pdf_texts, transcript_texts, weights, options);
+    ASSERT_EQ(results.size(), 2);
+
+    // PDF 1 (substantive paragraph) should match transcript segment 0 without backward penalty corruption
+    EXPECT_TRUE(results[1].is_mentioned);
+    EXPECT_EQ(results[1].best_transcript_chunk_index, 0);
+}
+
 
