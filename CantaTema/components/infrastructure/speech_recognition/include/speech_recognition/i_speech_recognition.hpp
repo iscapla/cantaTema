@@ -25,6 +25,7 @@ struct TranscriptSegment {
     std::string text;              ///< Transcribed spoken text.
     float avg_logprob{0.0f};       ///< Average token log-probability from Whisper model output.
     float confidence_score{1.0f};  ///< Normalized confidence rating (0.0 - 1.0).
+    std::vector<size_t> source_segment_indices; ///< Raw acoustic segment indices merged into this segment.
 };
 
 /**

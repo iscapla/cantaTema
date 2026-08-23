@@ -22,6 +22,7 @@
 #include "sound_system/sound_converter.hpp"
 #include "speech_recognition/whisper_speech_recognition.hpp"
 #include "speech_recognition/voice_quality_analyzer.hpp"
+#include "speech_recognition/transcript_sentence_stitcher.hpp"
 #include "file_handler/text_handler.hpp"
 #include "file_handler/text_chunk_extractor.hpp"
 #include "embeddings/llama_embedding_engine.hpp"
@@ -169,11 +170,11 @@ int main(int argc, char* argv[]) {
     // -------------------------------------------------------------------------
     // Resolve sample files from example_data
     // -------------------------------------------------------------------------
-    // std::filesystem::path input_sound_file = locate_example_file("subject_es_1_p_1.opus");
-    // std::filesystem::path pdf_file = locate_example_file("subject_es_1.pdf");
+    std::filesystem::path input_sound_file = locate_example_file("subject_es_1_p_1.opus");
+    std::filesystem::path pdf_file = locate_example_file("subject_es_1.pdf");
 
-    std::filesystem::path input_sound_file{ "C:\\Users\\iscap\\Desktop\\temas_inspeccion\\tema_28.wav" };
-    std::filesystem::path pdf_file{ "C:\\Users\\iscap\\Desktop\\temas_inspeccion\\tema_28.pdf" };
+    // std::filesystem::path input_sound_file{ "C:\\Users\\iscap\\Desktop\\temas_inspeccion\\tema_28.wav" };
+    // std::filesystem::path pdf_file{ "C:\\Users\\iscap\\Desktop\\temas_inspeccion\\tema_28.pdf" };
 
     std::cout << "[INIT] Target Sound File   : " << input_sound_file.string() << "\n";
     std::cout << "[INIT] Target PDF Reference: " << pdf_file.string() << "\n\n";
@@ -429,9 +430,13 @@ int main(int argc, char* argv[]) {
         pdf_weights.push_back(static_cast<float>(c.importance_weight));
     }
 
+    std::vector<TranscriptSegment> stitched_segments = TranscriptSentenceStitcher::stitch_segments(segments);
+    std::cout << "[STEP 4] Heuristic sentence stitching: reconstructed " << segments.size() << " acoustic segments into "
+              << stitched_segments.size() << " complete sentence chunks.\n";
+
     std::vector<std::string> transcript_texts;
-    transcript_texts.reserve(segments.size());
-    for (const auto& s : segments) {
+    transcript_texts.reserve(stitched_segments.size());
+    for (const auto& s : stitched_segments) {
         transcript_texts.push_back(s.text);
     }
 
@@ -495,15 +500,26 @@ int main(int argc, char* argv[]) {
         for (size_t i = 0; i < matches.size(); ++i) {
             const auto& m = matches[i];
             std::string matched_transcript = "[NOT MENTIONED]";
-            if (m.best_transcript_chunk_index >= 0 && static_cast<size_t>(m.best_transcript_chunk_index) < segments.size()) {
-                matched_transcript = segments[m.best_transcript_chunk_index].text;
+            std::string voice_chunks_str = "-1";
+            if (m.best_transcript_chunk_index >= 0 && static_cast<size_t>(m.best_transcript_chunk_index) < stitched_segments.size()) {
+                matched_transcript = stitched_segments[m.best_transcript_chunk_index].text;
+                const auto& src_indices = stitched_segments[m.best_transcript_chunk_index].source_segment_indices;
+                if (!src_indices.empty()) {
+                    if (src_indices.size() == 1) {
+                        voice_chunks_str = "#" + std::to_string(src_indices.front() + 1);
+                    } else {
+                        voice_chunks_str = "#" + std::to_string(src_indices.front() + 1) + "-#" + std::to_string(src_indices.back() + 1);
+                    }
+                } else {
+                    voice_chunks_str = "#" + std::to_string(m.best_transcript_chunk_index + 1);
+                }
             }
 
             pdf_comp_file << "PDF Chunk #" << std::setw(3) << (i + 1)
                           << " | Sim Score: " << std::fixed << std::setprecision(4) << m.similarity_score
                           << " | Mentioned: " << (m.is_mentioned ? "YES" : " NO")
                           << " | Missed Score: " << std::setprecision(2) << m.weighted_missed_score
-                          << " | Match Seg #" << std::setw(3) << (m.best_transcript_chunk_index >= 0 ? m.best_transcript_chunk_index + 1 : -1)
+                          << " | Match Voice Seg: " << std::setw(8) << voice_chunks_str
                           << " | PDF Text: " << (i < doc_chunks.size() ? doc_chunks[i].text : "")
                           << " | Transcript Text: " << matched_transcript << "\n";
         }
@@ -577,8 +593,8 @@ int main(int argc, char* argv[]) {
         comp_input.reference_items.push_back(ref_item);
     }
 
-    for (size_t j = 0; j < segments.size(); ++j) {
-        const auto& seg = segments[j];
+    for (size_t j = 0; j < stitched_segments.size(); ++j) {
+        const auto& seg = stitched_segments[j];
         TextComparisonInput::TranscriptItem ts_item;
         ts_item.id = j;
         ts_item.start_time_ms = seg.start_time_ms;

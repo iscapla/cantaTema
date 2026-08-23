@@ -8,6 +8,7 @@
 #include <iomanip>
 #include <chrono>
 #include <ctime>
+#include <cmath>
 
 std::string TextComparisonVisualizer::escape_html(const std::string& str) {
     std::string result;
@@ -73,6 +74,32 @@ rst_code_e TextComparisonVisualizer::generate_html(const TextComparisonInput& in
        << "================================================================\n"
        << "-->\n";
 
+    // Diagnostic calculations
+    float recall_score = static_cast<float>(input.overall_coverage_pct);
+    float citation_score = input.rubric_scorecard.total_items > 0 ? input.rubric_scorecard.citation_accuracy_pct : 100.0f;
+    float fluency_score = (input.diagnostic_scores.oral_fluency_score > 0.0f) ? input.diagnostic_scores.oral_fluency_score : 85.0f;
+    float clarity_score = (input.diagnostic_scores.speech_clarity_score > 0.0f) ? input.diagnostic_scores.speech_clarity_score : 90.0f;
+    float composite_score = (input.diagnostic_scores.overall_composite_score > 0.0f)
+                            ? input.diagnostic_scores.overall_composite_score
+                            : ((0.35f * recall_score) + (0.25f * citation_score) + (0.20f * fluency_score) + (0.20f * clarity_score));
+
+    // Calculate 4-axis SVG points
+    float cx = 90.0f;
+    float cy = 80.0f;
+    float r = 55.0f;
+
+    float pt_recall_x = cx;
+    float pt_recall_y = cy - (r * (recall_score / 100.0f));
+
+    float pt_cit_x = cx + (r * (citation_score / 100.0f));
+    float pt_cit_y = cy;
+
+    float pt_flu_x = cx;
+    float pt_flu_y = cy + (r * (fluency_score / 100.0f));
+
+    float pt_cla_x = cx - (r * (clarity_score / 100.0f));
+    float pt_cla_y = cy;
+
     // 2. HTML Document Structure with CSS & Vanilla JavaScript
     ss << "<!DOCTYPE html>\n"
        << "<html lang=\"en\">\n"
@@ -115,7 +142,7 @@ rst_code_e TextComparisonVisualizer::generate_html(const TextComparisonInput& in
        << "    .top-bar {\n"
        << "      background-color: var(--card-bg);\n"
        << "      border-bottom: 1px solid var(--border-color);\n"
-       << "      padding: 16px 24px;\n"
+       << "      padding: 12px 24px;\n"
        << "      display: flex;\n"
        << "      justify-content: space-between;\n"
        << "      align-items: center;\n"
@@ -124,7 +151,7 @@ rst_code_e TextComparisonVisualizer::generate_html(const TextComparisonInput& in
        << "    }\n"
        << "    .title-area h1 {\n"
        << "      margin: 0;\n"
-       << "      font-size: 20px;\n"
+       << "      font-size: 18px;\n"
        << "      color: #38bdf8;\n"
        << "    }\n"
        << "    .title-area p {\n"
@@ -132,23 +159,97 @@ rst_code_e TextComparisonVisualizer::generate_html(const TextComparisonInput& in
        << "      font-size: 12px;\n"
        << "      color: var(--text-muted);\n"
        << "    }\n"
+       << "    .radar-stats-group {\n"
+       << "      display: flex;\n"
+       << "      align-items: center;\n"
+       << "      gap: 16px;\n"
+       << "    }\n"
+       << "    .radar-container {\n"
+       << "      background: rgba(11, 15, 25, 0.8);\n"
+       << "      border: 1px solid var(--border-color);\n"
+       << "      border-radius: 8px;\n"
+       << "      padding: 4px 8px;\n"
+       << "      display: flex;\n"
+       << "      align-items: center;\n"
+       << "    }\n"
        << "    .stats-area {\n"
        << "      display: flex;\n"
-       << "      gap: 12px;\n"
+       << "      gap: 10px;\n"
        << "    }\n"
        << "    .stat-badge {\n"
-       << "      padding: 8px 14px;\n"
+       << "      padding: 6px 12px;\n"
        << "      border-radius: 8px;\n"
        << "      background: rgba(11, 15, 25, 0.7);\n"
        << "      border: 1px solid var(--border-color);\n"
-       << "      font-size: 13px;\n"
+       << "      font-size: 12px;\n"
        << "      display: flex;\n"
        << "      flex-direction: column;\n"
        << "      align-items: center;\n"
        << "    }\n"
        << "    .stat-badge .num {\n"
        << "      font-weight: 700;\n"
-       << "      font-size: 16px;\n"
+       << "      font-size: 15px;\n"
+       << "    }\n"
+       << "    .rubric-drawer {\n"
+       << "      background-color: #111827;\n"
+       << "      border-bottom: 1px solid var(--border-color);\n"
+       << "      padding: 10px 24px;\n"
+       << "      font-size: 12px;\n"
+       << "    }\n"
+       << "    .rubric-header {\n"
+       << "      display: flex;\n"
+       << "      justify-content: space-between;\n"
+       << "      align-items: center;\n"
+       << "      cursor: pointer;\n"
+       << "      font-weight: 600;\n"
+       << "      color: #93c5fd;\n"
+       << "    }\n"
+       << "    .rubric-filters {\n"
+       << "      display: flex;\n"
+       << "      gap: 8px;\n"
+       << "      margin-top: 8px;\n"
+       << "    }\n"
+       << "    .rubric-btn {\n"
+       << "      background: #1f2937;\n"
+       << "      border: 1px solid var(--border-color);\n"
+       << "      color: var(--text-color);\n"
+       << "      padding: 4px 10px;\n"
+       << "      border-radius: 6px;\n"
+       << "      font-size: 11px;\n"
+       << "      cursor: pointer;\n"
+       << "    }\n"
+       << "    .rubric-btn.active {\n"
+       << "      background: #38bdf8;\n"
+       << "      color: #0b0f19;\n"
+       << "      font-weight: 700;\n"
+       << "    }\n"
+       << "    .rubric-list {\n"
+       << "      display: flex;\n"
+       << "      flex-wrap: wrap;\n"
+       << "      gap: 8px;\n"
+       << "      margin-top: 10px;\n"
+       << "      max-height: 120px;\n"
+       << "      overflow-y: auto;\n"
+       << "    }\n"
+       << "    .rubric-chip {\n"
+       << "      padding: 4px 8px;\n"
+       << "      border-radius: 6px;\n"
+       << "      font-size: 11px;\n"
+       << "      cursor: pointer;\n"
+       << "      display: inline-flex;\n"
+       << "      align-items: center;\n"
+       << "      gap: 4px;\n"
+       << "      border: 1px solid transparent;\n"
+       << "    }\n"
+       << "    .rubric-chip.satisfied {\n"
+       << "      background: rgba(16, 185, 129, 0.15);\n"
+       << "      color: #34d399;\n"
+       << "      border-color: #10b981;\n"
+       << "    }\n"
+       << "    .rubric-chip.omitted {\n"
+       << "      background: rgba(239, 68, 68, 0.15);\n"
+       << "      color: #f87171;\n"
+       << "      border-color: #ef4444;\n"
        << "    }\n"
        << "    .columns-wrapper {\n"
        << "      display: flex;\n"
@@ -263,26 +364,84 @@ rst_code_e TextComparisonVisualizer::generate_html(const TextComparisonInput& in
        << "      <h1>📊 Dual-Column Text Comparison Dashboard</h1>\n"
        << "      <p>Ref: " << escape_html(input.document_title) << " | Audio: " << escape_html(input.audio_filepath) << "</p>\n"
        << "    </div>\n"
-       << "    <div class=\"stats-area\">\n"
-       << "      <div class=\"stat-badge\" style=\"border-color: #38bdf8;\">\n"
-       << "        <span class=\"num\" style=\"color: #38bdf8;\">" << std::fixed << std::setprecision(1) << input.overall_coverage_pct << "%</span>\n"
-       << "        <span>Coverage</span>\n"
+       << "    <div class=\"radar-stats-group\">\n"
+       << "      <!-- 4-AXIS SVG RADAR CHART -->\n"
+       << "      <div class=\"radar-container\" title=\"4-Axis Diagnostic Radar (Recall, Citations, Fluency, Clarity)\">\n"
+       << "        <svg width=\"180\" height=\"160\" viewBox=\"0 0 180 160\">\n"
+       << "          <!-- Axis Rings -->\n"
+       << "          <circle cx=\"90\" cy=\"80\" r=\"55\" fill=\"none\" stroke=\"#334155\" stroke-width=\"1\" stroke-dasharray=\"3,3\" />\n"
+       << "          <circle cx=\"90\" cy=\"80\" r=\"28\" fill=\"none\" stroke=\"#1e293b\" stroke-width=\"1\" />\n"
+       << "          <!-- Axis Cross Lines -->\n"
+       << "          <line x1=\"90\" y1=\"25\" x2=\"90\" y2=\"135\" stroke=\"#334155\" stroke-width=\"1\" />\n"
+       << "          <line x1=\"35\" y1=\"80\" x2=\"145\" y2=\"80\" stroke=\"#334155\" stroke-width=\"1\" />\n"
+       << "          <!-- Candidate Radar Polygon -->\n"
+       << "          <polygon points=\"" << pt_recall_x << "," << pt_recall_y << " "
+                                      << pt_cit_x << "," << pt_cit_y << " "
+                                      << pt_flu_x << "," << pt_flu_y << " "
+                                      << pt_cla_x << "," << pt_cla_y << "\"\n"
+       << "                   fill=\"rgba(56, 189, 248, 0.45)\" stroke=\"#38bdf8\" stroke-width=\"2\" />\n"
+       << "          <!-- Axis Text Labels -->\n"
+       << "          <text x=\"90\" y=\"18\" fill=\"#38bdf8\" font-size=\"9\" text-anchor=\"middle\" font-weight=\"bold\">Recall " << std::fixed << std::setprecision(0) << recall_score << "%</text>\n"
+       << "          <text x=\"150\" y=\"83\" fill=\"#34d399\" font-size=\"9\" text-anchor=\"start\" font-weight=\"bold\">Cit " << std::setprecision(0) << citation_score << "%</text>\n"
+       << "          <text x=\"90\" y=\"150\" fill=\"#fbbf24\" font-size=\"9\" text-anchor=\"middle\" font-weight=\"bold\">Fluency " << std::setprecision(0) << fluency_score << "%</text>\n"
+       << "          <text x=\"30\" y=\"83\" fill=\"#a78bfa\" font-size=\"9\" text-anchor=\"end\" font-weight=\"bold\">Clarity " << std::setprecision(0) << clarity_score << "%</text>\n"
+       << "        </svg>\n"
        << "      </div>\n"
-       << "      <div class=\"stat-badge\" style=\"border-color: #10b981;\">\n"
-       << "        <span class=\"num\" style=\"color: #34d399;\">" << input.mentioned_chunks << "</span>\n"
-       << "        <span>Mentioned</span>\n"
-       << "      </div>\n"
-       << "      <div class=\"stat-badge\" style=\"border-color: #f59e0b;\">\n"
-       << "        <span class=\"num\" style=\"color: #fbbf24;\">" << input.not_clear_chunks << "</span>\n"
-       << "        <span>Not Clear</span>\n"
-       << "      </div>\n"
-       << "      <div class=\"stat-badge\" style=\"border-color: #ef4444;\">\n"
-       << "        <span class=\"num\" style=\"color: #f87171;\">" << input.not_mentioned_chunks << "</span>\n"
-       << "        <span>Omitted</span>\n"
+       << "      <div class=\"stats-area\">\n"
+       << "        <div class=\"stat-badge\" style=\"border-color: #38bdf8;\">\n"
+       << "          <span class=\"num\" style=\"color: #38bdf8;\">" << std::fixed << std::setprecision(1) << input.overall_coverage_pct << "%</span>\n"
+       << "          <span>Coverage</span>\n"
+       << "        </div>\n"
+       << "        <div class=\"stat-badge\" style=\"border-color: #818cf8;\">\n"
+       << "          <span class=\"num\" style=\"color: #a5b4fc;\">" << std::fixed << std::setprecision(1) << composite_score << "%</span>\n"
+       << "          <span>Composite</span>\n"
+       << "        </div>\n"
+       << "        <div class=\"stat-badge\" style=\"border-color: #10b981;\">\n"
+       << "          <span class=\"num\" style=\"color: #34d399;\">" << input.mentioned_chunks << "</span>\n"
+       << "          <span>Mentioned</span>\n"
+       << "        </div>\n"
+       << "        <div class=\"stat-badge\" style=\"border-color: #f59e0b;\">\n"
+       << "          <span class=\"num\" style=\"color: #fbbf24;\">" << input.not_clear_chunks << "</span>\n"
+       << "          <span>Not Clear</span>\n"
+       << "        </div>\n"
+       << "        <div class=\"stat-badge\" style=\"border-color: #ef4444;\">\n"
+       << "          <span class=\"num\" style=\"color: #f87171;\">" << input.not_mentioned_chunks << "</span>\n"
+       << "          <span>Omitted</span>\n"
+       << "        </div>\n"
        << "      </div>\n"
        << "    </div>\n"
-       << "  </div>\n"
-       << "  <div class=\"columns-wrapper\">\n"
+       << "  </div>\n";
+
+    // Rubric Checklist Drawer
+    if (input.rubric_scorecard.total_items > 0) {
+        ss << "  <div class=\"rubric-drawer\">\n"
+           << "    <div class=\"rubric-header\" id=\"rubric-toggle-btn\">\n"
+           << "      <span>📋 Exam Rubric Checklist (" << input.rubric_scorecard.total_items << " Entities: "
+           << input.rubric_scorecard.satisfied_items << " Verified [✓], " << input.rubric_scorecard.omitted_items << " Omitted [✗])</span>\n"
+           << "      <span id=\"rubric-arrow\">▼</span>\n"
+           << "    </div>\n"
+           << "    <div id=\"rubric-content\">\n"
+           << "      <div class=\"rubric-filters\">\n"
+           << "        <button class=\"rubric-btn active\" data-filter=\"all\">All (" << input.rubric_scorecard.total_items << ")</button>\n"
+           << "        <button class=\"rubric-btn\" data-filter=\"satisfied\">✓ Verified (" << input.rubric_scorecard.satisfied_items << ")</button>\n"
+           << "        <button class=\"rubric-btn\" data-filter=\"omitted\">✗ Omitted (" << input.rubric_scorecard.omitted_items << ")</button>\n"
+           << "      </div>\n"
+           << "      <div class=\"rubric-list\">\n";
+
+        for (const auto& item : input.rubric_scorecard.items) {
+            std::string status_cls = item.is_satisfied ? "satisfied" : "omitted";
+            std::string icon = item.is_satisfied ? "✓" : "✗";
+            ss << "        <span class=\"rubric-chip " << status_cls << "\" data-status=\"" << status_cls
+               << "\" data-ref-chunk=\"" << item.ref_chunk_index << "\">"
+               << icon << " " << escape_html(item.entity_label) << "</span>\n";
+        }
+
+        ss << "      </div>\n"
+           << "    </div>\n"
+           << "  </div>\n";
+    }
+
+    ss << "  <div class=\"columns-wrapper\">\n"
        << "    <!-- LEFT COLUMN: REFERENCE DOCUMENT -->\n"
        << "    <div class=\"column\">\n"
        << "      <div class=\"col-header\">\n"
@@ -312,6 +471,8 @@ rst_code_e TextComparisonVisualizer::generate_html(const TextComparisonInput& in
                 const auto& token = item.word_alignment.reference_words[k];
                 if (token.status == WordDiffStatus::MATCHED) {
                     text_ss << "<span style=\"color: #34d399; font-weight: 500;\">" << escape_html(token.original_word) << "</span>";
+                } else if (token.status == WordDiffStatus::PHONETIC_MISPRONUNCIATION) {
+                    text_ss << "<span style=\"color: #fbbf24; text-decoration: underline wavy #f59e0b; background-color: rgba(245, 158, 11, 0.18); padding: 0 3px; border-radius: 3px;\" title=\"Phonetic match / Minor speech mispronunciation\">" << escape_html(token.original_word) << "</span>";
                 } else if (token.is_legal_citation) {
                     text_ss << "⚠️ <span style=\"color: #ef4444; font-weight: 700; text-decoration: line-through; background-color: rgba(239, 68, 68, 0.25); padding: 0 4px; border-radius: 3px;\" title=\"Legal Article/Citation missing in spoken audio!\">" << escape_html(token.original_word) << "</span>";
                 } else {
@@ -328,7 +489,8 @@ rst_code_e TextComparisonVisualizer::generate_html(const TextComparisonInput& in
 
         std::string citation_badge;
         if (item.word_alignment.has_missing_legal_citation) {
-            citation_badge = " <span class=\"badge-tag\" style=\"color: #ef4444; border: 1px solid #ef4444; background: rgba(239, 68, 68, 0.15);\">⚠️ MISSING CITATION</span>";
+            std::string badge_label = input.active_domain_badge.empty() ? "⚠️ MISSING CITATION" : input.active_domain_badge;
+            citation_badge = " <span class=\"badge-tag\" style=\"color: #ef4444; border: 1px solid #ef4444; background: rgba(239, 68, 68, 0.15);\">" + escape_html(badge_label) + "</span>";
         }
 
         float recall_display = (item.word_alignment.total_reference_weight > 0.0f) ? item.word_alignment.weighted_recall_score : item.word_recall_score;
@@ -365,7 +527,7 @@ rst_code_e TextComparisonVisualizer::generate_html(const TextComparisonInput& in
     ss << "      </div>\n"
        << "    </div>\n"
        << "  </div>\n"
-       << "  <!-- Embedded Script for Left-side Selection, Focus & Remarking -->\n"
+       << "  <!-- Embedded Script for Left-side Selection, Focus & Rubric Filtering -->\n"
        << "  <script>\n"
        << "    document.addEventListener('DOMContentLoaded', () => {\n"
        << "      const tsCol = document.getElementById('transcript-col');\n"
@@ -377,7 +539,7 @@ rst_code_e TextComparisonVisualizer::generate_html(const TextComparisonInput& in
        << "        });\n"
        << "      }\n"
        << "\n"
-       << "      // Selection Interaction: User can only select blocks on the Left (Reference Document)\n"
+       << "      // Selection Interaction\n"
        << "      refCards.forEach(card => {\n"
        << "        card.addEventListener('click', () => {\n"
        << "          const isAlreadySelected = card.classList.contains('selected-left');\n"
@@ -396,6 +558,37 @@ rst_code_e TextComparisonVisualizer::generate_html(const TextComparisonInput& in
        << "                const scrollToPos = Math.max(0, relativeTop - (tsCol.clientHeight / 2) + (targetTs.offsetHeight / 2));\n"
        << "                tsCol.scrollTo({ top: scrollToPos, behavior: 'smooth' });\n"
        << "              }\n"
+       << "            }\n"
+       << "          }\n"
+       << "        });\n"
+       << "      });\n"
+       << "\n"
+       << "      // Rubric Filter Buttons & Chunk Seeking\n"
+       << "      const filterBtns = document.querySelectorAll('.rubric-btn');\n"
+       << "      const chips = document.querySelectorAll('.rubric-chip');\n"
+       << "      filterBtns.forEach(btn => {\n"
+       << "        btn.addEventListener('click', () => {\n"
+       << "          filterBtns.forEach(b => b.classList.remove('active'));\n"
+       << "          btn.classList.add('active');\n"
+       << "          const f = btn.getAttribute('data-filter');\n"
+       << "          chips.forEach(chip => {\n"
+       << "            if (f === 'all' || chip.getAttribute('data-status') === f) {\n"
+       << "              chip.style.display = 'inline-flex';\n"
+       << "            } else {\n"
+       << "              chip.style.display = 'none';\n"
+       << "            }\n"
+       << "          });\n"
+       << "        });\n"
+       << "      });\n"
+       << "\n"
+       << "      chips.forEach(chip => {\n"
+       << "        chip.addEventListener('click', () => {\n"
+       << "          const refChunkId = chip.getAttribute('data-ref-chunk');\n"
+       << "          if (refChunkId !== null) {\n"
+       << "            const targetCard = document.querySelector(`#ref-col .item-card[data-ref-id=\"${refChunkId}\"]`);\n"
+       << "            if (targetCard) {\n"
+       << "              targetCard.click();\n"
+       << "              targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });\n"
        << "            }\n"
        << "          }\n"
        << "        });\n"

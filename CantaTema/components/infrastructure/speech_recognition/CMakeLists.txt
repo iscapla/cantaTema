@@ -10,6 +10,8 @@ create_infra_library(
     src/gpu_detector.cpp
     src/whisper_ctc_aligner.cpp
     src/ctc_alignment_manager.cpp
+    src/diagnostic_radar_evaluator.cpp
+    src/transcript_sentence_stitcher.cpp
     INC_PUBLIC
     INFRASTRUCTURE::SOUND_SYSTEM
     whisper

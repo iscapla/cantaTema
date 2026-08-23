@@ -9,6 +9,7 @@ create_infra_library(
     src/double_metaphone_matcher.cpp
     src/soundex_matcher.cpp
     src/phonetic_matcher_manager.cpp
+    src/rubric_checklist_extractor.cpp
     INC_PUBLIC
     INC_PRIVATE
     CORE::PRIMITIVES

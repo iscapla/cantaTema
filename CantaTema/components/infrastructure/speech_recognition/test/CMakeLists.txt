@@ -14,6 +14,8 @@ create_test_exec(
         t_whisper_quijote_integration.cxx
         t_whisper_coverage.cxx
         t_ctc_aligner.cxx
+        t_diagnostic_radar_evaluator.cxx
+        t_transcript_sentence_stitcher.cxx
     INC_PRIVATE
         CORE::PRIMITIVES
         CORE::CONFIGURATION

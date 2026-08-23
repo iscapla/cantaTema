@@ -19,6 +19,9 @@
 #include "speech_recognition/whisper_speech_recognition.hpp"
 #include "embeddings/llama_embedding_engine.hpp"
 #include "similarity/faiss_similarity_search.hpp"
+#include "similarity/rubric_checklist_extractor.hpp"
+#include "speech_recognition/diagnostic_radar_evaluator.hpp"
+#include "speech_recognition/transcript_sentence_stitcher.hpp"
 #include "operations/operation_subject.hpp"
 #include "operations/operation_practice_event.hpp"
 #include "operations/operation_user_metrics.hpp"
@@ -174,7 +177,9 @@ rst_code_e OperationCoverage::analyze_practice_coverage(
         return res;
     }
 
-    // 6. Vector embeddings
+    // 6. Vector embeddings with heuristic transcript sentence reconstruction
+    std::vector<TranscriptSegment> stitched_segments = TranscriptSentenceStitcher::stitch_segments(segments);
+
     std::filesystem::path llama_model_path;
     if (std::filesystem::exists(resolved_llama_model)) {
         llama_model_path = resolved_llama_model;
@@ -217,15 +222,15 @@ rst_code_e OperationCoverage::analyze_practice_coverage(
     }
 
     std::vector<std::string> transcript_texts;
-    transcript_texts.reserve(segments.size());
-    for (const auto& seg : segments) {
+    transcript_texts.reserve(stitched_segments.size());
+    for (const auto& seg : stitched_segments) {
         transcript_texts.push_back(seg.text);
     }
 
     auto pdf_embeddings = m_embedding_engine->generate_embeddings_batch(pdf_embedding_texts, EmbeddingRole::PASSAGE);
     auto transcript_embeddings = m_embedding_engine->generate_embeddings_batch(transcript_texts, EmbeddingRole::QUERY);
 
-    if (pdf_embeddings.size() != doc_chunks.size() || transcript_embeddings.size() != segments.size()) {
+    if (pdf_embeddings.size() != doc_chunks.size() || transcript_embeddings.size() != stitched_segments.size()) {
         if (logger) logger->error("OperationCoverage::analyze_practice_coverage - Embedding generation size mismatch");
         return UNKNOWN;
     }
@@ -263,8 +268,22 @@ rst_code_e OperationCoverage::analyze_practice_coverage(
 
     double coverage_pct = doc_chunks.empty() ? 0.0 : (static_cast<double>(mentioned_count) / static_cast<double>(doc_chunks.size())) * 100.0;
 
-    // 8. Voice Quality Evaluation
+    // 8. Voice Quality & Diagnostic Evaluation
     VoiceQualityMetrics voice_metrics = VoiceQualityAnalyzer::analyze(segments);
+
+    std::string domain_key = ConfigurationSystem::getInstance().get_comparison_active_domain();
+    if (domain_key.empty()) {
+        domain_key = "law";
+    }
+    auto rubric_items = RubricChecklistExtractor::extract_rubric_items(pdf_display_texts, domain_key);
+    auto rubric_scorecard = RubricChecklistExtractor::evaluate_rubric(rubric_items, transcript_texts, true);
+
+    auto diagnostic_scorecard = DiagnosticRadarEvaluator::evaluate(
+        static_cast<float>(coverage_pct),
+        rubric_scorecard.citation_accuracy_pct,
+        voice_metrics.speech_rate_wpm,
+        voice_metrics.clarity_score
+    );
 
     // 9. Build JSON config snapshot and detailed report
     std::string config_snapshot_json = config.to_json();
@@ -279,6 +298,21 @@ rst_code_e OperationCoverage::analyze_practice_coverage(
               << "\"clarity_score\":" << voice_metrics.clarity_score << ","
               << "\"pacing_score\":" << voice_metrics.pacing_score << ","
               << "\"overall_score\":" << voice_metrics.overall_quality_score
+              << "},"
+              << "\"diagnostic_scorecard\":{"
+              << "\"content_recall_score\":" << diagnostic_scorecard.content_recall_score << ","
+              << "\"citation_accuracy_score\":" << diagnostic_scorecard.citation_accuracy_score << ","
+              << "\"oral_fluency_score\":" << diagnostic_scorecard.oral_fluency_score << ","
+              << "\"speech_clarity_score\":" << diagnostic_scorecard.speech_clarity_score << ","
+              << "\"overall_composite_score\":" << diagnostic_scorecard.overall_composite_score << ","
+              << "\"assessment_verdict\":\"" << diagnostic_scorecard.assessment_verdict << "\","
+              << "\"diagnosis_summary\":\"" << diagnostic_scorecard.diagnosis_summary << "\""
+              << "},"
+              << "\"rubric_scorecard\":{"
+              << "\"total_items\":" << rubric_scorecard.total_items << ","
+              << "\"satisfied_items\":" << rubric_scorecard.satisfied_items << ","
+              << "\"omitted_items\":" << rubric_scorecard.omitted_items << ","
+              << "\"citation_accuracy_pct\":" << rubric_scorecard.citation_accuracy_pct
               << "},"
               << "\"total_pdf_chunks\":" << doc_chunks.size() << ","
               << "\"mentioned_chunks\":" << mentioned_count << ","

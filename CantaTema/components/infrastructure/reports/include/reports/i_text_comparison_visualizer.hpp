@@ -12,6 +12,8 @@
 #include "primitives/definitions.hpp"
 
 #include "similarity/word_sequence_aligner.hpp"
+#include "similarity/rubric_checklist_extractor.hpp"
+#include "speech_recognition/diagnostic_radar_evaluator.hpp"
 
 /**
  * @enum coverage_level_e
@@ -41,6 +43,10 @@ struct TextComparisonInput {
     size_t not_mentioned_chunks{0};       ///< Count of reference chunks matching NOT_MENTIONED status.
     float threshold_mentioned{0.75f};     ///< Similarity threshold for MENTIONED classification.
     float threshold_not_clear{0.50f};     ///< Similarity threshold for NOT_CLEAR classification.
+
+    RubricScorecard rubric_scorecard;             ///< Automated rubric checklist extraction and verification scorecard.
+    DiagnosticScorecard diagnostic_scores;        ///< 4-Axis Micro-Skill diagnostic scorecard (Recall, Citations, Fluency, Clarity).
+    std::string active_domain_badge;              ///< Domain-specific missing citation tag (e.g. "⚠️ MISSING LEGAL CITATION").
 
     /**
      * @struct ReferenceItem

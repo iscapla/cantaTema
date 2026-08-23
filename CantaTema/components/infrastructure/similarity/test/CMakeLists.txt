@@ -8,6 +8,7 @@ create_test_exec(
         t_similarity_search.cxx
         t_word_sequence_aligner.cxx
         t_phonetic_matcher.cxx
+        t_rubric_checklist_extractor.cxx
     INC_PRIVATE
         CORE::PRIMITIVES
         CORE::CONFIGURATION
