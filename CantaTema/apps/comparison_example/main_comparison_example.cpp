@@ -170,11 +170,11 @@ int main(int argc, char* argv[]) {
     // -------------------------------------------------------------------------
     // Resolve sample files from example_data
     // -------------------------------------------------------------------------
-    std::filesystem::path input_sound_file = locate_example_file("subject_es_1_p_1.opus");
-    std::filesystem::path pdf_file = locate_example_file("subject_es_1.pdf");
+    // std::filesystem::path input_sound_file = locate_example_file("subject_es_1_p_1.opus");
+    // std::filesystem::path pdf_file = locate_example_file("subject_es_1.pdf");
 
-    // std::filesystem::path input_sound_file{ "C:\\Users\\iscap\\Desktop\\temas_inspeccion\\tema_28.wav" };
-    // std::filesystem::path pdf_file{ "C:\\Users\\iscap\\Desktop\\temas_inspeccion\\tema_28.pdf" };
+    std::filesystem::path input_sound_file{ "C:\\Users\\iscap\\Desktop\\temas_inspeccion\\tema_28.wav" };
+    std::filesystem::path pdf_file{ "C:\\Users\\iscap\\Desktop\\temas_inspeccion\\tema_28.pdf" };
 
     std::cout << "[INIT] Target Sound File   : " << input_sound_file.string() << "\n";
     std::cout << "[INIT] Target PDF Reference: " << pdf_file.string() << "\n\n";

@@ -357,6 +357,38 @@ float ConfigurationSystem::get_phonetic_similarity_threshold() const {
     }
 }
 
+bool ConfigurationSystem::get_semantic_paraphrase_enable() const {
+    std::string value = const_cast<ConfigurationSystem*>(this)->get_or_default("SEMANTIC_PARAPHRASE", "enable_paraphrasing", "true");
+    std::transform(value.begin(), value.end(), value.begin(), ::tolower);
+    return (value == "true" || value == "1" || value == "yes");
+}
+
+std::string ConfigurationSystem::get_semantic_paraphrase_mode() const {
+    return const_cast<ConfigurationSystem*>(this)->get_or_default("SEMANTIC_PARAPHRASE", "mode", "hybrid");
+}
+
+std::string ConfigurationSystem::get_semantic_paraphrase_default_matcher() const {
+    return const_cast<ConfigurationSystem*>(this)->get_or_default("SEMANTIC_PARAPHRASE", "default_matcher", "hybrid");
+}
+
+float ConfigurationSystem::get_semantic_paraphrase_weight_credit() const {
+    std::string value = const_cast<ConfigurationSystem*>(this)->get_or_default("SEMANTIC_PARAPHRASE", "semantic_weight_credit", "0.95");
+    try {
+        return std::stof(value);
+    } catch (...) {
+        return 0.95f; // Default fallback
+    }
+}
+
+float ConfigurationSystem::get_semantic_paraphrase_embedding_threshold() const {
+    std::string value = const_cast<ConfigurationSystem*>(this)->get_or_default("SEMANTIC_PARAPHRASE", "embedding_threshold", "0.85");
+    try {
+        return std::stof(value);
+    } catch (...) {
+        return 0.85f; // Default fallback
+    }
+}
+
 rst_code_e ConfigurationSystem::set_value(const std::string& section, const std::string& field, const std::string& value) {
     return set(section, field, value);
 }

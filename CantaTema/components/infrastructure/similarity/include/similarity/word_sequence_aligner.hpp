@@ -18,7 +18,8 @@ enum class WordDiffStatus {
     MATCHED = 0,                 /// Word spoken correctly by user
     OMITTED,                     /// Word present in reference but missing in spoken audio
     SUBSTITUTED,                 /// Word replaced or misquoted
-    PHONETIC_MISPRONUNCIATION    /// Word misheard or mispronounced but matching phonetically
+    PHONETIC_MISPRONUNCIATION,   /// Word misheard or mispronounced but matching phonetically
+    SEMANTIC_EQUIVALENCE         /// Valid domain synonym or semantic paraphrase
 };
 
 
@@ -35,6 +36,8 @@ struct WordDiffToken {
     bool is_legal_citation = false; ///< True if token is part of an article/law/enumerator reference
     bool is_numeric = false;       ///< True if token contains numeric data, dates, or percentages
     bool is_stopword = false;      ///< True if token is a minor grammatical article or preposition
+    std::string equivalent_phrase; ///< Spoken synonym or domain paraphrase that matched this token
+    float semantic_similarity = 0.0f; ///< Semantic equivalence confidence rating [0.0 - 1.0]
 };
 
 /**
@@ -44,6 +47,8 @@ struct WordDiffToken {
 struct WordAlignmentResult {
     std::vector<WordDiffToken> reference_words;
     size_t matched_word_count = 0;
+    size_t phonetic_word_count = 0;
+    size_t semantic_word_count = 0;
     size_t omitted_word_count = 0;
     size_t substituted_word_count = 0;
     size_t total_reference_words = 0;
@@ -75,9 +80,16 @@ public:
      * 
      * @param reference_text The reference chunk from PDF.
      * @param transcript_text The spoken transcript segment from Whisper STT.
+     * @param domain_key Academic subject domain ("law", "economics", "science", "history", "general").
+     * @param language Target study language ("es", "en").
      * @return WordAlignmentResult Detailed token breakdown and word recall metrics.
      */
-    static WordAlignmentResult align(const std::string& reference_text, const std::string& transcript_text);
+    static WordAlignmentResult align(
+        const std::string& reference_text,
+        const std::string& transcript_text,
+        const std::string& domain_key = "general",
+        const std::string& language = "es"
+    );
 };
 
 #endif // WORD_SEQUENCE_ALIGNER_HPP

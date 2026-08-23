@@ -473,6 +473,9 @@ rst_code_e TextComparisonVisualizer::generate_html(const TextComparisonInput& in
                     text_ss << "<span style=\"color: #34d399; font-weight: 500;\">" << escape_html(token.original_word) << "</span>";
                 } else if (token.status == WordDiffStatus::PHONETIC_MISPRONUNCIATION) {
                     text_ss << "<span style=\"color: #fbbf24; text-decoration: underline wavy #f59e0b; background-color: rgba(245, 158, 11, 0.18); padding: 0 3px; border-radius: 3px;\" title=\"Phonetic match / Minor speech mispronunciation\">" << escape_html(token.original_word) << "</span>";
+                } else if (token.status == WordDiffStatus::SEMANTIC_EQUIVALENCE) {
+                    std::string tip = token.equivalent_phrase.empty() ? "Semantic Equivalence / Valid Paraphrase" : "Semantic Equivalence: Spoken as '" + escape_html(token.equivalent_phrase) + "'";
+                    text_ss << "<span style=\"color: #60a5fa; text-decoration: underline dotted #3b82f6; background-color: rgba(59, 130, 246, 0.18); padding: 0 3px; border-radius: 3px; font-weight: 500;\" title=\"" << tip << "\">" << escape_html(token.original_word) << "</span>";
                 } else if (token.is_legal_citation) {
                     text_ss << "⚠️ <span style=\"color: #ef4444; font-weight: 700; text-decoration: line-through; background-color: rgba(239, 68, 68, 0.25); padding: 0 4px; border-radius: 3px;\" title=\"Legal Article/Citation missing in spoken audio!\">" << escape_html(token.original_word) << "</span>";
                 } else {

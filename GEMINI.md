@@ -233,6 +233,10 @@ flowchart LR
     ctest --test-dir build -C Debug -T coverage
     ```
 
+### 🧹 Workspace Hygiene & Post-Task Cleanup (Mandatory)
+- **Zero Temporary File Leftovers:** After completing any task, the agent must verify that no temporal or generated files (such as `.gcov`, temporary `.wav`/`.tmp` files, scratch logs, or test artifacts) are left behind in the workspace root or source trees.
+- **Pre-Conclusion Verification:** Always check `git status` or scan for untracked transient files to ensure the working tree remains completely clean before completing an interaction.
+
 ## ⚙️ Configuration Reference (`system.ini`)
 
 All runtime-configurable parameters are managed via `system.ini`, loaded by `ConfigurationSystem`. Keys are organized by INI section. New keys for the coverage analyzer are marked as *planned*.

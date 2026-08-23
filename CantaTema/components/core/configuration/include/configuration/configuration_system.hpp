@@ -198,6 +198,31 @@ public:
     float get_phonetic_similarity_threshold() const;
 
     /**
+     * @brief Retrieves whether semantic synonym and paraphrase matching is enabled.
+     */
+    bool get_semantic_paraphrase_enable() const;
+
+    /**
+     * @brief Retrieves the semantic paraphrasing operational mode (e.g. "hybrid", "dictionary", "embedding").
+     */
+    std::string get_semantic_paraphrase_mode() const;
+
+    /**
+     * @brief Retrieves the default semantic paraphrase matcher algorithm (e.g. "hybrid", "dictionary", "embedding").
+     */
+    std::string get_semantic_paraphrase_default_matcher() const;
+
+    /**
+     * @brief Retrieves the token weight multiplier credit awarded for valid semantic paraphrases (e.g. 0.95).
+     */
+    float get_semantic_paraphrase_weight_credit() const;
+
+    /**
+     * @brief Retrieves the minimum cosine similarity threshold for neural embedding paraphrase matching.
+     */
+    float get_semantic_paraphrase_embedding_threshold() const;
+
+    /**
      * @brief Sets a configuration value at runtime (primarily for testing).
      */
     rst_code_e set_value(const std::string& section, const std::string& field, const std::string& value);

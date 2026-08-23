@@ -205,9 +205,14 @@ TEST(TextComparisonVisualizerTest, GenerateHtmlWithRadarAndRubricChecklist) {
     t_phonetic.original_word = "igualdad";
     t_phonetic.status = WordDiffStatus::PHONETIC_MISPRONUNCIATION;
 
-    r1.word_alignment.reference_words = {t_match, t_phonetic};
-    r1.word_alignment.total_reference_weight = 2.0f;
-    r1.word_alignment.weighted_recall_score = 0.90f;
+    WordDiffToken t_semantic;
+    t_semantic.original_word = "establece";
+    t_semantic.equivalent_phrase = "fija";
+    t_semantic.status = WordDiffStatus::SEMANTIC_EQUIVALENCE;
+
+    r1.word_alignment.reference_words = {t_match, t_phonetic, t_semantic};
+    r1.word_alignment.total_reference_weight = 3.0f;
+    r1.word_alignment.weighted_recall_score = 0.95f;
 
     TextComparisonInput::ReferenceItem r2;
     r2.id = 1;
@@ -247,6 +252,10 @@ TEST(TextComparisonVisualizerTest, GenerateHtmlWithRadarAndRubricChecklist) {
 
     // Verify Phonetic Mispronunciation token rendering
     EXPECT_NE(html.find("underline wavy"), std::string::npos);
+
+    // Verify Semantic Equivalence token rendering
+    EXPECT_NE(html.find("underline dotted"), std::string::npos);
+    EXPECT_NE(html.find("#60a5fa"), std::string::npos);
 
     // Verify Custom Domain Badge
     EXPECT_NE(html.find("⚠️ MISSING LEGAL CITATION"), std::string::npos);

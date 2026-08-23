@@ -1,5 +1,6 @@
 #include "similarity/word_sequence_aligner.hpp"
 #include "similarity/phonetic_matcher_manager.hpp"
+#include "similarity/paraphrase_matcher_manager.hpp"
 #include "configuration/configuration_system.hpp"
 #include <sstream>
 #include <algorithm>
@@ -54,7 +55,12 @@ std::vector<std::string> WordSequenceAligner::tokenize(const std::string& text) 
     return tokens;
 }
 
-WordAlignmentResult WordSequenceAligner::align(const std::string& reference_text, const std::string& transcript_text) {
+WordAlignmentResult WordSequenceAligner::align(
+    const std::string& reference_text,
+    const std::string& transcript_text,
+    const std::string& domain_key,
+    const std::string& language
+) {
     WordAlignmentResult result;
 
     std::vector<std::string> ref_orig = tokenize(reference_text);
@@ -81,12 +87,62 @@ WordAlignmentResult WordSequenceAligner::align(const std::string& reference_text
     size_t m = ref_norm.size();
     size_t n = trans_norm.size();
 
-    // DP table for Longest Common Subsequence (LCS)
+    // Intermediate tracking arrays
+    std::vector<bool> ref_matched(m, false);
+    std::vector<bool> trans_matched(n, false);
+    std::vector<bool> ref_phonetic(m, false);
+    std::vector<bool> ref_semantic(m, false);
+    std::vector<std::string> ref_semantic_phrase(m);
+    std::vector<float> ref_semantic_sim(m, 0.0f);
+
+    // Check if phonetic matching is enabled
+    bool enable_phonetic = ConfigurationSystem::getInstance().get_phonetic_enable_matching();
+    auto phonetic_matcher = enable_phonetic ? PhoneticMatcherManager::getInstance().get_active_matcher() : nullptr;
+
+    // Check if semantic paraphrasing is enabled
+    bool enable_paraphrase = ConfigurationSystem::getInstance().get_semantic_paraphrase_enable();
+    float semantic_weight_credit = ConfigurationSystem::getInstance().get_semantic_paraphrase_weight_credit();
+    auto paraphrase_matcher = enable_paraphrase ? ParaphraseMatcherManager::getInstance().get_active_matcher() : nullptr;
+
+    std::string resolved_domain = domain_key.empty() ? ConfigurationSystem::getInstance().get_comparison_active_domain() : domain_key;
+    std::string resolved_lang = language.empty() ? ConfigurationSystem::getInstance().get_comparison_active_language() : language;
+
+    // Pass 1: Multi-word domain phrase matching (preserving domain concept units)
+    if (paraphrase_matcher) {
+        auto para_matches = paraphrase_matcher->find_paraphrases(ref_norm, trans_norm, resolved_domain, resolved_lang);
+        for (const auto& pm : para_matches) {
+            if (!pm.is_match || !pm.is_multi_word_phrase) continue;
+
+            bool ref_free = true;
+            for (size_t k = 0; k < pm.ref_word_count; ++k) {
+                if (pm.ref_start_index + k >= m || ref_semantic[pm.ref_start_index + k]) { ref_free = false; break; }
+            }
+            bool trans_free = true;
+            for (size_t k = 0; k < pm.trans_word_count; ++k) {
+                if (pm.trans_start_index + k >= n || trans_matched[pm.trans_start_index + k]) { trans_free = false; break; }
+            }
+
+            if (ref_free && trans_free) {
+                for (size_t k = 0; k < pm.ref_word_count; ++k) {
+                    size_t r_idx = pm.ref_start_index + k;
+                    ref_semantic[r_idx] = true;
+                    ref_semantic_phrase[r_idx] = pm.matched_transcript_phrase;
+                    ref_semantic_sim[r_idx] = pm.similarity_score;
+                }
+                for (size_t k = 0; k < pm.trans_word_count; ++k) {
+                    trans_matched[pm.trans_start_index + k] = true;
+                }
+            }
+        }
+    }
+
+    // Pass 2: DP table for Longest Common Subsequence (LCS) on remaining tokens
     std::vector<std::vector<size_t>> dp(m + 1, std::vector<size_t>(n + 1, 0));
 
     for (size_t i = 1; i <= m; ++i) {
         for (size_t j = 1; j <= n; ++j) {
-            if (!ref_norm[i - 1].empty() && ref_norm[i - 1] == trans_norm[j - 1]) {
+            if (!ref_semantic[i - 1] && !trans_matched[j - 1] &&
+                !ref_norm[i - 1].empty() && ref_norm[i - 1] == trans_norm[j - 1]) {
                 dp[i][j] = dp[i - 1][j - 1] + 1;
             } else {
                 dp[i][j] = std::max(dp[i - 1][j], dp[i][j - 1]);
@@ -95,13 +151,12 @@ WordAlignmentResult WordSequenceAligner::align(const std::string& reference_text
     }
 
     // Backtrack to identify matched reference indices
-    std::vector<bool> ref_matched(m, false);
-    std::vector<bool> trans_matched(n, false);
     size_t i = m;
     size_t j = n;
 
     while (i > 0 && j > 0) {
-        if (!ref_norm[i - 1].empty() && ref_norm[i - 1] == trans_norm[j - 1]) {
+        if (!ref_semantic[i - 1] && !trans_matched[j - 1] &&
+            !ref_norm[i - 1].empty() && ref_norm[i - 1] == trans_norm[j - 1]) {
             ref_matched[i - 1] = true;
             trans_matched[j - 1] = true;
             i--;
@@ -113,9 +168,42 @@ WordAlignmentResult WordSequenceAligner::align(const std::string& reference_text
         }
     }
 
-    // Check if phonetic matching is enabled
-    bool enable_phonetic = ConfigurationSystem::getInstance().get_phonetic_enable_matching();
-    auto phonetic_matcher = enable_phonetic ? PhoneticMatcherManager::getInstance().get_active_matcher() : nullptr;
+    // Pass 3: Phonetic matching check on remaining unmatched tokens
+    if (phonetic_matcher) {
+        for (size_t idx = 0; idx < m; ++idx) {
+            if (ref_matched[idx] || ref_semantic[idx] || ref_norm[idx].empty()) continue;
+
+            for (size_t tj = 0; tj < n; ++tj) {
+                if (!trans_matched[tj] && !trans_norm[tj].empty()) {
+                    auto p_res = phonetic_matcher->compare_words(ref_norm[idx], trans_norm[tj]);
+                    if (p_res.is_match) {
+                        ref_phonetic[idx] = true;
+                        trans_matched[tj] = true;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    // Pass 4: Single-word Semantic Synonyms on remaining unmatched tokens
+    if (paraphrase_matcher) {
+        for (size_t idx = 0; idx < m; ++idx) {
+            if (ref_matched[idx] || ref_phonetic[idx] || ref_semantic[idx] || ref_norm[idx].empty()) continue;
+
+            for (size_t tj = 0; tj < n; ++tj) {
+                if (!trans_matched[tj] && !trans_norm[tj].empty()) {
+                    if (paraphrase_matcher->is_synonym(ref_norm[idx], trans_norm[tj], resolved_lang)) {
+                        ref_semantic[idx] = true;
+                        ref_semantic_phrase[idx] = trans_orig[tj];
+                        ref_semantic_sim[idx] = 0.95f;
+                        trans_matched[tj] = true;
+                        break;
+                    }
+                }
+            }
+        }
+    }
 
     // Token weighting classifier lambda
     auto classify_token = [](const std::string& orig_word, const std::string& norm_word, WordDiffToken& token) {
@@ -123,7 +211,8 @@ WordAlignmentResult WordSequenceAligner::align(const std::string& reference_text
         static const std::vector<std::string> stopwords = {
             "el", "la", "los", "las", "un", "una", "unos", "unas", "de", "en", "por", "para", "con",
             "del", "al", "su", "sus", "y", "o", "que", "se", "es", "son", "a", "ante", "bajo", "cabe",
-            "contra", "desde", "durante", "mediante", "hacia", "hasta", "sin", "sobre", "tras", "e", "u"
+            "contra", "desde", "durante", "mediante", "hacia", "hasta", "sin", "sobre", "tras", "e", "u",
+            "the", "of", "in", "for", "to", "and", "or", "is", "are", "by", "with", "from", "at"
         };
         if (std::find(stopwords.begin(), stopwords.end(), norm_word) != stopwords.end()) {
             token.is_stopword = true;
@@ -176,7 +265,7 @@ WordAlignmentResult WordSequenceAligner::align(const std::string& reference_text
         token.weight = 1.0f;
     };
 
-    // Construct final WordDiffToken array with 2nd-pass phonetic alignment
+    // Construct final WordDiffToken array
     result.reference_words.reserve(m);
     for (size_t idx = 0; idx < m; ++idx) {
         WordDiffToken token;
@@ -190,32 +279,23 @@ WordAlignmentResult WordSequenceAligner::align(const std::string& reference_text
             token.status = WordDiffStatus::MATCHED;
             result.matched_word_count++;
             result.matched_reference_weight += token.weight;
+        } else if (ref_phonetic[idx]) {
+            token.status = WordDiffStatus::PHONETIC_MISPRONUNCIATION;
+            result.matched_word_count++;
+            result.phonetic_word_count++;
+            result.matched_reference_weight += (token.weight * 0.85f); // 85% partial credit
+        } else if (ref_semantic[idx]) {
+            token.status = WordDiffStatus::SEMANTIC_EQUIVALENCE;
+            token.equivalent_phrase = ref_semantic_phrase[idx];
+            token.semantic_similarity = ref_semantic_sim[idx];
+            result.matched_word_count++;
+            result.semantic_word_count++;
+            result.matched_reference_weight += (token.weight * semantic_weight_credit); // configurable partial credit
         } else {
-            // 2nd-pass Phonetic matching check
-            bool found_phonetic_match = false;
-            if (phonetic_matcher && !ref_norm[idx].empty()) {
-                for (size_t tj = 0; tj < n; ++tj) {
-                    if (!trans_matched[tj] && !trans_norm[tj].empty()) {
-                        auto p_res = phonetic_matcher->compare_words(ref_norm[idx], trans_norm[tj]);
-                        if (p_res.is_match) {
-                            found_phonetic_match = true;
-                            trans_matched[tj] = true;
-                            break;
-                        }
-                    }
-                }
-            }
-
-            if (found_phonetic_match) {
-                token.status = WordDiffStatus::PHONETIC_MISPRONUNCIATION;
-                result.matched_word_count++;
-                result.matched_reference_weight += (token.weight * 0.85f); // 85% partial credit
-            } else {
-                token.status = WordDiffStatus::OMITTED;
-                result.omitted_word_count++;
-                if (token.is_legal_citation) {
-                    result.has_missing_legal_citation = true;
-                }
+            token.status = WordDiffStatus::OMITTED;
+            result.omitted_word_count++;
+            if (token.is_legal_citation) {
+                result.has_missing_legal_citation = true;
             }
         }
 

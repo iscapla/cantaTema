@@ -57,3 +57,36 @@ TEST(WordSequenceAlignerTest, WeightedRecallAndLegalCitationTracking) {
     EXPECT_GT(res.weighted_recall_score, 0.0f);
     EXPECT_LT(res.weighted_recall_score, 1.0f);
 }
+
+TEST(WordSequenceAlignerTest, SemanticSynonymWordAlignment) {
+    std::string ref = "La ley establece el requisito obligatorio.";
+    std::string trans = "La ley fija el presupuesto preceptivo.";
+
+    auto res = WordSequenceAligner::align(ref, trans, "law", "es");
+    EXPECT_EQ(res.total_reference_words, 6u);
+    EXPECT_EQ(res.matched_word_count, 6u); // all 6 accounted for (3 exact, 3 semantic)
+    EXPECT_EQ(res.semantic_word_count, 3u); // establece->fija, requisito->presupuesto, obligatorio->preceptivo
+    EXPECT_EQ(res.omitted_word_count, 0u);
+
+    // Verify token states
+    EXPECT_EQ(res.reference_words[0].status, WordDiffStatus::MATCHED); // La
+    EXPECT_EQ(res.reference_words[1].status, WordDiffStatus::MATCHED); // ley
+    EXPECT_EQ(res.reference_words[2].status, WordDiffStatus::SEMANTIC_EQUIVALENCE); // establece -> fija
+    EXPECT_EQ(res.reference_words[3].status, WordDiffStatus::MATCHED); // el
+    EXPECT_EQ(res.reference_words[4].status, WordDiffStatus::SEMANTIC_EQUIVALENCE); // requisito -> presupuesto
+    EXPECT_EQ(res.reference_words[5].status, WordDiffStatus::SEMANTIC_EQUIVALENCE); // obligatorio -> preceptivo
+}
+
+TEST(WordSequenceAlignerTest, MultiWordDomainParaphraseAlignment) {
+    std::string ref = "El hecho imponible genera la obligación tributaria.";
+    std::string trans = "El presupuesto de hecho origina la obligación tributaria.";
+
+    auto res = WordSequenceAligner::align(ref, trans, "law", "es");
+    EXPECT_EQ(res.total_reference_words, 7u);
+    EXPECT_GE(res.matched_word_count, 6u);
+    EXPECT_GE(res.semantic_word_count, 2u); // hecho, imponible
+
+    EXPECT_EQ(res.reference_words[1].status, WordDiffStatus::SEMANTIC_EQUIVALENCE); // hecho
+    EXPECT_EQ(res.reference_words[2].status, WordDiffStatus::SEMANTIC_EQUIVALENCE); // imponible
+}
+

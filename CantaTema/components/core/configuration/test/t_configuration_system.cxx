@@ -118,6 +118,8 @@ TEST_F(ConfigurationSystemTest, FallbackOnGarbageValues) {
     (config.*set_fn)("COVERAGE", "importance_weight_italic", "not_a_number");
     (config.*set_fn)("COVERAGE", "importance_weight_underline", "not_a_number");
     (config.*set_fn)("COVERAGE", "importance_weight_bg_color", "not_a_number");
+    (config.*set_fn)("SEMANTIC_PARAPHRASE", "semantic_weight_credit", "not_a_number");
+    (config.*set_fn)("SEMANTIC_PARAPHRASE", "embedding_threshold", "not_a_number");
 
     // 3. Verify fallbacks are returned
     EXPECT_EQ(config.get_user_default_max_text_file_size_in_mb(), 25u);
@@ -131,6 +133,8 @@ TEST_F(ConfigurationSystemTest, FallbackOnGarbageValues) {
     EXPECT_FLOAT_EQ(config.get_importance_weight_italic(), 1.2f);
     EXPECT_FLOAT_EQ(config.get_importance_weight_underline(), 1.3f);
     EXPECT_FLOAT_EQ(config.get_importance_weight_bg_color(), 1.4f);
+    EXPECT_FLOAT_EQ(config.get_semantic_paraphrase_weight_credit(), 0.95f);
+    EXPECT_FLOAT_EQ(config.get_semantic_paraphrase_embedding_threshold(), 0.85f);
 
     // 4. Restore original values
     (config.*set_fn)("USER_LIMITS", "max_text_file_size_mb", std::to_string(orig_text_limit));
@@ -144,6 +148,8 @@ TEST_F(ConfigurationSystemTest, FallbackOnGarbageValues) {
     (config.*set_fn)("COVERAGE", "importance_weight_italic", std::to_string(orig_italic_w));
     (config.*set_fn)("COVERAGE", "importance_weight_underline", std::to_string(orig_underline_w));
     (config.*set_fn)("COVERAGE", "importance_weight_bg_color", std::to_string(orig_bg_color_w));
+    (config.*set_fn)("SEMANTIC_PARAPHRASE", "semantic_weight_credit", "0.95");
+    (config.*set_fn)("SEMANTIC_PARAPHRASE", "embedding_threshold", "0.85");
 }
 
 TEST_F(ConfigurationSystemTest, NewGettersValues) {
@@ -159,6 +165,11 @@ TEST_F(ConfigurationSystemTest, NewGettersValues) {
     EXPECT_GT(config.get_importance_weight_bg_color(), 0.0f);
     EXPECT_GT(config.get_max_pdf_page_count(), 0u);
     EXPECT_GT(config.get_max_recording_duration_minutes(), 0u);
+    EXPECT_TRUE(config.get_semantic_paraphrase_enable());
+    EXPECT_EQ(config.get_semantic_paraphrase_mode(), "hybrid");
+    EXPECT_EQ(config.get_semantic_paraphrase_default_matcher(), "hybrid");
+    EXPECT_FLOAT_EQ(config.get_semantic_paraphrase_weight_credit(), 0.95f);
+    EXPECT_FLOAT_EQ(config.get_semantic_paraphrase_embedding_threshold(), 0.85f);
 }
 
 class TestConfiguration : public IConfigurationBase {
