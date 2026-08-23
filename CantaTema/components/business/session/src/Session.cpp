@@ -16,6 +16,7 @@
 #include "database/db_coverage.hpp"
 #include "sound_system/sound_system.hpp"
 #include "models/manager_models.hpp"
+#include "speech_recognition/gpu_detector.hpp"
 
 Session::Session(
     std::shared_ptr<IOperationUser> &&_user_op,
@@ -26,7 +27,8 @@ Session::Session(
     std::shared_ptr<IOperationCoverage> &&_coverage_op,
     std::shared_ptr<IDatabase> &&_db_op,
     std::shared_ptr<ISoundSystem> &&_sound_system_op,
-    std::shared_ptr<ManagerModels> &&_models_manager_op
+    std::shared_ptr<ManagerModels> &&_models_manager_op,
+    std::shared_ptr<cantatema::infra::IGpuDetector> &&_gpu_detector_op
 ) : user_op(std::move(_user_op)),
     category_op(std::move(_category_op)),
     subject_op(std::move(_subject_op)),
@@ -35,7 +37,8 @@ Session::Session(
     coverage_op(std::move(_coverage_op)),
     db_coverage_op(std::move(_db_op)),
     sound_op(std::move(_sound_system_op)),
-    models_manager_op(std::move(_models_manager_op))
+    models_manager_op(std::move(_models_manager_op)),
+    gpu_detector_op(std::move(_gpu_detector_op))
 {
     if (user_op == nullptr || category_op == nullptr || subject_op == nullptr || user_metrics_op == nullptr || practice_event_op == nullptr)
     {
@@ -57,6 +60,10 @@ Session::Session(
     {
         models_manager_op = std::make_shared<ManagerModels>();
     }
+    if (gpu_detector_op == nullptr)
+    {
+        gpu_detector_op = std::make_shared<cantatema::infra::GpuDetector>();
+    }
     initialize();
 }
 
@@ -71,8 +78,9 @@ Session::Session(void)
     coverage_op = std::make_shared<OperationCoverage>(db_coverage_op, subject_op, practice_event_op);
     sound_op = std::make_shared<SoundSystem>(ISoundSystem::SoundSystemConfig{});
     models_manager_op = std::make_shared<ManagerModels>();
+    gpu_detector_op = std::make_shared<cantatema::infra::GpuDetector>();
 
-    if (user_op == nullptr || category_op == nullptr || subject_op == nullptr || user_metrics_op == nullptr || practice_event_op == nullptr || coverage_op == nullptr || db_coverage_op == nullptr || sound_op == nullptr || models_manager_op == nullptr)
+    if (user_op == nullptr || category_op == nullptr || subject_op == nullptr || user_metrics_op == nullptr || practice_event_op == nullptr || coverage_op == nullptr || db_coverage_op == nullptr || sound_op == nullptr || models_manager_op == nullptr || gpu_detector_op == nullptr)
     {
         throw std::runtime_error("Operation session received wrong operation instances. (2)");
     }
@@ -801,3 +809,24 @@ rst_code_e Session::save_user_config(void)
         return UNKNOWN;
     return db_coverage_op->save_user_configuration(session_user->get_useraccountid(), session_user_config);
 }
+
+rst_code_e Session::get_hardware_info(cantatema::HardwareInfo &info) const
+{
+    if (gpu_detector_op)
+    {
+        info = gpu_detector_op->detect_hardware();
+    }
+    else
+    {
+        info = cantatema::infra::detect_hardware();
+    }
+    return RST_OK;
+}
+
+cantatema::HardwareInfo Session::get_hardware_info(void) const
+{
+    cantatema::HardwareInfo info{};
+    get_hardware_info(info);
+    return info;
+}
+

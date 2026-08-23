@@ -27,6 +27,7 @@ rst_code_e terminal_init_subject(std::unique_ptr<cli::Menu> &rootMenu);
 rst_code_e terminal_init_practice(std::unique_ptr<cli::Menu> &rootMenu);
 rst_code_e terminal_init_models(std::unique_ptr<cli::Menu> &rootMenu);
 rst_code_e terminal_init_coverage(std::unique_ptr<cli::Menu> &rootMenu);
+rst_code_e terminal_init_hardware(std::unique_ptr<cli::Menu> &rootMenu);
 
 
 rst_code_e terminal_cli_start(void)
@@ -80,6 +81,7 @@ rst_code_e terminal_cli_start(void)
         terminal_init_practice(rootMenu);
         terminal_init_models(rootMenu);
         terminal_init_coverage(rootMenu);
+        terminal_init_hardware(rootMenu);
 
         rootMenu->Insert(
             "user_identify", {"name", "password"},
@@ -96,6 +98,22 @@ rst_code_e terminal_cli_start(void)
                 terminal_session->user_metrics_get(out);
             },
             "User metrics");
+
+        rootMenu->Insert(
+            "hardware", {},
+            [](std::ostream &out)
+            {
+                terminal_session->hardware_info(out);
+            },
+            "Display detected CPU and GPU hardware information");
+
+        rootMenu->Insert(
+            "hardware_info", {},
+            [](std::ostream &out)
+            {
+                terminal_session->hardware_info(out);
+            },
+            "Display detected CPU and GPU hardware information");
 
         // create a cli with the given root menu and a persistent storage
         // you must pass to FileHistoryStorage the path of the history file
@@ -509,3 +527,49 @@ rst_code_e terminal_init_coverage(std::unique_ptr<cli::Menu> &rootMenu)
 
     return CONSOLE_EXP;
 }
+
+rst_code_e terminal_init_hardware(std::unique_ptr<cli::Menu> &rootMenu)
+{
+    try
+    {
+        auto hardwareMenu = std::make_unique<cli::Menu>("hardware", "Hardware detection commands (MENU)");
+
+        hardwareMenu->Insert(
+            "info", {},
+            [](std::ostream &out)
+            {
+                terminal_session->hardware_info(out);
+            },
+            "Display complete host CPU and GPU hardware information");
+
+        hardwareMenu->Insert(
+            "cpu", {},
+            [](std::ostream &out)
+            {
+                terminal_session->hardware_cpu(out);
+            },
+            "Display host CPU specifications and cores");
+
+        hardwareMenu->Insert(
+            "gpu", {},
+            [](std::ostream &out)
+            {
+                terminal_session->hardware_gpu(out);
+            },
+            "Display detected GPU devices and acceleration status");
+
+        rootMenu->Insert(std::move(hardwareMenu));
+        return RST_OK;
+    }
+    catch (const std::exception &e)
+    {
+        logger->error("Exception caught in hardware menu: {}", e.what());
+    }
+    catch (...)
+    {
+        logger->critical("Unknown exception caught in hardware menu.");
+    }
+
+    return CONSOLE_EXP;
+}
+

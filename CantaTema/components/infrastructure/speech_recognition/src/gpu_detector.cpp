@@ -9,7 +9,9 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstring>
 #include <string_view>
+#include <thread>
 
 #ifdef _WIN32
 #  define WIN32_LEAN_AND_MEAN
@@ -17,8 +19,17 @@
 #    define NOMINMAX
 #  endif
 #  include <windows.h>
+#  include <intrin.h>
 #else
 #  include <dlfcn.h>
+#  if defined(__x86_64__) || defined(__i386__)
+#    include <cpuid.h>
+#  endif
+#  if defined(__APPLE__)
+#    include <sys/sysctl.h>
+#  elif defined(__linux__)
+#    include <sys/sysinfo.h>
+#  endif
 #endif
 
 #include "ggml-backend.h"
@@ -343,10 +354,172 @@ AccelerationReport GpuDetector::detect_accelerators()
     return report;
 }
 
+cantatema::CpuInfo GpuDetector::detect_cpu()
+{
+    cantatema::CpuInfo cpu{};
+
+#if defined(__x86_64__) || defined(_M_X64)
+    cpu.architecture = "x86_64";
+#elif defined(__i386__) || defined(_M_IX86)
+    cpu.architecture = "x86";
+#elif defined(__aarch64__) || defined(_M_ARM64)
+    cpu.architecture = "ARM64";
+#elif defined(__arm__) || defined(_M_ARM)
+    cpu.architecture = "ARM";
+#else
+    cpu.architecture = "Unknown";
+#endif
+
+    cpu.core_count = std::thread::hardware_concurrency();
+    if (cpu.core_count == 0) {
+        cpu.core_count = 1;
+    }
+
+#if defined(_WIN32)
+    MEMORYSTATUSEX mem_status;
+    mem_status.dwLength = sizeof(mem_status);
+    if (GlobalMemoryStatusEx(&mem_status)) {
+        cpu.system_ram_mb = static_cast<std::size_t>(mem_status.ullTotalPhys / (1024 * 1024));
+    }
+#elif defined(__APPLE__)
+    int mib[2] = {CTL_HW, HW_MEMSIZE};
+    int64_t size = 0;
+    size_t len = sizeof(size);
+    if (sysctl(mib, 2, &size, &len, nullptr, 0) == 0) {
+        cpu.system_ram_mb = static_cast<std::size_t>(size / (1024 * 1024));
+    }
+#elif defined(__linux__)
+    struct sysinfo info;
+    if (sysinfo(&info) == 0) {
+        cpu.system_ram_mb = static_cast<std::size_t>((info.totalram * info.mem_unit) / (1024 * 1024));
+    }
+#endif
+
+    // Query CPU Brand String via CPUID where available
+#if defined(_WIN32) && (defined(_M_X64) || defined(_M_IX86))
+    int cpu_info[4] = {0};
+    __cpuid(cpu_info, static_cast<int>(0x80000000));
+    unsigned int nExIds = static_cast<unsigned int>(cpu_info[0]);
+    if (nExIds >= 0x80000004) {
+        char brand[49] = {0};
+        __cpuid(reinterpret_cast<int*>(brand), static_cast<int>(0x80000002));
+        __cpuid(reinterpret_cast<int*>(brand + 16), static_cast<int>(0x80000003));
+        __cpuid(reinterpret_cast<int*>(brand + 32), static_cast<int>(0x80000004));
+        brand[48] = '\0';
+        std::string brand_str(brand);
+        size_t first = brand_str.find_first_not_of(" \t\r\n");
+        size_t last = brand_str.find_last_not_of(" \t\r\n");
+        if (first != std::string::npos && last != std::string::npos) {
+            cpu.name = brand_str.substr(first, (last - first + 1));
+        } else {
+            cpu.name = brand_str;
+        }
+    }
+#elif (defined(__x86_64__) || defined(__i386__)) && (defined(__GNUC__) || defined(__clang__))
+    unsigned int eax = 0, ebx = 0, ecx = 0, edx = 0;
+    if (__get_cpuid(0x80000000, &eax, &ebx, &ecx, &edx) && eax >= 0x80000004) {
+        char brand[49] = {0};
+        __get_cpuid(0x80000002, reinterpret_cast<unsigned int*>(brand),
+                                reinterpret_cast<unsigned int*>(brand + 4),
+                                reinterpret_cast<unsigned int*>(brand + 8),
+                                reinterpret_cast<unsigned int*>(brand + 12));
+        __get_cpuid(0x80000003, reinterpret_cast<unsigned int*>(brand + 16),
+                                reinterpret_cast<unsigned int*>(brand + 20),
+                                reinterpret_cast<unsigned int*>(brand + 24),
+                                reinterpret_cast<unsigned int*>(brand + 28));
+        __get_cpuid(0x80000004, reinterpret_cast<unsigned int*>(brand + 32),
+                                reinterpret_cast<unsigned int*>(brand + 36),
+                                reinterpret_cast<unsigned int*>(brand + 40),
+                                reinterpret_cast<unsigned int*>(brand + 44));
+        brand[48] = '\0';
+        std::string brand_str(brand);
+        size_t first = brand_str.find_first_not_of(" \t\r\n");
+        size_t last = brand_str.find_last_not_of(" \t\r\n");
+        if (first != std::string::npos && last != std::string::npos) {
+            cpu.name = brand_str.substr(first, (last - first + 1));
+        } else {
+            cpu.name = brand_str;
+        }
+    }
+#elif defined(__APPLE__)
+    char buffer[256] = {0};
+    size_t buffer_len = sizeof(buffer);
+    if (sysctlbyname("machdep.cpu.brand_string", buffer, &buffer_len, nullptr, 0) == 0) {
+        cpu.name = buffer;
+    }
+#endif
+
+    if (cpu.name.empty()) {
+#if defined(_WIN32)
+        HKEY hKey;
+        if (RegOpenKeyExA(HKEY_LOCAL_MACHINE, "HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0", 0, KEY_READ, &hKey) == ERROR_SUCCESS) {
+            char reg_name[256] = {0};
+            DWORD reg_size = sizeof(reg_name);
+            DWORD type = 0;
+            if (RegQueryValueExA(hKey, "ProcessorNameString", nullptr, &type, reinterpret_cast<LPBYTE>(reg_name), &reg_size) == ERROR_SUCCESS) {
+                cpu.name = reg_name;
+            }
+            RegCloseKey(hKey);
+        }
+#endif
+    }
+
+    if (cpu.name.empty()) {
+        cpu.name = "Host CPU (" + cpu.architecture + ")";
+    }
+
+    logger->info("Detected Host CPU: '{}' | Architecture: {} | Cores: {} | System RAM: {} MB",
+                 cpu.name, cpu.architecture, cpu.core_count, cpu.system_ram_mb);
+
+    return cpu;
+}
+
+cantatema::HardwareInfo GpuDetector::detect_hardware()
+{
+    cantatema::HardwareInfo hw{};
+    hw.cpu = detect_cpu();
+
+    AccelerationReport accel = detect_accelerators();
+    hw.has_cuda = accel.has_cuda;
+    hw.has_vulkan = accel.has_vulkan;
+    hw.has_metal = accel.has_metal;
+    hw.has_any_gpu = accel.has_any_gpu;
+    hw.selected_backend = accel.selected_device_name;
+    hw.use_gpu = accel.use_gpu;
+
+    for (const auto& dev : accel.devices) {
+        if (dev.is_gpu) {
+            cantatema::GpuInfo gpu{};
+            gpu.name = dev.name;
+            gpu.description = dev.description;
+            gpu.backend_name = dev.backend_name;
+            gpu.type_str = dev.type_str;
+            gpu.is_gpu = dev.is_gpu;
+            gpu.memory_free_mb = dev.memory_free_mb;
+            gpu.memory_total_mb = dev.memory_total_mb;
+            hw.gpus.push_back(gpu);
+        }
+    }
+
+    return hw;
+}
+
 AccelerationReport detect_accelerators()
 {
     GpuDetector detector;
     return detector.detect_accelerators();
+}
+
+cantatema::HardwareInfo detect_hardware()
+{
+    GpuDetector detector;
+    return detector.detect_hardware();
+}
+
+cantatema::CpuInfo detect_cpu()
+{
+    GpuDetector detector;
+    return detector.detect_cpu();
 }
 
 } // namespace cantatema::infra

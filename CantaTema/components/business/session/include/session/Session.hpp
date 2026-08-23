@@ -20,6 +20,11 @@
 #include "sound_system/i_sound_system.hpp"
 #include "database/i_database.hpp"
 #include "primitives/user_configuration.hpp"
+#include "primitives/hardware_info.hpp"
+
+namespace cantatema::infra {
+class IGpuDetector;
+}
 
 /**
  * @class Session
@@ -39,6 +44,7 @@ public:
      * @param _db_op Injected database handler for coverage persistence (optional).
      * @param _sound_system_op Injected sound system handler (optional).
      * @param _models_manager_op Injected model manager handler (optional).
+     * @param _gpu_detector_op Injected hardware/GPU detector handler (optional).
      */
     Session(
         std::shared_ptr<IOperationUser> &&_user_op,
@@ -49,7 +55,8 @@ public:
         std::shared_ptr<IOperationCoverage> &&_coverage_op = nullptr,
         std::shared_ptr<IDatabase> &&_db_op = nullptr,
         std::shared_ptr<ISoundSystem> &&_sound_system_op = nullptr,
-        std::shared_ptr<ManagerModels> &&_models_manager_op = nullptr
+        std::shared_ptr<ManagerModels> &&_models_manager_op = nullptr,
+        std::shared_ptr<cantatema::infra::IGpuDetector> &&_gpu_detector_op = nullptr
     );
 
     /**
@@ -578,6 +585,23 @@ public:
      */
     rst_code_e save_user_config(void);
 
+    //-------------------------------------------------------------------------------------
+    // Hardware (CPU & GPU) Detection
+    //-------------------------------------------------------------------------------------
+
+    /**
+     * @brief Probes and retrieves detected CPU and GPU hardware information.
+     * @param info Output reference receiving detected HardwareInfo.
+     * @return rst_code_e RST_OK on success.
+     */
+    rst_code_e get_hardware_info(cantatema::HardwareInfo &info) const;
+
+    /**
+     * @brief Probes and returns detected CPU and GPU hardware information.
+     * @return cantatema::HardwareInfo Containing detected CPU and GPU details.
+     */
+    cantatema::HardwareInfo get_hardware_info(void) const;
+
 private:
     std::shared_ptr<IOperationUser> user_op{nullptr};
     std::shared_ptr<IOperationCategory> category_op{nullptr};
@@ -588,6 +612,7 @@ private:
     std::shared_ptr<IDatabase> db_coverage_op{nullptr};
     std::shared_ptr<ISoundSystem> sound_op{nullptr};
     std::shared_ptr<ManagerModels> models_manager_op{nullptr};
+    std::shared_ptr<cantatema::infra::IGpuDetector> gpu_detector_op{nullptr};
 
     //-------------------------------------------------------------------------------------
 

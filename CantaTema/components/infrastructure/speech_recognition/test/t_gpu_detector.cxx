@@ -75,3 +75,67 @@ TEST(GpuDetectorTest, ConcreteGpuDetectorExecutionDoesNotCrash) {
     auto report = detector.detect_accelerators();
     EXPECT_FALSE(report.selected_device_name.empty());
 }
+
+TEST(GpuDetectorTest, ConcreteDetectCpuReturnsValidProfile) {
+    GpuDetector detector;
+    auto cpu = detector.detect_cpu();
+    EXPECT_FALSE(cpu.name.empty());
+    EXPECT_FALSE(cpu.architecture.empty());
+    EXPECT_GT(cpu.core_count, 0u);
+}
+
+TEST(GpuDetectorTest, ConcreteDetectHardwareReturnsValidReport) {
+    GpuDetector detector;
+    auto hw = detector.detect_hardware();
+    EXPECT_FALSE(hw.cpu.name.empty());
+    EXPECT_GT(hw.cpu.core_count, 0u);
+    EXPECT_FALSE(hw.selected_backend.empty());
+}
+
+TEST(GpuDetectorTest, FreeFunctionsExecuteSuccessfully) {
+    auto cpu = cantatema::infra::detect_cpu();
+    EXPECT_FALSE(cpu.name.empty());
+
+    auto hw = cantatema::infra::detect_hardware();
+    EXPECT_FALSE(hw.cpu.name.empty());
+
+    auto accel = cantatema::infra::detect_accelerators();
+    EXPECT_FALSE(accel.selected_device_name.empty());
+}
+
+TEST(GpuDetectorTest, MockHardwareReport) {
+    StrictMock<MockGpuDetector> mock_detector;
+
+    cantatema::HardwareInfo mock_hw;
+    mock_hw.cpu.name = "Mock Processor 8-Core";
+    mock_hw.cpu.architecture = "x86_64";
+    mock_hw.cpu.core_count = 8;
+    mock_hw.cpu.system_ram_mb = 16384;
+    mock_hw.has_cuda = true;
+    mock_hw.has_any_gpu = true;
+    mock_hw.use_gpu = true;
+    mock_hw.selected_backend = "CUDA";
+
+    cantatema::GpuInfo gpu;
+    gpu.name = "CUDA0";
+    gpu.description = "Mock RTX 4090";
+    gpu.backend_name = "CUDA";
+    gpu.type_str = "GPU (Dedicated)";
+    gpu.is_gpu = true;
+    gpu.memory_total_mb = 24576;
+    gpu.memory_free_mb = 20480;
+    mock_hw.gpus.push_back(gpu);
+
+    EXPECT_CALL(mock_detector, detect_hardware())
+        .WillOnce(Return(mock_hw));
+
+    auto hw = mock_detector.detect_hardware();
+    EXPECT_EQ(hw.cpu.name, "Mock Processor 8-Core");
+    EXPECT_EQ(hw.cpu.core_count, 8u);
+    EXPECT_TRUE(hw.has_cuda);
+    EXPECT_TRUE(hw.use_gpu);
+    ASSERT_EQ(hw.gpus.size(), 1u);
+    EXPECT_EQ(hw.gpus[0].description, "Mock RTX 4090");
+    EXPECT_EQ(hw.gpus[0].memory_total_mb, 24576u);
+}
+

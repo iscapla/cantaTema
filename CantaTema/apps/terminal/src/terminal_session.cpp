@@ -414,3 +414,79 @@ void TerminalSession::subject_set_language(std::ostream &out, unsigned int subje
         logger->info("Subject language set to '{}'", language);
     }
 }
+
+void TerminalSession::hardware_info(std::ostream &out)
+{
+    cantatema::HardwareInfo hw = op->get_hardware_info();
+
+    out << "\n============================== Host Hardware Summary ==============================\n";
+    out << "CPU Information:\n";
+    out << "  Processor:       " << hw.cpu.name << "\n";
+    out << "  Architecture:    " << hw.cpu.architecture << "\n";
+    out << "  Logical Cores:   " << hw.cpu.core_count << "\n";
+    if (hw.cpu.system_ram_mb > 0) {
+        out << "  System RAM:      " << hw.cpu.system_ram_mb << " MB\n";
+    }
+
+    out << "\nGPU Devices Detected (" << hw.gpus.size() << "):\n";
+    if (hw.gpus.empty()) {
+        out << "  No dedicated or integrated GPU devices detected.\n";
+    } else {
+        for (std::size_t i = 0; i < hw.gpus.size(); ++i) {
+            const auto &g = hw.gpus[i];
+            out << "  [" << i << "] " << g.description << " (" << g.name << ")\n";
+            out << "      Backend:     " << g.backend_name << "\n";
+            out << "      Type:        " << g.type_str << "\n";
+            if (g.memory_total_mb > 0) {
+                out << "      VRAM:        " << g.memory_total_mb << " MB Total";
+                if (g.memory_free_mb > 0 && g.memory_free_mb <= g.memory_total_mb) {
+                    out << " / " << g.memory_free_mb << " MB Free";
+                }
+                out << "\n";
+            }
+        }
+    }
+
+    out << "\nHardware Acceleration Status:\n";
+    out << "  CUDA Available:     " << (hw.has_cuda ? "YES" : "NO") << "\n";
+    out << "  Vulkan Available:   " << (hw.has_vulkan ? "YES" : "NO") << "\n";
+    out << "  Metal Available:    " << (hw.has_metal ? "YES" : "NO") << "\n";
+    out << "  AI Acceleration:    " << (hw.use_gpu ? "ENABLED" : "DISABLED (CPU-only fallback)")
+        << " [Selected Backend: " << hw.selected_backend << "]\n";
+    out << "==================================================================================\n";
+}
+
+void TerminalSession::hardware_cpu(std::ostream &out)
+{
+    cantatema::HardwareInfo hw = op->get_hardware_info();
+
+    out << "\n--- CPU Information ---\n";
+    out << "  Processor:       " << hw.cpu.name << "\n";
+    out << "  Architecture:    " << hw.cpu.architecture << "\n";
+    out << "  Logical Cores:   " << hw.cpu.core_count << "\n";
+    if (hw.cpu.system_ram_mb > 0) {
+        out << "  System RAM:      " << hw.cpu.system_ram_mb << " MB\n";
+    }
+}
+
+void TerminalSession::hardware_gpu(std::ostream &out)
+{
+    cantatema::HardwareInfo hw = op->get_hardware_info();
+
+    out << "\n--- GPU Devices Detected (" << hw.gpus.size() << ") ---\n";
+    if (hw.gpus.empty()) {
+        out << "  No GPU devices detected.\n";
+    } else {
+        for (std::size_t i = 0; i < hw.gpus.size(); ++i) {
+            const auto &g = hw.gpus[i];
+            out << "  [" << i << "] " << g.description << " (" << g.name << ")\n";
+            out << "      Backend:     " << g.backend_name << "\n";
+            out << "      Type:        " << g.type_str << "\n";
+            if (g.memory_total_mb > 0) {
+                out << "      VRAM:        " << g.memory_total_mb << " MB Total\n";
+            }
+        }
+    }
+    out << "  AI Acceleration: " << (hw.use_gpu ? "ENABLED" : "DISABLED") << " (" << hw.selected_backend << ")\n";
+}
+

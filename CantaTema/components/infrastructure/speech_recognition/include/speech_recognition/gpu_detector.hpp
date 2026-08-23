@@ -11,6 +11,8 @@
 #include <vector>
 #include <memory>
 
+#include "primitives/hardware_info.hpp"
+
 namespace cantatema::infra {
 
 /**
@@ -52,11 +54,23 @@ public:
      * @return AccelerationReport containing enumerated devices and selected backend strategy.
      */
     virtual AccelerationReport detect_accelerators() = 0;
+
+    /**
+     * @brief Probe host hardware and compile full CPU and GPU device report.
+     * @return cantatema::HardwareInfo Aggregated hardware detection profile.
+     */
+    virtual cantatema::HardwareInfo detect_hardware() = 0;
+
+    /**
+     * @brief Probe host CPU specifications (model brand, architecture, logical cores, system RAM).
+     * @return cantatema::CpuInfo Detected CPU profile.
+     */
+    virtual cantatema::CpuInfo detect_cpu() = 0;
 };
 
 /**
  * @class GpuDetector
- * @brief Concrete implementation of IGpuDetector probing host CUDA/Vulkan/Metal drivers and GGML backends.
+ * @brief Concrete implementation of IGpuDetector probing host CUDA/Vulkan/Metal drivers, GGML backends, and CPU.
  */
 class GpuDetector : public IGpuDetector {
 public:
@@ -64,6 +78,8 @@ public:
     ~GpuDetector() override = default;
 
     AccelerationReport detect_accelerators() override;
+    cantatema::HardwareInfo detect_hardware() override;
+    cantatema::CpuInfo detect_cpu() override;
 };
 
 /**
@@ -71,5 +87,17 @@ public:
  * @return AccelerationReport containing enumerated devices and selected backend strategy.
  */
 AccelerationReport detect_accelerators();
+
+/**
+ * @brief Probe host CPU and GPU devices to generate a comprehensive HardwareInfo report.
+ * @return cantatema::HardwareInfo Aggregated host hardware details.
+ */
+cantatema::HardwareInfo detect_hardware();
+
+/**
+ * @brief Probe host CPU specifications (model brand, architecture, logical cores, system RAM).
+ * @return cantatema::CpuInfo Detected CPU profile.
+ */
+cantatema::CpuInfo detect_cpu();
 
 } // namespace cantatema::infra

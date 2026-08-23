@@ -12,6 +12,8 @@ public:
     ~MockGpuDetector() override = default;
 
     MOCK_METHOD(AccelerationReport, detect_accelerators, (), (override));
+    MOCK_METHOD(cantatema::HardwareInfo, detect_hardware, (), (override));
+    MOCK_METHOD(cantatema::CpuInfo, detect_cpu, (), (override));
 };
 
 } // namespace cantatema::infra

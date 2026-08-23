@@ -72,6 +72,11 @@ public:
     void coverage_report(std::ostream &out, const std::string &execution_id);
     void coverage_report_by_practice(std::ostream &out, unsigned int practice_id);
     
+    //-------------------------------------------------------------------------------------
+
+    void hardware_info(std::ostream &out);
+    void hardware_cpu(std::ostream &out);
+    void hardware_gpu(std::ostream &out);
 
 private:
     Session *op;

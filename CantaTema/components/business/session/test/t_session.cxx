@@ -15,13 +15,16 @@
 #include "operations/mocks/mock_operation_coverage.hpp"
 #include "database/mocks/mock_database.hpp"
 #include "sound_system/i_sound_system.hpp"
+#include "speech_recognition/mocks/mock_gpu_detector.hpp"
 #include <memory>
 #include <vector>
 #include <filesystem>
 #include <fstream>
 
 using ::testing::Return;
+using ::testing::StrictMock;
 using ::testing::_;
+using cantatema::infra::MockGpuDetector;
 
 class MockSoundSystem : public ISoundSystem {
 public:
@@ -430,3 +433,69 @@ TEST_F(SessionTest, InjectedCoverageAndHistoryQueries) {
     );
     EXPECT_FALSE(session.user_is_authenticated());
 }
+
+TEST_F(SessionTest, GetHardwareInfoDefault) {
+    Session session;
+    cantatema::HardwareInfo hw = session.get_hardware_info();
+    EXPECT_FALSE(hw.cpu.name.empty());
+    EXPECT_GT(hw.cpu.core_count, 0u);
+
+    cantatema::HardwareInfo hw_ref;
+    EXPECT_EQ(session.get_hardware_info(hw_ref), RST_OK);
+    EXPECT_EQ(hw_ref.cpu.name, hw.cpu.name);
+}
+
+TEST_F(SessionTest, GetHardwareInfoInjectedMock) {
+    auto user_metrics_op = std::make_shared<OperationUserMetrics>();
+    auto category_op = std::make_shared<OperationCategory>();
+    auto user_op = std::make_shared<OperationUser>(user_metrics_op);
+    auto mock_sub_op = std::make_shared<MockOperationSubject>();
+    auto mock_practice_op = std::make_shared<MockOperationPracticeEvent>();
+    auto mock_coverage_op = std::make_shared<MockOperationCoverage>();
+    auto mock_db_op = std::make_shared<MockDatabase>();
+    auto mock_sound = std::make_shared<MockSoundSystem>();
+    auto models_mgr = std::make_shared<ManagerModels>();
+    auto mock_gpu_detector = std::make_shared<StrictMock<MockGpuDetector>>();
+
+    cantatema::HardwareInfo mock_hw;
+    mock_hw.cpu.name = "Mock CPU Ryzen 9";
+    mock_hw.cpu.architecture = "x86_64";
+    mock_hw.cpu.core_count = 16;
+    mock_hw.has_cuda = true;
+    mock_hw.has_any_gpu = true;
+    mock_hw.use_gpu = true;
+    mock_hw.selected_backend = "CUDA";
+
+    cantatema::GpuInfo gpu;
+    gpu.name = "CUDA0";
+    gpu.description = "NVIDIA GeForce RTX 4090";
+    gpu.backend_name = "CUDA";
+    gpu.is_gpu = true;
+    gpu.memory_total_mb = 24576;
+    mock_hw.gpus.push_back(gpu);
+
+    EXPECT_CALL(*mock_gpu_detector, detect_hardware())
+        .WillRepeatedly(Return(mock_hw));
+
+    Session session(
+        std::move(user_op),
+        std::move(category_op),
+        std::move(mock_sub_op),
+        std::move(user_metrics_op),
+        std::move(mock_practice_op),
+        std::move(mock_coverage_op),
+        std::move(mock_db_op),
+        std::move(mock_sound),
+        std::move(models_mgr),
+        std::move(mock_gpu_detector)
+    );
+
+    cantatema::HardwareInfo result = session.get_hardware_info();
+    EXPECT_EQ(result.cpu.name, "Mock CPU Ryzen 9");
+    EXPECT_EQ(result.cpu.core_count, 16u);
+    EXPECT_TRUE(result.has_cuda);
+    EXPECT_TRUE(result.use_gpu);
+    ASSERT_EQ(result.gpus.size(), 1u);
+    EXPECT_EQ(result.gpus[0].description, "NVIDIA GeForce RTX 4090");
+}
+
