@@ -13,6 +13,7 @@
 #include "operations/operation_user_metrics.hpp"
 #include "operations/operation_practice_event.hpp"
 #include "operations/operation_coverage.hpp"
+#include "operations/operation_analysis_scheduler.hpp"
 #include "database/db_coverage.hpp"
 #include "sound_system/sound_system.hpp"
 #include "models/manager_models.hpp"
@@ -28,7 +29,8 @@ Session::Session(
     std::shared_ptr<IDatabase> &&_db_op,
     std::shared_ptr<ISoundSystem> &&_sound_system_op,
     std::shared_ptr<ManagerModels> &&_models_manager_op,
-    std::shared_ptr<cantatema::infra::IGpuDetector> &&_gpu_detector_op
+    std::shared_ptr<cantatema::infra::IGpuDetector> &&_gpu_detector_op,
+    std::shared_ptr<IOperationAnalysisScheduler> &&_scheduler_op
 ) : user_op(std::move(_user_op)),
     category_op(std::move(_category_op)),
     subject_op(std::move(_subject_op)),
@@ -38,7 +40,8 @@ Session::Session(
     db_coverage_op(std::move(_db_op)),
     sound_op(std::move(_sound_system_op)),
     models_manager_op(std::move(_models_manager_op)),
-    gpu_detector_op(std::move(_gpu_detector_op))
+    gpu_detector_op(std::move(_gpu_detector_op)),
+    scheduler_op(std::move(_scheduler_op))
 {
     if (user_op == nullptr || category_op == nullptr || subject_op == nullptr || user_metrics_op == nullptr || practice_event_op == nullptr)
     {
@@ -64,6 +67,10 @@ Session::Session(
     {
         gpu_detector_op = std::make_shared<cantatema::infra::GpuDetector>();
     }
+    if (scheduler_op == nullptr)
+    {
+        scheduler_op = std::make_shared<OperationAnalysisScheduler>(db_coverage_op, coverage_op, practice_event_op, user_op);
+    }
     initialize();
 }
 
@@ -79,8 +86,9 @@ Session::Session(void)
     sound_op = std::make_shared<SoundSystem>(ISoundSystem::SoundSystemConfig{});
     models_manager_op = std::make_shared<ManagerModels>();
     gpu_detector_op = std::make_shared<cantatema::infra::GpuDetector>();
+    scheduler_op = std::make_shared<OperationAnalysisScheduler>(db_coverage_op, coverage_op, practice_event_op, user_op);
 
-    if (user_op == nullptr || category_op == nullptr || subject_op == nullptr || user_metrics_op == nullptr || practice_event_op == nullptr || coverage_op == nullptr || db_coverage_op == nullptr || sound_op == nullptr || models_manager_op == nullptr || gpu_detector_op == nullptr)
+    if (user_op == nullptr || category_op == nullptr || subject_op == nullptr || user_metrics_op == nullptr || practice_event_op == nullptr || coverage_op == nullptr || db_coverage_op == nullptr || sound_op == nullptr || models_manager_op == nullptr || gpu_detector_op == nullptr || scheduler_op == nullptr)
     {
         throw std::runtime_error("Operation session received wrong operation instances. (2)");
     }
@@ -89,6 +97,9 @@ Session::Session(void)
 
 Session::~Session(void)
 {
+    if (scheduler_op) {
+        scheduler_op->stop_scheduler();
+    }
     session_user = nullptr;
 }
 
@@ -96,6 +107,9 @@ rst_code_e Session::initialize(void)
 {
     session_user = nullptr;
     session_user_config.set_default_values();
+    if (scheduler_op) {
+        scheduler_op->start_scheduler();
+    }
     return RST_OK;
 }
 
@@ -829,4 +843,88 @@ cantatema::HardwareInfo Session::get_hardware_info(void) const
     get_hardware_info(info);
     return info;
 }
+
+rst_code_e Session::analysis_task_submit(int practice_id, std::string &out_task_id, const UserConfiguration &config)
+{
+    if (session_user == nullptr || !user_op->user_is_authenticated())
+    {
+        return USER_NO_AUTH;
+    }
+    if (!scheduler_op)
+    {
+        return UNKNOWN;
+    }
+    const UserConfiguration &effective_config = (config.comparison.similarity_threshold > 0.0f || !config.whisper.model_name.empty()) ? config : session_user_config;
+    return scheduler_op->submit_task(session_user, practice_id, effective_config, out_task_id);
+}
+
+rst_code_e Session::analysis_task_cancel(const std::string &task_id)
+{
+    if (session_user == nullptr || !user_op->user_is_authenticated())
+    {
+        return USER_NO_AUTH;
+    }
+    if (!scheduler_op)
+    {
+        return UNKNOWN;
+    }
+    return scheduler_op->cancel_task(session_user, task_id);
+}
+
+rst_code_e Session::analysis_task_get_status(const std::string &task_id, AnalysisTask &out_task)
+{
+    if (session_user == nullptr || !user_op->user_is_authenticated())
+    {
+        return USER_NO_AUTH;
+    }
+    if (!scheduler_op)
+    {
+        return UNKNOWN;
+    }
+    return scheduler_op->get_task_status(session_user, task_id, out_task);
+}
+
+rst_code_e Session::analysis_task_get_user_tasks(std::vector<AnalysisTask> &out_tasks)
+{
+    if (session_user == nullptr || !user_op->user_is_authenticated())
+    {
+        return USER_NO_AUTH;
+    }
+    if (!scheduler_op)
+    {
+        return UNKNOWN;
+    }
+    return scheduler_op->get_user_tasks(session_user, out_tasks);
+}
+
+rst_code_e Session::analysis_task_get_all_tasks(std::vector<AnalysisTask> &out_tasks)
+{
+    if (session_user == nullptr || !user_op->user_is_authenticated())
+    {
+        return USER_NO_AUTH;
+    }
+    if (!scheduler_op)
+    {
+        return UNKNOWN;
+    }
+    return scheduler_op->get_all_tasks(session_user, out_tasks);
+}
+
+void Session::analysis_task_set_max_parallel(size_t max_tasks)
+{
+    if (scheduler_op)
+    {
+        scheduler_op->set_max_parallel_tasks(max_tasks);
+    }
+}
+
+size_t Session::analysis_task_get_max_parallel() const
+{
+    if (scheduler_op)
+    {
+        return scheduler_op->get_max_parallel_tasks();
+    }
+    return 1;
+}
+
 

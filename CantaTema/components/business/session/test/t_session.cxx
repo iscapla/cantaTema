@@ -13,6 +13,7 @@
 #include "operations/mocks/mock_operation_subject.hpp"
 #include "operations/mocks/mock_operation_practice_event.hpp"
 #include "operations/mocks/mock_operation_coverage.hpp"
+#include "operations/mocks/mock_operation_analysis_scheduler.hpp"
 #include "database/mocks/mock_database.hpp"
 #include "sound_system/i_sound_system.hpp"
 #include "speech_recognition/mocks/mock_gpu_detector.hpp"
@@ -23,6 +24,8 @@
 
 using ::testing::Return;
 using ::testing::StrictMock;
+using ::testing::DoAll;
+using ::testing::SetArgReferee;
 using ::testing::_;
 using cantatema::infra::MockGpuDetector;
 
@@ -498,4 +501,94 @@ TEST_F(SessionTest, GetHardwareInfoInjectedMock) {
     ASSERT_EQ(result.gpus.size(), 1u);
     EXPECT_EQ(result.gpus[0].description, "NVIDIA GeForce RTX 4090");
 }
+
+TEST_F(SessionTest, SessionTaskSchedulerFlow) {
+    auto user_metrics_op = std::make_shared<OperationUserMetrics>();
+    auto category_op = std::make_shared<OperationCategory>();
+    auto user_op = std::make_shared<OperationUser>(user_metrics_op);
+    auto mock_sub_op = std::make_shared<MockOperationSubject>();
+    auto mock_practice_op = std::make_shared<MockOperationPracticeEvent>();
+    auto mock_coverage_op = std::make_shared<MockOperationCoverage>();
+    auto mock_db_op = std::make_shared<MockDatabase>();
+    auto mock_sound = std::make_shared<MockSoundSystem>();
+    auto models_mgr = std::make_shared<ManagerModels>();
+    auto mock_gpu_detector = std::make_shared<StrictMock<MockGpuDetector>>();
+    auto mock_scheduler = std::make_shared<StrictMock<MockOperationAnalysisScheduler>>();
+    auto mock_scheduler_ptr = mock_scheduler.get();
+
+    EXPECT_CALL(*mock_scheduler_ptr, start_scheduler())
+        .WillOnce(Return(RST_OK));
+    EXPECT_CALL(*mock_scheduler_ptr, stop_scheduler())
+        .WillOnce(Return(RST_OK));
+
+    Session session(
+        std::move(user_op),
+        std::move(category_op),
+        std::move(mock_sub_op),
+        std::move(user_metrics_op),
+        std::move(mock_practice_op),
+        std::move(mock_coverage_op),
+        std::move(mock_db_op),
+        std::move(mock_sound),
+        std::move(models_mgr),
+        std::move(mock_gpu_detector),
+        std::move(mock_scheduler)
+    );
+
+    // Unauthenticated calls should fail
+    std::string task_id;
+    EXPECT_EQ(session.analysis_task_submit(1, task_id), USER_NO_AUTH);
+    EXPECT_EQ(session.analysis_task_cancel("t1"), USER_NO_AUTH);
+    AnalysisTask task_status;
+    EXPECT_EQ(session.analysis_task_get_status("t1", task_status), USER_NO_AUTH);
+    std::vector<AnalysisTask> tasks_list;
+    EXPECT_EQ(session.analysis_task_get_user_tasks(tasks_list), USER_NO_AUTH);
+    EXPECT_EQ(session.analysis_task_get_all_tasks(tasks_list), USER_NO_AUTH);
+
+    // Identify user
+    EXPECT_EQ(session.user_add("sched_user", "password123"), RST_OK);
+    EXPECT_EQ(session.user_identify("sched_user", "password123"), RST_OK);
+
+    // 1. Submit task
+    EXPECT_CALL(*mock_scheduler_ptr, submit_task(_, 1, _, _))
+        .WillOnce(DoAll(testing::SetArgReferee<3>("task-uuid-abc"), Return(RST_OK)));
+    EXPECT_EQ(session.analysis_task_submit(1, task_id), RST_OK);
+    EXPECT_EQ(task_id, "task-uuid-abc");
+
+    // 2. Cancel task
+    EXPECT_CALL(*mock_scheduler_ptr, cancel_task(_, "task-uuid-abc"))
+        .WillOnce(Return(RST_OK));
+    EXPECT_EQ(session.analysis_task_cancel("task-uuid-abc"), RST_OK);
+
+    // 3. Get status
+    AnalysisTask sample_task("task-uuid-abc", 1, 1);
+    sample_task.set_status(AnalysisTaskStatus::COMPLETED);
+    EXPECT_CALL(*mock_scheduler_ptr, get_task_status(_, "task-uuid-abc", _))
+        .WillOnce(DoAll(testing::SetArgReferee<2>(sample_task), Return(RST_OK)));
+    EXPECT_EQ(session.analysis_task_get_status("task-uuid-abc", task_status), RST_OK);
+    EXPECT_EQ(task_status.get_status(), AnalysisTaskStatus::COMPLETED);
+
+    // 4. Get user tasks
+    std::vector<AnalysisTask> expected_tasks = { sample_task };
+    EXPECT_CALL(*mock_scheduler_ptr, get_user_tasks(_, _))
+        .WillOnce(DoAll(testing::SetArgReferee<1>(expected_tasks), Return(RST_OK)));
+    EXPECT_EQ(session.analysis_task_get_user_tasks(tasks_list), RST_OK);
+    EXPECT_EQ(tasks_list.size(), 1u);
+
+    // 5. Get all tasks (admin)
+    EXPECT_CALL(*mock_scheduler_ptr, get_all_tasks(_, _))
+        .WillOnce(DoAll(testing::SetArgReferee<1>(expected_tasks), Return(RST_OK)));
+    EXPECT_EQ(session.analysis_task_get_all_tasks(tasks_list), RST_OK);
+    EXPECT_EQ(tasks_list.size(), 1u);
+
+    // 6. Max parallel tasks setter/getter
+    EXPECT_CALL(*mock_scheduler_ptr, set_max_parallel_tasks(4))
+        .Times(1);
+    session.analysis_task_set_max_parallel(4);
+
+    EXPECT_CALL(*mock_scheduler_ptr, get_max_parallel_tasks())
+        .WillOnce(Return(4));
+    EXPECT_EQ(session.analysis_task_get_max_parallel(), 4u);
+}
+
 

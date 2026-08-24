@@ -102,26 +102,37 @@ void TerminalSession::coverage_analyze(
     const std::string &language
 )
 {
-    std::string out_execution_id;
-    out << "Starting coverage analysis for practice ID: " << practice_id << "..." << std::endl;
+    std::string task_id;
+    out << "Submitting coverage analysis task for practice ID " << practice_id << " to scheduler..." << std::endl;
 
-    rst_code_e rst = op->analyze_practice_coverage(
-        practice_id,
-        out_execution_id,
-        whisper_model,
-        llama_model,
-        similarity_threshold,
-        language
-    );
+    UserConfiguration config;
+    if (!whisper_model.empty()) {
+        config.whisper.model_name = whisper_model;
+    }
+    if (!llama_model.empty()) {
+        config.comparison.embedding_model_name = llama_model;
+    }
+    if (similarity_threshold > 0.0f) {
+        config.comparison.similarity_threshold = similarity_threshold;
+    }
+    if (!language.empty()) {
+        config.whisper.language = language;
+    }
 
-    if (rst != RST_OK) {
-        logger->error("Coverage analysis failed: {}", get_rst_txt(rst));
-        out << "Coverage analysis failed: " << get_rst_txt(rst) << std::endl;
+    rst_code_e rst = op->analysis_task_submit(static_cast<int>(practice_id), task_id, config);
+
+    if (rst == RST_OK) {
+        logger->info("Coverage analysis task queued: {}", task_id);
+        out << "Analysis task successfully queued!" << std::endl;
+        out << "Task ID: " << task_id << std::endl;
+        out << "Use 'coverage status " << task_id << "' (or 'coverage task_status " << task_id << "') to track progress." << std::endl;
+    } else if (rst == TASK_ALREADY_QUEUED) {
+        logger->warn("Practice ID {} already has active task: {}", practice_id, task_id);
+        out << "Practice ID " << practice_id << " already has an active task: " << task_id << std::endl;
+        out << "Use 'coverage status " << task_id << "' to check status." << std::endl;
     } else {
-        logger->info("Coverage analysis completed successfully. Execution ID: {}", out_execution_id);
-        out << "Coverage analysis completed! Analysis Execution ID: " << out_execution_id << std::endl;
-        out << "Practice ID " << practice_id << " is now linked to analysis execution: " << out_execution_id << std::endl;
-        out << "Use 'coverage report " << out_execution_id << "' to view detailed report." << std::endl;
+        logger->error("Failed to submit analysis task for practice {}: {}", practice_id, get_rst_txt(rst));
+        out << "Failed to submit analysis task: " << get_rst_txt(rst) << std::endl;
     }
 }
 
@@ -159,3 +170,129 @@ void TerminalSession::coverage_report_by_practice(std::ostream &out, unsigned in
     out << "--- Configuration Snapshot ---" << std::endl;
     out << config_json << std::endl;
 }
+
+void TerminalSession::coverage_task_submit(std::ostream &out, unsigned int practice_id)
+{
+    std::string task_id;
+    out << "Submitting analysis task for practice ID " << practice_id << " to scheduler..." << std::endl;
+    rst_code_e rst = op->analysis_task_submit(static_cast<int>(practice_id), task_id);
+    if (rst == RST_OK) {
+        logger->info("Analysis task submitted: {}", task_id);
+        out << "Task successfully queued!" << std::endl;
+        out << "Task ID: " << task_id << std::endl;
+        out << "Use 'coverage task_status " << task_id << "' to monitor progress." << std::endl;
+    } else if (rst == TASK_ALREADY_QUEUED) {
+        logger->warn("Practice ID {} already has active task: {}", practice_id, task_id);
+        out << "Practice ID " << practice_id << " already has an active task: " << task_id << std::endl;
+        out << "Use 'coverage task_status " << task_id << "' to check status." << std::endl;
+    } else {
+        logger->error("Failed to submit analysis task for practice {}: {}", practice_id, get_rst_txt(rst));
+        out << "Failed to submit task: " << get_rst_txt(rst) << std::endl;
+    }
+}
+
+void TerminalSession::coverage_task_status(std::ostream &out, const std::string &task_id)
+{
+    AnalysisTask task;
+    rst_code_e rst = op->analysis_task_get_status(task_id, task);
+    if (rst != RST_OK) {
+        logger->error("Failed to query task {}: {}", task_id, get_rst_txt(rst));
+        out << "Task not found or access denied: " << get_rst_txt(rst) << std::endl;
+        return;
+    }
+
+    out << "=== ANALYSIS TASK STATUS ===" << std::endl;
+    out << "Task ID:       " << task.get_task_id() << std::endl;
+    out << "Practice ID:   " << task.get_practice_id() << std::endl;
+    out << "Status:        " << AnalysisTask::status_to_string(task.get_status()) << std::endl;
+    out << "Progress:      " << task.get_progress_percentage() << "%" << std::endl;
+    out << "Current Stage: " << task.get_stage_description() << std::endl;
+    if (!task.get_execution_id().empty()) {
+        out << "Execution ID:  " << task.get_execution_id() << std::endl;
+        out << "View Report:   coverage report " << task.get_execution_id() << std::endl;
+    }
+    if (!task.get_error_message().empty()) {
+        out << "Error:         " << task.get_error_message() << std::endl;
+    }
+    if (task.get_retry_count() > 0) {
+        out << "Retries:       " << task.get_retry_count() << std::endl;
+    }
+}
+
+void TerminalSession::coverage_task_cancel(std::ostream &out, const std::string &task_id)
+{
+    out << "Requesting cancellation for task " << task_id << "..." << std::endl;
+    rst_code_e rst = op->analysis_task_cancel(task_id);
+    if (rst == RST_OK) {
+        logger->info("Task {} cancelled successfully", task_id);
+        out << "Task " << task_id << " cancelled successfully." << std::endl;
+    } else {
+        logger->error("Failed to cancel task {}: {}", task_id, get_rst_txt(rst));
+        out << "Failed to cancel task: " << get_rst_txt(rst) << std::endl;
+    }
+}
+
+void TerminalSession::coverage_task_list(std::ostream &out)
+{
+    std::vector<AnalysisTask> tasks;
+    rst_code_e rst = op->analysis_task_get_user_tasks(tasks);
+    if (rst != RST_OK) {
+        out << "Failed to retrieve user tasks: " << get_rst_txt(rst) << std::endl;
+        return;
+    }
+
+    out << "=== YOUR ANALYSIS TASKS ===" << std::endl;
+    if (tasks.empty()) {
+        out << "No analysis tasks found." << std::endl;
+        return;
+    }
+
+    out << std::left << std::setw(30) << "Task ID" 
+        << std::setw(12) << "Practice" 
+        << std::setw(22) << "Status" 
+        << std::setw(10) << "Progress" 
+        << "Stage" << std::endl;
+    out << std::string(100, '-') << std::endl;
+
+    for (const auto& t : tasks) {
+        out << std::left << std::setw(30) << t.get_task_id()
+            << std::setw(12) << t.get_practice_id()
+            << std::setw(22) << AnalysisTask::status_to_string(t.get_status())
+            << std::setw(10) << (std::to_string(t.get_progress_percentage()) + "%")
+            << t.get_stage_description() << std::endl;
+    }
+}
+
+void TerminalSession::coverage_admin_tasks(std::ostream &out)
+{
+    std::vector<AnalysisTask> tasks;
+    rst_code_e rst = op->analysis_task_get_all_tasks(tasks);
+    if (rst != RST_OK) {
+        out << "Failed to retrieve all tasks: " << get_rst_txt(rst) << std::endl;
+        return;
+    }
+
+    out << "=== ALL SYSTEM ANALYSIS TASKS (ADMIN) ===" << std::endl;
+    if (tasks.empty()) {
+        out << "No tasks found in scheduler system." << std::endl;
+        return;
+    }
+
+    out << std::left << std::setw(30) << "Task ID" 
+        << std::setw(10) << "User ID"
+        << std::setw(12) << "Practice" 
+        << std::setw(22) << "Status" 
+        << std::setw(10) << "Progress" 
+        << "Stage / Result" << std::endl;
+    out << std::string(110, '-') << std::endl;
+
+    for (const auto& t : tasks) {
+        out << std::left << std::setw(30) << t.get_task_id()
+            << std::setw(10) << t.get_user_id()
+            << std::setw(12) << t.get_practice_id()
+            << std::setw(22) << AnalysisTask::status_to_string(t.get_status())
+            << std::setw(10) << (std::to_string(t.get_progress_percentage()) + "%")
+            << t.get_stage_description() << std::endl;
+    }
+}
+

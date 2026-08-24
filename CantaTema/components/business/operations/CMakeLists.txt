@@ -10,6 +10,7 @@ create_infra_library(
     src/operation_user_metrics.cpp
     src/operation_practice_event.cpp
     src/operation_coverage.cpp
+    src/operation_analysis_scheduler.cpp
     INC_PUBLIC
     INC_PRIVATE
     CORE::PRIMITIVES

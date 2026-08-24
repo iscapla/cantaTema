@@ -398,9 +398,35 @@ float ConfigurationSystem::get_semantic_paraphrase_embedding_threshold() const {
     }
 }
 
+unsigned int ConfigurationSystem::get_scheduler_max_parallel_tasks() const {
+    std::string value = const_cast<ConfigurationSystem*>(this)->get_or_default("ANALYSIS_SCHEDULER", "max_parallel_tasks", "1");
+    try {
+        unsigned long val = std::stoul(value);
+        return (val == 0) ? 1u : static_cast<unsigned int>(val);
+    } catch (...) {
+        return 1u;
+    }
+}
+
+bool ConfigurationSystem::get_scheduler_auto_resume_on_startup() const {
+    std::string value = const_cast<ConfigurationSystem*>(this)->get_or_default("ANALYSIS_SCHEDULER", "auto_resume_on_startup", "true");
+    std::transform(value.begin(), value.end(), value.begin(), ::tolower);
+    return (value == "true" || value == "1" || value == "yes");
+}
+
+unsigned int ConfigurationSystem::get_scheduler_max_retries() const {
+    std::string value = const_cast<ConfigurationSystem*>(this)->get_or_default("ANALYSIS_SCHEDULER", "max_retries", "1");
+    try {
+        return static_cast<unsigned int>(std::stoul(value));
+    } catch (...) {
+        return 1u;
+    }
+}
+
 rst_code_e ConfigurationSystem::set_value(const std::string& section, const std::string& field, const std::string& value) {
     return set(section, field, value);
 }
+
 
 
 

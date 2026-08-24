@@ -228,6 +228,21 @@ public:
     float get_semantic_paraphrase_embedding_threshold() const;
 
     /**
+     * @brief Retrieves the maximum number of parallel analysis tasks allowed to run concurrently (default 1).
+     */
+    unsigned int get_scheduler_max_parallel_tasks() const;
+
+    /**
+     * @brief Retrieves whether interrupted tasks should automatically resume on server startup.
+     */
+    bool get_scheduler_auto_resume_on_startup() const;
+
+    /**
+     * @brief Retrieves the maximum number of retry attempts for crash recovery before marking a task as failed.
+     */
+    unsigned int get_scheduler_max_retries() const;
+
+    /**
      * @brief Sets a configuration value at runtime (primarily for testing).
      */
     rst_code_e set_value(const std::string& section, const std::string& field, const std::string& value);

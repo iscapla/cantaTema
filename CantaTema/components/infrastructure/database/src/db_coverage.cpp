@@ -47,8 +47,301 @@ rst_code_e DB_Coverage::create_coverage_tables() {
         return rst_code_e::DB_FAIL;
     }
 
+    return create_analysis_task_tables();
+}
+
+rst_code_e DB_Coverage::create_analysis_task_tables() {
+    std::shared_ptr<sqlite3> db = DB_Connection::getConn();
+    char *zErrMsg = 0;
+    const char *sql = 
+        "CREATE TABLE IF NOT EXISTS analysis_tasks ("
+        "task_id TEXT PRIMARY KEY,"
+        "user_id INTEGER NOT NULL,"
+        "practice_id INTEGER NOT NULL,"
+        "status TEXT NOT NULL,"
+        "progress_percentage INTEGER DEFAULT 0,"
+        "stage_description TEXT,"
+        "error_message TEXT,"
+        "result_code INTEGER DEFAULT 0,"
+        "execution_id TEXT,"
+        "config_snapshot_json TEXT,"
+        "created_at INTEGER,"
+        "started_at INTEGER,"
+        "completed_at INTEGER,"
+        "retry_count INTEGER DEFAULT 0,"
+        "FOREIGN KEY(user_id) REFERENCES users(useraccountid) ON DELETE CASCADE,"
+        "FOREIGN KEY(practice_id) REFERENCES practices(practice_id) ON DELETE CASCADE);";
+
+    int rc = sqlite3_exec(db.get(), sql, 0, 0, &zErrMsg);
+    if (rc != SQLITE_OK) {
+        logger->error("SQL error creating analysis_tasks table: {}", zErrMsg);
+        sqlite3_free(zErrMsg);
+        return rst_code_e::DB_FAIL;
+    }
+
     return rst_code_e::RST_OK;
 }
+
+static AnalysisTask parse_task_row(sqlite3_stmt* stmt) {
+    AnalysisTask task;
+    const char* task_id = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+    int user_id = sqlite3_column_int(stmt, 1);
+    int practice_id = sqlite3_column_int(stmt, 2);
+    const char* status_str = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 3));
+    int progress = sqlite3_column_int(stmt, 4);
+    const char* stage_desc = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 5));
+    const char* err_msg = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 6));
+    int result_code = sqlite3_column_int(stmt, 7);
+    const char* exec_id = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 8));
+    const char* config_json = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 9));
+    sqlite3_int64 created_at = sqlite3_column_int64(stmt, 10);
+    sqlite3_int64 started_at = sqlite3_column_int64(stmt, 11);
+    sqlite3_int64 completed_at = sqlite3_column_int64(stmt, 12);
+    int retry_count = sqlite3_column_int(stmt, 13);
+
+    if (task_id) task.set_task_id(task_id);
+    task.set_user_id(static_cast<unsigned int>(user_id));
+    task.set_practice_id(practice_id);
+    if (status_str) task.set_status(AnalysisTask::string_to_status(status_str));
+    task.set_progress_percentage(progress);
+    if (stage_desc) task.set_stage_description(stage_desc);
+    if (err_msg) task.set_error_message(err_msg);
+    task.set_result_code(static_cast<rst_code_e>(result_code));
+    if (exec_id) task.set_execution_id(exec_id);
+    if (config_json) task.set_config_snapshot_json(config_json);
+    task.set_created_at(static_cast<std::time_t>(created_at));
+    task.set_started_at(static_cast<std::time_t>(started_at));
+    task.set_completed_at(static_cast<std::time_t>(completed_at));
+    task.set_retry_count(retry_count);
+
+    return task;
+}
+
+rst_code_e DB_Coverage::save_analysis_task(const AnalysisTask& task) {
+    std::shared_ptr<sqlite3> db = DB_Connection::getConn();
+    sqlite3_stmt *stmt;
+    const char *sql = 
+        "INSERT INTO analysis_tasks ("
+        "task_id, user_id, practice_id, status, progress_percentage, stage_description, "
+        "error_message, result_code, execution_id, config_snapshot_json, created_at, started_at, completed_at, retry_count) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+
+    if (sqlite3_prepare_v2(db.get(), sql, -1, &stmt, 0) != SQLITE_OK) {
+        logger->error("Failed to prepare save_analysis_task: {}", sqlite3_errmsg(db.get()));
+        return rst_code_e::DB_FAIL;
+    }
+
+    std::string status_str = AnalysisTask::status_to_string(task.get_status());
+
+    sqlite3_bind_text(stmt, 1, task.get_task_id().c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int(stmt, 2, static_cast<int>(task.get_user_id()));
+    sqlite3_bind_int(stmt, 3, task.get_practice_id());
+    sqlite3_bind_text(stmt, 4, status_str.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int(stmt, 5, task.get_progress_percentage());
+    sqlite3_bind_text(stmt, 6, task.get_stage_description().c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 7, task.get_error_message().c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int(stmt, 8, static_cast<int>(task.get_result_code()));
+    sqlite3_bind_text(stmt, 9, task.get_execution_id().c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 10, task.get_config_snapshot_json().c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int64(stmt, 11, static_cast<sqlite3_int64>(task.get_created_at()));
+    sqlite3_bind_int64(stmt, 12, static_cast<sqlite3_int64>(task.get_started_at()));
+    sqlite3_bind_int64(stmt, 13, static_cast<sqlite3_int64>(task.get_completed_at()));
+    sqlite3_bind_int(stmt, 14, task.get_retry_count());
+
+    if (sqlite3_step(stmt) != SQLITE_DONE) {
+        logger->error("Failed to execute save_analysis_task: {}", sqlite3_errmsg(db.get()));
+        sqlite3_finalize(stmt);
+        return rst_code_e::DB_FAIL;
+    }
+
+    sqlite3_finalize(stmt);
+    return rst_code_e::RST_OK;
+}
+
+rst_code_e DB_Coverage::update_analysis_task(const AnalysisTask& task) {
+    std::shared_ptr<sqlite3> db = DB_Connection::getConn();
+    sqlite3_stmt *stmt;
+    const char *sql = 
+        "UPDATE analysis_tasks SET "
+        "status = ?, progress_percentage = ?, stage_description = ?, error_message = ?, "
+        "result_code = ?, execution_id = ?, started_at = ?, completed_at = ?, retry_count = ? "
+        "WHERE task_id = ?;";
+
+    if (sqlite3_prepare_v2(db.get(), sql, -1, &stmt, 0) != SQLITE_OK) {
+        logger->error("Failed to prepare update_analysis_task: {}", sqlite3_errmsg(db.get()));
+        return rst_code_e::DB_FAIL;
+    }
+
+    std::string status_str = AnalysisTask::status_to_string(task.get_status());
+
+    sqlite3_bind_text(stmt, 1, status_str.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int(stmt, 2, task.get_progress_percentage());
+    sqlite3_bind_text(stmt, 3, task.get_stage_description().c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 4, task.get_error_message().c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int(stmt, 5, static_cast<int>(task.get_result_code()));
+    sqlite3_bind_text(stmt, 6, task.get_execution_id().c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int64(stmt, 7, static_cast<sqlite3_int64>(task.get_started_at()));
+    sqlite3_bind_int64(stmt, 8, static_cast<sqlite3_int64>(task.get_completed_at()));
+    sqlite3_bind_int(stmt, 9, task.get_retry_count());
+    sqlite3_bind_text(stmt, 10, task.get_task_id().c_str(), -1, SQLITE_TRANSIENT);
+
+    if (sqlite3_step(stmt) != SQLITE_DONE) {
+        logger->error("Failed to execute update_analysis_task: {}", sqlite3_errmsg(db.get()));
+        sqlite3_finalize(stmt);
+        return rst_code_e::DB_FAIL;
+    }
+
+    sqlite3_finalize(stmt);
+    return rst_code_e::RST_OK;
+}
+
+rst_code_e DB_Coverage::get_analysis_task_by_id(const std::string& task_id, AnalysisTask& out_task) {
+    std::shared_ptr<sqlite3> db = DB_Connection::getConn();
+    sqlite3_stmt *stmt;
+    const char *sql = 
+        "SELECT task_id, user_id, practice_id, status, progress_percentage, stage_description, "
+        "error_message, result_code, execution_id, config_snapshot_json, created_at, started_at, completed_at, retry_count "
+        "FROM analysis_tasks WHERE task_id = ?;";
+
+    if (sqlite3_prepare_v2(db.get(), sql, -1, &stmt, 0) != SQLITE_OK) {
+        logger->error("Failed to prepare get_analysis_task_by_id: {}", sqlite3_errmsg(db.get()));
+        return rst_code_e::DB_FAIL;
+    }
+
+    sqlite3_bind_text(stmt, 1, task_id.c_str(), -1, SQLITE_TRANSIENT);
+
+    rst_code_e ret = rst_code_e::TASK_NOT_FOUND;
+    if (sqlite3_step(stmt) == SQLITE_ROW) {
+        out_task = parse_task_row(stmt);
+        ret = rst_code_e::RST_OK;
+    }
+
+    sqlite3_finalize(stmt);
+    return ret;
+}
+
+rst_code_e DB_Coverage::get_analysis_tasks_by_user(unsigned int user_id, std::vector<AnalysisTask>& out_tasks) {
+    out_tasks.clear();
+    std::shared_ptr<sqlite3> db = DB_Connection::getConn();
+    sqlite3_stmt *stmt;
+    const char *sql = 
+        "SELECT task_id, user_id, practice_id, status, progress_percentage, stage_description, "
+        "error_message, result_code, execution_id, config_snapshot_json, created_at, started_at, completed_at, retry_count "
+        "FROM analysis_tasks WHERE user_id = ? ORDER BY created_at DESC;";
+
+    if (sqlite3_prepare_v2(db.get(), sql, -1, &stmt, 0) != SQLITE_OK) {
+        logger->error("Failed to prepare get_analysis_tasks_by_user: {}", sqlite3_errmsg(db.get()));
+        return rst_code_e::DB_FAIL;
+    }
+
+    sqlite3_bind_int(stmt, 1, static_cast<int>(user_id));
+
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        out_tasks.push_back(parse_task_row(stmt));
+    }
+
+    sqlite3_finalize(stmt);
+    return rst_code_e::RST_OK;
+}
+
+rst_code_e DB_Coverage::get_all_analysis_tasks(std::vector<AnalysisTask>& out_tasks) {
+    out_tasks.clear();
+    std::shared_ptr<sqlite3> db = DB_Connection::getConn();
+    sqlite3_stmt *stmt;
+    const char *sql = 
+        "SELECT task_id, user_id, practice_id, status, progress_percentage, stage_description, "
+        "error_message, result_code, execution_id, config_snapshot_json, created_at, started_at, completed_at, retry_count "
+        "FROM analysis_tasks ORDER BY created_at DESC;";
+
+    if (sqlite3_prepare_v2(db.get(), sql, -1, &stmt, 0) != SQLITE_OK) {
+        logger->error("Failed to prepare get_all_analysis_tasks: {}", sqlite3_errmsg(db.get()));
+        return rst_code_e::DB_FAIL;
+    }
+
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        out_tasks.push_back(parse_task_row(stmt));
+    }
+
+    sqlite3_finalize(stmt);
+    return rst_code_e::RST_OK;
+}
+
+rst_code_e DB_Coverage::get_active_analysis_task_for_practice(int practice_id, AnalysisTask& out_task) {
+    std::shared_ptr<sqlite3> db = DB_Connection::getConn();
+    sqlite3_stmt *stmt;
+    const char *sql = 
+        "SELECT task_id, user_id, practice_id, status, progress_percentage, stage_description, "
+        "error_message, result_code, execution_id, config_snapshot_json, created_at, started_at, completed_at, retry_count "
+        "FROM analysis_tasks WHERE practice_id = ? AND status NOT IN ('COMPLETED', 'FAILED', 'CANCELLED') LIMIT 1;";
+
+    if (sqlite3_prepare_v2(db.get(), sql, -1, &stmt, 0) != SQLITE_OK) {
+        logger->error("Failed to prepare get_active_analysis_task_for_practice: {}", sqlite3_errmsg(db.get()));
+        return rst_code_e::DB_FAIL;
+    }
+
+    sqlite3_bind_int(stmt, 1, practice_id);
+
+    rst_code_e ret = rst_code_e::TASK_NOT_FOUND;
+    if (sqlite3_step(stmt) == SQLITE_ROW) {
+        out_task = parse_task_row(stmt);
+        ret = rst_code_e::RST_OK;
+    }
+
+    sqlite3_finalize(stmt);
+    return ret;
+}
+
+rst_code_e DB_Coverage::recover_interrupted_analysis_tasks(int max_retries, std::vector<AnalysisTask>& out_recovered_tasks) {
+    out_recovered_tasks.clear();
+    std::vector<AnalysisTask> all_tasks;
+    rst_code_e res = get_all_analysis_tasks(all_tasks);
+    if (res != rst_code_e::RST_OK) {
+        return res;
+    }
+
+    for (auto& task : all_tasks) {
+        if (task.is_running()) {
+            if (task.get_retry_count() < max_retries) {
+                task.set_status(AnalysisTaskStatus::QUEUED);
+                task.set_retry_count(task.get_retry_count() + 1);
+                task.set_stage_description("Re-queued after server restart (retry " + std::to_string(task.get_retry_count()) + ")");
+                task.set_progress_percentage(0);
+            } else {
+                task.set_status(AnalysisTaskStatus::FAILED);
+                task.set_error_message("Aborted: maximum retry attempts exceeded after crash recovery");
+                task.set_stage_description("Failed due to crash recovery limit");
+                task.set_completed_at(std::time(nullptr));
+            }
+            update_analysis_task(task);
+            out_recovered_tasks.push_back(task);
+        }
+    }
+
+    return rst_code_e::RST_OK;
+}
+
+rst_code_e DB_Coverage::delete_analysis_task(const std::string& task_id) {
+    std::shared_ptr<sqlite3> db = DB_Connection::getConn();
+    sqlite3_stmt *stmt;
+    const char *sql = "DELETE FROM analysis_tasks WHERE task_id = ?;";
+
+    if (sqlite3_prepare_v2(db.get(), sql, -1, &stmt, 0) != SQLITE_OK) {
+        logger->error("Failed to prepare delete_analysis_task: {}", sqlite3_errmsg(db.get()));
+        return rst_code_e::DB_FAIL;
+    }
+
+    sqlite3_bind_text(stmt, 1, task_id.c_str(), -1, SQLITE_TRANSIENT);
+
+    if (sqlite3_step(stmt) != SQLITE_DONE) {
+        logger->error("Failed to execute delete_analysis_task: {}", sqlite3_errmsg(db.get()));
+        sqlite3_finalize(stmt);
+        return rst_code_e::DB_FAIL;
+    }
+
+    sqlite3_finalize(stmt);
+    return rst_code_e::RST_OK;
+}
+
 
 rst_code_e DB_Coverage::save_coverage_analysis_execution(
     int practice_id,

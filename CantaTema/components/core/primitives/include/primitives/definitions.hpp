@@ -67,6 +67,12 @@ enum rst_code_e
     MODELS_FILE_DOWNLOAD_FAIL, // Models download fail
     MODELS_FILE_NOT_FOUND, // Models not found
 
+    TASK_NOT_FOUND, // Task not found
+    TASK_ALREADY_QUEUED, // Task already queued
+    TASK_ALREADY_RUNNING, // Task already running
+    TASK_CANCELLED, // Task was cancelled
+    TASK_EXECUTION_ERROR, // Task execution error
+    TASK_QUEUE_FULL, // Task queue is full
 
     UNKNOWN // General error. Also used to point to the last value of the table
 };
@@ -188,6 +194,25 @@ inline const std::string get_rst_txt(const rst_code_e &rst)
         break;
     case MODELS_FILE_NOT_FOUND:
         txt = "MODELS_FILE_NOT_FOUND";
+        break;
+
+    case TASK_NOT_FOUND:
+        txt = "TASK_NOT_FOUND";
+        break;
+    case TASK_ALREADY_QUEUED:
+        txt = "TASK_ALREADY_QUEUED";
+        break;
+    case TASK_ALREADY_RUNNING:
+        txt = "TASK_ALREADY_RUNNING";
+        break;
+    case TASK_CANCELLED:
+        txt = "TASK_CANCELLED";
+        break;
+    case TASK_EXECUTION_ERROR:
+        txt = "TASK_EXECUTION_ERROR";
+        break;
+    case TASK_QUEUE_FULL:
+        txt = "TASK_QUEUE_FULL";
         break;
 
     case UNKNOWN:

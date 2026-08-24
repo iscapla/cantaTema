@@ -144,6 +144,88 @@ TEST_F(DBCoverageTest, DetailsNotFound) {
     EXPECT_EQ(details_res, DB_NOT_FOUND);
 }
 
+TEST_F(DBCoverageTest, SaveAndRetrieveAnalysisTask) {
+    unsigned int user_id = create_test_user("task_user_1");
+    unsigned int subject_id = create_test_subject(user_id, "task_subject_1");
+    unsigned int practice_id = create_test_practice_event(user_id, subject_id);
+
+    DB_Coverage db_cov;
+    AnalysisTask task("task-uuid-1", user_id, static_cast<int>(practice_id), "{\"model\":\"test\"}");
+    task.set_status(AnalysisTaskStatus::QUEUED);
+    task.set_stage_description("Queued");
+
+    EXPECT_EQ(db_cov.save_analysis_task(task), RST_OK);
+
+    AnalysisTask retrieved;
+    EXPECT_EQ(db_cov.get_analysis_task_by_id("task-uuid-1", retrieved), RST_OK);
+    EXPECT_EQ(retrieved.get_task_id(), "task-uuid-1");
+    EXPECT_EQ(retrieved.get_user_id(), user_id);
+    EXPECT_EQ(retrieved.get_practice_id(), static_cast<int>(practice_id));
+    EXPECT_EQ(retrieved.get_status(), AnalysisTaskStatus::QUEUED);
+    EXPECT_EQ(retrieved.get_config_snapshot_json(), "{\"model\":\"test\"}");
+
+    // Active task check
+    AnalysisTask active;
+    EXPECT_EQ(db_cov.get_active_analysis_task_for_practice(static_cast<int>(practice_id), active), RST_OK);
+    EXPECT_EQ(active.get_task_id(), "task-uuid-1");
+
+    // Update
+    task.set_status(AnalysisTaskStatus::CONVERTING_AUDIO);
+    task.set_progress_percentage(25);
+    task.set_stage_description("Converting Opus to WAV");
+    EXPECT_EQ(db_cov.update_analysis_task(task), RST_OK);
+
+    EXPECT_EQ(db_cov.get_analysis_task_by_id("task-uuid-1", retrieved), RST_OK);
+    EXPECT_EQ(retrieved.get_status(), AnalysisTaskStatus::CONVERTING_AUDIO);
+    EXPECT_EQ(retrieved.get_progress_percentage(), 25);
+    EXPECT_EQ(retrieved.get_stage_description(), "Converting Opus to WAV");
+
+    // User and all queries
+    std::vector<AnalysisTask> user_tasks;
+    EXPECT_EQ(db_cov.get_analysis_tasks_by_user(user_id, user_tasks), RST_OK);
+    EXPECT_EQ(user_tasks.size(), 1u);
+
+    std::vector<AnalysisTask> all_tasks;
+    EXPECT_EQ(db_cov.get_all_analysis_tasks(all_tasks), RST_OK);
+    EXPECT_GE(all_tasks.size(), 1u);
+
+    // Delete
+    EXPECT_EQ(db_cov.delete_analysis_task("task-uuid-1"), RST_OK);
+    EXPECT_EQ(db_cov.get_analysis_task_by_id("task-uuid-1", retrieved), TASK_NOT_FOUND);
+}
+
+TEST_F(DBCoverageTest, RecoverInterruptedAnalysisTasks) {
+    unsigned int user_id = create_test_user("task_user_crash");
+    unsigned int subject_id = create_test_subject(user_id, "task_subject_crash");
+    unsigned int practice_id = create_test_practice_event(user_id, subject_id);
+
+    DB_Coverage db_cov;
+
+    // Task 1: Interrupted running task, retry_count 0 -> should recover to QUEUED with retry_count 1
+    AnalysisTask task1("task-crash-1", user_id, static_cast<int>(practice_id));
+    task1.set_status(AnalysisTaskStatus::TRANSCRIBING);
+    task1.set_retry_count(0);
+    EXPECT_EQ(db_cov.save_analysis_task(task1), RST_OK);
+
+    // Task 2: Interrupted running task, retry_count 1 with max_retries 1 -> should fail
+    AnalysisTask task2("task-crash-2", user_id, static_cast<int>(practice_id));
+    task2.set_status(AnalysisTaskStatus::GENERATING_EMBEDDINGS);
+    task2.set_retry_count(1);
+    EXPECT_EQ(db_cov.save_analysis_task(task2), RST_OK);
+
+    std::vector<AnalysisTask> recovered;
+    EXPECT_EQ(db_cov.recover_interrupted_analysis_tasks(1, recovered), RST_OK);
+    EXPECT_EQ(recovered.size(), 2u);
+
+    AnalysisTask t1, t2;
+    EXPECT_EQ(db_cov.get_analysis_task_by_id("task-crash-1", t1), RST_OK);
+    EXPECT_EQ(t1.get_status(), AnalysisTaskStatus::QUEUED);
+    EXPECT_EQ(t1.get_retry_count(), 1);
+
+    EXPECT_EQ(db_cov.get_analysis_task_by_id("task-crash-2", t2), RST_OK);
+    EXPECT_EQ(t2.get_status(), AnalysisTaskStatus::FAILED);
+}
+
 TEST_F(DBCoverageTest, DBCloseDatabaseConnectionErrors) {
     DB_Coverage db_cov;
     sqlite3_close(DB_Connection::getConn().get());
@@ -156,6 +238,18 @@ TEST_F(DBCoverageTest, DBCloseDatabaseConnectionErrors) {
     
     std::string tmp2;
     EXPECT_EQ(db_cov.get_analysis_execution_details("x", tmp, tmp2), DB_FAIL);
+
+    AnalysisTask dummy_task;
+    EXPECT_EQ(db_cov.create_analysis_task_tables(), DB_FAIL);
+    EXPECT_EQ(db_cov.save_analysis_task(dummy_task), DB_FAIL);
+    EXPECT_EQ(db_cov.update_analysis_task(dummy_task), DB_FAIL);
+    EXPECT_EQ(db_cov.get_analysis_task_by_id("x", dummy_task), DB_FAIL);
+    
+    std::vector<AnalysisTask> tasks;
+    EXPECT_EQ(db_cov.get_analysis_tasks_by_user(1, tasks), DB_FAIL);
+    EXPECT_EQ(db_cov.get_all_analysis_tasks(tasks), DB_FAIL);
+    EXPECT_EQ(db_cov.get_active_analysis_task_for_practice(1, dummy_task), DB_FAIL);
+    EXPECT_EQ(db_cov.delete_analysis_task("x"), DB_FAIL);
 
     DB_Connection::reset_connection();
     db_cov.create_coverage_tables();

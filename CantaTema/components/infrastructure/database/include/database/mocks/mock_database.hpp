@@ -36,6 +36,16 @@ public:
 
     MOCK_METHOD(rst_code_e, save_user_configuration, (unsigned int user_id, const UserConfiguration& config), (override));
     MOCK_METHOD(rst_code_e, get_user_configuration, (unsigned int user_id, UserConfiguration& out_config), (override));
+
+    MOCK_METHOD(rst_code_e, create_analysis_task_tables, (), (override));
+    MOCK_METHOD(rst_code_e, save_analysis_task, (const AnalysisTask& task), (override));
+    MOCK_METHOD(rst_code_e, update_analysis_task, (const AnalysisTask& task), (override));
+    MOCK_METHOD(rst_code_e, get_analysis_task_by_id, (const std::string& task_id, AnalysisTask& out_task), (override));
+    MOCK_METHOD(rst_code_e, get_analysis_tasks_by_user, (unsigned int user_id, std::vector<AnalysisTask>& out_tasks), (override));
+    MOCK_METHOD(rst_code_e, get_all_analysis_tasks, (std::vector<AnalysisTask>& out_tasks), (override));
+    MOCK_METHOD(rst_code_e, get_active_analysis_task_for_practice, (int practice_id, AnalysisTask& out_task), (override));
+    MOCK_METHOD(rst_code_e, recover_interrupted_analysis_tasks, (int max_retries, std::vector<AnalysisTask>& out_recovered_tasks), (override));
+    MOCK_METHOD(rst_code_e, delete_analysis_task, (const std::string& task_id), (override));
 };
 
 #endif // __MOCK_DATABASE_HPP

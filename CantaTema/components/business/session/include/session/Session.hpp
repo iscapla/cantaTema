@@ -16,11 +16,13 @@
 #include "operations/i_operation_user_metrics.hpp"
 #include "operations/i_operation_practice_event.hpp"
 #include "operations/i_operation_coverage.hpp"
+#include "operations/i_operation_analysis_scheduler.hpp"
 #include "models/manager_models.hpp"
 #include "sound_system/i_sound_system.hpp"
 #include "database/i_database.hpp"
 #include "primitives/user_configuration.hpp"
 #include "primitives/hardware_info.hpp"
+#include "primitives/analysis_task.hpp"
 
 namespace cantatema::infra {
 class IGpuDetector;
@@ -45,6 +47,7 @@ public:
      * @param _sound_system_op Injected sound system handler (optional).
      * @param _models_manager_op Injected model manager handler (optional).
      * @param _gpu_detector_op Injected hardware/GPU detector handler (optional).
+     * @param _scheduler_op Injected analysis task scheduler handler (optional).
      */
     Session(
         std::shared_ptr<IOperationUser> &&_user_op,
@@ -56,7 +59,8 @@ public:
         std::shared_ptr<IDatabase> &&_db_op = nullptr,
         std::shared_ptr<ISoundSystem> &&_sound_system_op = nullptr,
         std::shared_ptr<ManagerModels> &&_models_manager_op = nullptr,
-        std::shared_ptr<cantatema::infra::IGpuDetector> &&_gpu_detector_op = nullptr
+        std::shared_ptr<cantatema::infra::IGpuDetector> &&_gpu_detector_op = nullptr,
+        std::shared_ptr<IOperationAnalysisScheduler> &&_scheduler_op = nullptr
     );
 
     /**
@@ -493,7 +497,8 @@ public:
     //-------------------------------------------------------------------------------------
 
     /**
-     * @brief Executes audio-to-PDF coverage analysis with explicit model and parameter overrides.
+     * @brief [Internal / Testing] Executes direct synchronous audio-to-PDF coverage analysis without task scheduling.
+     * @note Normal client applications should submit background tasks via analysis_task_submit().
      * @param practice_id Practice event ID.
      * @param out_execution_id Output string receiving generated execution GUID.
      * @param whisper_model Model override for Whisper (optional).
@@ -512,7 +517,8 @@ public:
     );
 
     /**
-     * @brief Executes audio-to-PDF coverage analysis using UserConfiguration parameters.
+     * @brief [Internal / Testing] Executes direct synchronous audio-to-PDF coverage analysis without task scheduling.
+     * @note Normal client applications should submit background tasks via analysis_task_submit().
      * @param practice_id Practice event ID.
      * @param config Configuration parameters struct.
      * @param out_execution_id Output string receiving generated execution GUID.
@@ -602,6 +608,63 @@ public:
      */
     cantatema::HardwareInfo get_hardware_info(void) const;
 
+    //-------------------------------------------------------------------------------------
+    // Asynchronous Analysis Task Scheduling
+    //-------------------------------------------------------------------------------------
+
+    /**
+     * @brief Submits a practice analysis task to the asynchronous scheduler queue.
+     * @param practice_id Practice event ID.
+     * @param out_task_id Output parameter receiving generated task UUID.
+     * @param config Optional configuration parameters struct.
+     * @return rst_code_e RST_OK on success, or error code.
+     */
+    rst_code_e analysis_task_submit(
+        int practice_id,
+        std::string &out_task_id,
+        const UserConfiguration &config = {}
+    );
+
+    /**
+     * @brief Cancels a waiting or running analysis task belonging to current user.
+     * @param task_id Unique GUID string of the task.
+     * @return rst_code_e RST_OK on success, USER_NO_AUTH, or error code.
+     */
+    rst_code_e analysis_task_cancel(const std::string &task_id);
+
+    /**
+     * @brief Queries the status and stage of an analysis task.
+     * @param task_id Unique GUID string of the task.
+     * @param out_task Output parameter receiving task status.
+     * @return rst_code_e RST_OK on success, USER_NO_AUTH if belonging to other user, or TASK_NOT_FOUND.
+     */
+    rst_code_e analysis_task_get_status(const std::string &task_id, AnalysisTask &out_task);
+
+    /**
+     * @brief Retrieves all analysis tasks submitted by the current authenticated user.
+     * @param out_tasks Output list receiving tasks.
+     * @return rst_code_e RST_OK on success, or error code.
+     */
+    rst_code_e analysis_task_get_user_tasks(std::vector<AnalysisTask> &out_tasks);
+
+    /**
+     * @brief Retrieves all analysis tasks across all users (hidden/admin command).
+     * @param out_tasks Output list receiving all tasks.
+     * @return rst_code_e RST_OK on success, or error code.
+     */
+    rst_code_e analysis_task_get_all_tasks(std::vector<AnalysisTask> &out_tasks);
+
+    /**
+     * @brief Sets max concurrent running tasks in scheduler.
+     * @param max_tasks Max parallel tasks.
+     */
+    void analysis_task_set_max_parallel(size_t max_tasks);
+
+    /**
+     * @brief Gets current max concurrent running tasks setting.
+     */
+    size_t analysis_task_get_max_parallel() const;
+
 private:
     std::shared_ptr<IOperationUser> user_op{nullptr};
     std::shared_ptr<IOperationCategory> category_op{nullptr};
@@ -613,6 +676,7 @@ private:
     std::shared_ptr<ISoundSystem> sound_op{nullptr};
     std::shared_ptr<ManagerModels> models_manager_op{nullptr};
     std::shared_ptr<cantatema::infra::IGpuDetector> gpu_detector_op{nullptr};
+    std::shared_ptr<IOperationAnalysisScheduler> scheduler_op{nullptr};
 
     //-------------------------------------------------------------------------------------
 

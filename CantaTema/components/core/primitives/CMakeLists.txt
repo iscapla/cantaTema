@@ -39,6 +39,7 @@ create_infra_library(
     src/language_profile_manager.cpp
     src/domain_profiles.cpp
     src/domain_profile_manager.cpp
+    src/analysis_task.cpp
     INC_PUBLIC
     CORE::LOGGER
     CORE::CONFIGURATION

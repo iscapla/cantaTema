@@ -7,8 +7,10 @@
 #define __I_DATABASE_HPP
 
 #include <string>
+#include <vector>
 #include "primitives/definitions.hpp"
 #include "primitives/user_configuration.hpp"
+#include "primitives/analysis_task.hpp"
 
 /**
  * @class IDatabase
@@ -97,6 +99,77 @@ public:
      * @return rst_code_e RST_OK on success, or error code.
      */
     virtual rst_code_e get_user_configuration(unsigned int user_id, UserConfiguration& out_config) = 0;
+
+    //-------------------------------------------------------------------------------------
+    // Analysis Task Queue Persistence
+    //-------------------------------------------------------------------------------------
+
+    /**
+     * @brief Creates analysis task queue table in SQLite database.
+     * @return rst_code_e RST_OK on success, or error code.
+     */
+    virtual rst_code_e create_analysis_task_tables() = 0;
+
+    /**
+     * @brief Saves a newly created analysis task to the database.
+     * @param task Analysis task entity.
+     * @return rst_code_e RST_OK on success, or error code.
+     */
+    virtual rst_code_e save_analysis_task(const AnalysisTask& task) = 0;
+
+    /**
+     * @brief Updates an existing analysis task status, progress, or completion metrics.
+     * @param task Analysis task entity.
+     * @return rst_code_e RST_OK on success, or error code.
+     */
+    virtual rst_code_e update_analysis_task(const AnalysisTask& task) = 0;
+
+    /**
+     * @brief Retrieves an analysis task by its unique task ID.
+     * @param task_id Unique GUID string of the task.
+     * @param out_task Output parameter receiving the retrieved task.
+     * @return rst_code_e RST_OK on success, TASK_NOT_FOUND or DB_FAIL.
+     */
+    virtual rst_code_e get_analysis_task_by_id(const std::string& task_id, AnalysisTask& out_task) = 0;
+
+    /**
+     * @brief Retrieves all analysis tasks submitted by a specific user.
+     * @param user_id User ID.
+     * @param out_tasks Output list receiving tasks.
+     * @return rst_code_e RST_OK on success, or error code.
+     */
+    virtual rst_code_e get_analysis_tasks_by_user(unsigned int user_id, std::vector<AnalysisTask>& out_tasks) = 0;
+
+    /**
+     * @brief Retrieves all analysis tasks in the system across all users (admin query).
+     * @param out_tasks Output list receiving tasks.
+     * @return rst_code_e RST_OK on success, or error code.
+     */
+    virtual rst_code_e get_all_analysis_tasks(std::vector<AnalysisTask>& out_tasks) = 0;
+
+    /**
+     * @brief Finds an active (QUEUED or running) task for a given practice event.
+     * @param practice_id Practice event ID.
+     * @param out_task Output parameter receiving the active task if found.
+     * @return rst_code_e RST_OK if found, TASK_NOT_FOUND if none active.
+     */
+    virtual rst_code_e get_active_analysis_task_for_practice(int practice_id, AnalysisTask& out_task) = 0;
+
+    /**
+     * @brief Identifies interrupted RUNNING tasks from a previous server crash/shutdown,
+     * and transitions them to QUEUED (if retry_count < max_retries) or FAILED.
+     * @param max_retries Maximum retries allowed.
+     * @param out_recovered_tasks Output list of tasks updated/recovered.
+     * @return rst_code_e RST_OK on success, or error code.
+     */
+    virtual rst_code_e recover_interrupted_analysis_tasks(int max_retries, std::vector<AnalysisTask>& out_recovered_tasks) = 0;
+
+    /**
+     * @brief Deletes an analysis task from the database.
+     * @param task_id Unique GUID string of the task.
+     * @return rst_code_e RST_OK on success, or error code.
+     */
+    virtual rst_code_e delete_analysis_task(const std::string& task_id) = 0;
 };
 
 #endif // __I_DATABASE_HPP

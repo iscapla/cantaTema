@@ -513,6 +513,78 @@ rst_code_e terminal_init_coverage(std::unique_ptr<cli::Menu> &rootMenu)
             },
             "View detailed coverage analysis report by execution ID");
 
+        coverageMenu->Insert(
+            "task_submit", {"practice_id"},
+            [](std::ostream &out, unsigned int practice_id)
+            {
+                terminal_session->coverage_task_submit(out, practice_id);
+            },
+            "Submit asynchronous analysis task to background scheduler");
+
+        coverageMenu->Insert(
+            "status", {"task_id"},
+            [](std::ostream &out, const std::string &task_id)
+            {
+                terminal_session->coverage_task_status(out, task_id);
+            },
+            "Check status and progress percentage of an analysis task");
+
+        coverageMenu->Insert(
+            "cancel", {"task_id"},
+            [](std::ostream &out, const std::string &task_id)
+            {
+                terminal_session->coverage_task_cancel(out, task_id);
+            },
+            "Cancel a queued or currently executing analysis task");
+
+        coverageMenu->Insert(
+            "list", {},
+            [](std::ostream &out)
+            {
+                terminal_session->coverage_task_list(out);
+            },
+            "List all analysis tasks submitted by current user");
+
+        coverageMenu->Insert(
+            "task_status", {"task_id"},
+            [](std::ostream &out, const std::string &task_id)
+            {
+                terminal_session->coverage_task_status(out, task_id);
+            },
+            "Check status and progress percentage of an analysis task");
+
+        coverageMenu->Insert(
+            "task_cancel", {"task_id"},
+            [](std::ostream &out, const std::string &task_id)
+            {
+                terminal_session->coverage_task_cancel(out, task_id);
+            },
+            "Cancel a queued or currently executing analysis task");
+
+        coverageMenu->Insert(
+            "task_list", {},
+            [](std::ostream &out)
+            {
+                terminal_session->coverage_task_list(out);
+            },
+            "List all analysis tasks submitted by current user");
+
+        coverageMenu->Insert(
+            "report_practice", {"practice_id"},
+            [](std::ostream &out, unsigned int practice_id)
+            {
+                terminal_session->coverage_report_by_practice(out, practice_id);
+            },
+            "View coverage analysis report for a practice event");
+
+        coverageMenu->Insert(
+            "admin_tasks", {},
+            [](std::ostream &out)
+            {
+                terminal_session->coverage_admin_tasks(out);
+            },
+            "Admin: list all analysis tasks across all users in system");
+
         rootMenu->Insert(std::move(coverageMenu));
         return RST_OK;
     }

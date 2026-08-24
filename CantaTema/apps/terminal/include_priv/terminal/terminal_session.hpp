@@ -72,6 +72,12 @@ public:
     void coverage_report(std::ostream &out, const std::string &execution_id);
     void coverage_report_by_practice(std::ostream &out, unsigned int practice_id);
     
+    void coverage_task_submit(std::ostream &out, unsigned int practice_id);
+    void coverage_task_status(std::ostream &out, const std::string &task_id);
+    void coverage_task_cancel(std::ostream &out, const std::string &task_id);
+    void coverage_task_list(std::ostream &out);
+    void coverage_admin_tasks(std::ostream &out);
+    
     //-------------------------------------------------------------------------------------
 
     void hardware_info(std::ostream &out);

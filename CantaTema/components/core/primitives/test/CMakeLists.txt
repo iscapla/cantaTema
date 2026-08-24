@@ -12,6 +12,7 @@ create_test_exec(
         t_user_configuration.cxx
         t_language_profile.cxx
         t_domain_profile.cxx
+        t_analysis_task.cxx
     INC_PRIVATE
         CORE::PRIMITIVES
 )
