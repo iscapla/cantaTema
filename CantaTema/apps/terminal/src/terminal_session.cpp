@@ -145,6 +145,128 @@ void TerminalSession::category_get_by_user(std::ostream &out)
     }
 }
 
+void TerminalSession::tag_add(std::ostream &out, const std::string &name)
+{
+    rst_code_e rst = op->tag_add(name);
+    if (rst)
+    {
+        logger->error("Operation error: {}", get_rst_txt(rst));
+    }
+    else
+    {
+        logger->info("Tag added");
+    }
+}
+
+void TerminalSession::tag_update(std::ostream &out, const unsigned int tag_id, const std::string &new_name)
+{
+    rst_code_e rst = op->tag_update(tag_id, new_name);
+    if (rst)
+    {
+        logger->error("Operation error: {}", get_rst_txt(rst));
+    }
+    else
+    {
+        logger->info("Tag updated");
+    }
+}
+
+void TerminalSession::tag_remove(std::ostream &out, const unsigned int tag_id)
+{
+    rst_code_e rst = op->tag_remove(tag_id);
+    if (rst)
+    {
+        logger->error("Operation error: {}", get_rst_txt(rst));
+    }
+    else
+    {
+        logger->info("Tag removed");
+    }
+}
+
+void TerminalSession::tag_get_by_user(std::ostream &out)
+{
+    std::vector<std::shared_ptr<Tag>> tags;
+    rst_code_e rst = op->tag_get_by_user(tags);
+    if (rst)
+    {
+        logger->error("Operation error: {}", get_rst_txt(rst));
+    }
+    else
+    {
+        logger->info("Tag information:");
+        logger->info(UtilsPrints::get_tag_header());
+        for (const auto &tag : tags)
+        {
+            logger->info(UtilsPrints::get_tag_body(*tag));
+        }
+    }
+}
+
+void TerminalSession::subject_add_tag(std::ostream &out, unsigned int subject_id, unsigned int tag_id)
+{
+    rst_code_e rst = op->subject_add_tag(subject_id, tag_id);
+    if (rst)
+    {
+        logger->error("Operation error: {}", get_rst_txt(rst));
+    }
+    else
+    {
+        logger->info("Tag attached to subject");
+    }
+}
+
+void TerminalSession::subject_remove_tag(std::ostream &out, unsigned int subject_id, unsigned int tag_id)
+{
+    rst_code_e rst = op->subject_remove_tag(subject_id, tag_id);
+    if (rst)
+    {
+        logger->error("Operation error: {}", get_rst_txt(rst));
+    }
+    else
+    {
+        logger->info("Tag removed from subject");
+    }
+}
+
+void TerminalSession::subject_get_tags(std::ostream &out, unsigned int subject_id)
+{
+    std::vector<std::shared_ptr<Tag>> tags;
+    rst_code_e rst = op->subject_get_tags(subject_id, tags);
+    if (rst)
+    {
+        logger->error("Operation error: {}", get_rst_txt(rst));
+    }
+    else
+    {
+        logger->info("Tags for Subject {}:", subject_id);
+        logger->info(UtilsPrints::get_tag_header());
+        for (const auto &tag : tags)
+        {
+            logger->info(UtilsPrints::get_tag_body(*tag));
+        }
+    }
+}
+
+void TerminalSession::subject_get_by_tag(std::ostream &out, unsigned int tag_id)
+{
+    std::vector<std::shared_ptr<Subject>> subjects;
+    rst_code_e rst = op->subject_get_by_tag(tag_id, subjects);
+    if (rst)
+    {
+        logger->error("Operation error: {}", get_rst_txt(rst));
+    }
+    else
+    {
+        logger->info("Subjects matching Tag ID {}:", tag_id);
+        logger->info(UtilsPrints::get_subject_header());
+        for (const auto &sub : subjects)
+        {
+            logger->info(UtilsPrints::get_subject_body(*sub));
+        }
+    }
+}
+
 void TerminalSession::subject_add(std::ostream &out, unsigned int category_id, const std::string &name)
 {
     std::string file_path;

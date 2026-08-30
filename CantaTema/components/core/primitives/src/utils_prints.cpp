@@ -15,9 +15,14 @@ const std::string UtilsPrints::get_category_header(void)
     return fmt::format("| {:>6s} | {:>6s} | {:>20s} |", "ID", "User", "Name");
 }
 
+const std::string UtilsPrints::get_tag_header(void)
+{
+    return fmt::format("| {:>6s} | {:>6s} | {:>20s} |", "ID", "User", "Name");
+}
+
 const std::string UtilsPrints::get_subject_header(void)
 {
-    return fmt::format("| {:>6s} | {:>6s} | {:>6s} | {:>20s} | {:>30s} |", "ID", "User", "Cat", "Name", "Filepath");
+    return fmt::format("| {:>6s} | {:>6s} | {:>6s} | {:>20s} | {:>30s} | {:>20s} |", "ID", "User", "Cat", "Name", "Filepath", "Tags");
 }
 
 const std::string UtilsPrints::get_practice_event_header(void)
@@ -43,6 +48,12 @@ const std::string UtilsPrints::get_category_body(const Category &category)
 {
     return fmt::format("| {:>6d} | {:>6d} | {:>20s} |",
                        category.get_id(), category.get_user_id(), category.get_name());
+}
+
+const std::string UtilsPrints::get_tag_body(const Tag &tag)
+{
+    return fmt::format("| {:>6d} | {:>6d} | {:>20s} |",
+                       tag.get_id(), tag.get_user_id(), tag.get_name());
 }
 
 const std::string UtilsPrints::format_path_for_display(const std::string &path)
@@ -91,8 +102,23 @@ const std::string UtilsPrints::format_path_for_display(const std::string &path)
 
 const std::string UtilsPrints::get_subject_body(const Subject &subject)
 {
-    return fmt::format("| {:>6d} | {:>6d} | {:>6d} | {:>20s} | {:>30s} |",
-                       subject.get_id(), subject.get_user_id(), subject.get_category_id(), subject.get_name(), format_path_for_display(subject.get_filepath()));
+    std::string tags_str = "";
+    const auto &tags = subject.get_tags();
+    for (size_t i = 0; i < tags.size(); ++i)
+    {
+        tags_str += tags[i].get_name();
+        if (i + 1 < tags.size())
+        {
+            tags_str += ", ";
+        }
+    }
+    if (tags_str.empty())
+    {
+        tags_str = "-";
+    }
+
+    return fmt::format("| {:>6d} | {:>6d} | {:>6d} | {:>20s} | {:>30s} | {:>20s} |",
+                       subject.get_id(), subject.get_user_id(), subject.get_category_id(), subject.get_name(), format_path_for_display(subject.get_filepath()), tags_str);
 }
 
 const std::string UtilsPrints::get_practice_event_body(const PracticeEvent &practice_event)

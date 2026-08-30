@@ -84,6 +84,9 @@ public:
      * @return rst_code_e
      */
     rst_code_e get_all_subjects_by_user(unsigned int user_id, std::vector<std::shared_ptr<Subject>> &subjects) const;
+
+private:
+    void load_tags_for_subject(struct sqlite3 *db, Subject &subject) const;
 };
 
 #endif //__DB_SUBJECT_HPP

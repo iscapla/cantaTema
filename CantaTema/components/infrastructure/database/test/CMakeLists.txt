@@ -7,6 +7,7 @@ create_test_exec(
         t_database_main.cxx
         t_db_user.cxx
         t_db_category.cxx
+        t_db_tag.cxx
         t_db_subject.cxx
         t_db_user_metrics.cxx
         t_db_practice_event.cxx

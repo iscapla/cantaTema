@@ -52,6 +52,10 @@ enum rst_code_e
     SUBJECT_NOT_FOUND,  // Subject not found
     SUBJECT_DUPLICATED, // Subject already exists
 
+    TAG_ERROR,          // Tag general error
+    TAG_NOT_FOUND,      // Tag not found
+    TAG_DUPLICATED,     // Tag already exists
+
     PRACTICE_EVENT_ERROR,      // Practice event general error
     PRACTICE_EVENT_NOT_FOUND,  // Practice event not found
     PRACTICE_EVENT_ILLEGAL_CHANGE,  // Practice event illegal change
@@ -155,6 +159,16 @@ inline const std::string get_rst_txt(const rst_code_e &rst)
         break;
     case SUBJECT_DUPLICATED:
         txt = "SUBJECT_DUPLICATED";
+        break;
+
+    case TAG_ERROR:
+        txt = "TAG_ERROR";
+        break;
+    case TAG_NOT_FOUND:
+        txt = "TAG_NOT_FOUND";
+        break;
+    case TAG_DUPLICATED:
+        txt = "TAG_DUPLICATED";
         break;
 
     case PRACTICE_EVENT_ERROR:

@@ -16,6 +16,7 @@
 #include "primitives/user.hpp"
 #include "primitives/category.hpp"
 #include "primitives/subject.hpp"
+#include "primitives/tag.hpp"
 #include "primitives/practice_event.hpp"
 #include "primitives/user_metrics.hpp"
 
@@ -39,6 +40,13 @@ public:
      * @return const std::string 
      */
     static const std::string get_category_header(void);
+
+    /**
+     * @brief Get the header string for the Tag table
+     * 
+     * @return const std::string 
+     */
+    static const std::string get_tag_header(void);
 
     /**
      * @brief Get the header string for the Subject table
@@ -76,6 +84,14 @@ public:
      * @return const std::string 
      */
     static const std::string get_category_body(const Category &category);
+
+    /**
+     * @brief Get the formatted body row for a Tag
+     * 
+     * @param tag 
+     * @return const std::string 
+     */
+    static const std::string get_tag_body(const Tag &tag);
 
     /**
      * @brief Get the formatted body row for a Subject

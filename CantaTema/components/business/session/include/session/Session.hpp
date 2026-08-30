@@ -12,6 +12,7 @@
 
 #include "operations/i_operation_user.hpp"
 #include "operations/i_operation_category.hpp"
+#include "operations/i_operation_tag.hpp"
 #include "operations/i_operation_subject.hpp"
 #include "operations/i_operation_user_metrics.hpp"
 #include "operations/i_operation_practice_event.hpp"
@@ -23,6 +24,7 @@
 #include "primitives/user_configuration.hpp"
 #include "primitives/hardware_info.hpp"
 #include "primitives/analysis_task.hpp"
+#include "primitives/tag.hpp"
 
 namespace cantatema::infra {
 class IGpuDetector;
@@ -60,7 +62,8 @@ public:
         std::shared_ptr<ISoundSystem> &&_sound_system_op = nullptr,
         std::shared_ptr<ManagerModels> &&_models_manager_op = nullptr,
         std::shared_ptr<cantatema::infra::IGpuDetector> &&_gpu_detector_op = nullptr,
-        std::shared_ptr<IOperationAnalysisScheduler> &&_scheduler_op = nullptr
+        std::shared_ptr<IOperationAnalysisScheduler> &&_scheduler_op = nullptr,
+        std::shared_ptr<IOperationTag> &&_tag_op = nullptr
     );
 
     /**
@@ -179,6 +182,87 @@ public:
      * @return rst_code_e RST_OK on success, or USER_NO_AUTH.
      */
     rst_code_e category_get_by_user(std::vector<std::shared_ptr<const Category>> &categories);
+
+    //-------------------------------------------------------------------------------------
+    // Tag Management
+    //-------------------------------------------------------------------------------------
+
+    /**
+     * @brief Creates a new study tag for the authenticated user.
+     * @param name Tag name.
+     * @return rst_code_e RST_OK on success, USER_NO_AUTH, TAG_DUPLICATED, or error code.
+     */
+    rst_code_e tag_add(const std::string &name);
+
+    /**
+     * @brief Updates an existing tag belonging to the authenticated user.
+     * @param tag_id Unique ID of tag.
+     * @param new_name New tag name.
+     * @return rst_code_e RST_OK on success, TAG_NOT_FOUND, or error code.
+     */
+    rst_code_e tag_update(unsigned int tag_id, const std::string &new_name);
+
+    /**
+     * @brief Removes a tag by ID.
+     * @param tag_id Unique ID of tag to delete.
+     * @return rst_code_e RST_OK on success, TAG_NOT_FOUND, or error code.
+     */
+    rst_code_e tag_remove(unsigned int tag_id);
+
+    /**
+     * @brief Retrieves a tag by ID if it belongs to the authenticated user.
+     * @param tag_id Unique ID of tag to query.
+     * @param tag Output reference receiving Tag pointer.
+     * @return rst_code_e RST_OK on success, TAG_NOT_FOUND, or USER_NO_AUTH.
+     */
+    rst_code_e tag_get_by_id(unsigned int tag_id, std::shared_ptr<Tag> &tag);
+
+    /**
+     * @brief Retrieves a tag by name for the authenticated user.
+     * @param name Tag name string.
+     * @param tag Output reference receiving Tag pointer.
+     * @return rst_code_e RST_OK on success, TAG_NOT_FOUND, or USER_NO_AUTH.
+     */
+    rst_code_e tag_get_by_name(const std::string &name, std::shared_ptr<Tag> &tag);
+
+    /**
+     * @brief Retrieves all study tags owned by the authenticated user.
+     * @param tags Output vector receiving user tags.
+     * @return rst_code_e RST_OK on success, or USER_NO_AUTH.
+     */
+    rst_code_e tag_get_by_user(std::vector<std::shared_ptr<Tag>> &tags);
+
+    /**
+     * @brief Attaches a tag to a subject owned by the authenticated user.
+     * @param subject_id Subject ID.
+     * @param tag_id Tag ID.
+     * @return rst_code_e RST_OK on success, or error code.
+     */
+    rst_code_e subject_add_tag(unsigned int subject_id, unsigned int tag_id);
+
+    /**
+     * @brief Detaches a tag from a subject owned by the authenticated user.
+     * @param subject_id Subject ID.
+     * @param tag_id Tag ID.
+     * @return rst_code_e RST_OK on success, or error code.
+     */
+    rst_code_e subject_remove_tag(unsigned int subject_id, unsigned int tag_id);
+
+    /**
+     * @brief Retrieves all tags attached to a subject.
+     * @param subject_id Subject ID.
+     * @param tags Output vector receiving attached Tag objects.
+     * @return rst_code_e RST_OK on success, or error code.
+     */
+    rst_code_e subject_get_tags(unsigned int subject_id, std::vector<std::shared_ptr<Tag>> &tags);
+
+    /**
+     * @brief Retrieves all subjects belonging to the user that have the given tag.
+     * @param tag_id Tag ID.
+     * @param subjects Output vector receiving matching Subject objects.
+     * @return rst_code_e RST_OK on success, or error code.
+     */
+    rst_code_e subject_get_by_tag(unsigned int tag_id, std::vector<std::shared_ptr<Subject>> &subjects);
 
     //-------------------------------------------------------------------------------------
     // Subject Management
@@ -668,6 +752,7 @@ public:
 private:
     std::shared_ptr<IOperationUser> user_op{nullptr};
     std::shared_ptr<IOperationCategory> category_op{nullptr};
+    std::shared_ptr<IOperationTag> tag_op{nullptr};
     std::shared_ptr<IOperationSubject> subject_op{nullptr};
     std::shared_ptr<IOperationUserMetrics> user_metrics_op{nullptr};
     std::shared_ptr<IOperationPracticeEvent> practice_event_op{nullptr};

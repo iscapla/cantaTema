@@ -9,6 +9,7 @@
 
 #include "operations/operation_user.hpp"
 #include "operations/operation_category.hpp"
+#include "operations/operation_tag.hpp"
 #include "operations/operation_subject.hpp"
 #include "operations/operation_user_metrics.hpp"
 #include "operations/operation_practice_event.hpp"
@@ -30,9 +31,11 @@ Session::Session(
     std::shared_ptr<ISoundSystem> &&_sound_system_op,
     std::shared_ptr<ManagerModels> &&_models_manager_op,
     std::shared_ptr<cantatema::infra::IGpuDetector> &&_gpu_detector_op,
-    std::shared_ptr<IOperationAnalysisScheduler> &&_scheduler_op
+    std::shared_ptr<IOperationAnalysisScheduler> &&_scheduler_op,
+    std::shared_ptr<IOperationTag> &&_tag_op
 ) : user_op(std::move(_user_op)),
     category_op(std::move(_category_op)),
+    tag_op(std::move(_tag_op)),
     subject_op(std::move(_subject_op)),
     user_metrics_op(std::move(_user_metrics_op)),
     practice_event_op(std::move(_practice_event_op)),
@@ -46,6 +49,10 @@ Session::Session(
     if (user_op == nullptr || category_op == nullptr || subject_op == nullptr || user_metrics_op == nullptr || practice_event_op == nullptr)
     {
         throw std::runtime_error("Operation session received wrong operation instances.");
+    }
+    if (tag_op == nullptr)
+    {
+        tag_op = std::make_shared<OperationTag>();
     }
     if (db_coverage_op == nullptr)
     {
@@ -78,6 +85,7 @@ Session::Session(void)
 {
     user_metrics_op = std::make_shared<OperationUserMetrics>();
     category_op = std::make_shared<OperationCategory>();
+    tag_op = std::make_shared<OperationTag>();
     user_op = std::make_shared<OperationUser>(std::shared_ptr<IOperationUserMetrics>(user_metrics_op));
     subject_op = std::make_shared<OperationSubject>(std::shared_ptr<IOperationUserMetrics>(user_metrics_op), std::shared_ptr<IOperationCategory>(category_op));
     practice_event_op = std::make_shared<OperationPracticeEvent>(std::shared_ptr<IOperationUserMetrics>(user_metrics_op), std::shared_ptr<IOperationSubject>(subject_op));
@@ -88,7 +96,7 @@ Session::Session(void)
     gpu_detector_op = std::make_shared<cantatema::infra::GpuDetector>();
     scheduler_op = std::make_shared<OperationAnalysisScheduler>(db_coverage_op, coverage_op, practice_event_op, user_op);
 
-    if (user_op == nullptr || category_op == nullptr || subject_op == nullptr || user_metrics_op == nullptr || practice_event_op == nullptr || coverage_op == nullptr || db_coverage_op == nullptr || sound_op == nullptr || models_manager_op == nullptr || gpu_detector_op == nullptr || scheduler_op == nullptr)
+    if (user_op == nullptr || category_op == nullptr || tag_op == nullptr || subject_op == nullptr || user_metrics_op == nullptr || practice_event_op == nullptr || coverage_op == nullptr || db_coverage_op == nullptr || sound_op == nullptr || models_manager_op == nullptr || gpu_detector_op == nullptr || scheduler_op == nullptr)
     {
         throw std::runtime_error("Operation session received wrong operation instances. (2)");
     }
@@ -288,6 +296,92 @@ rst_code_e Session::category_get_by_user(std::vector<std::shared_ptr<const Categ
     }
 
     return RST_OK;
+}
+
+//-------------------------------------------------------------------------------------
+// Tag Management
+//-------------------------------------------------------------------------------------
+
+rst_code_e Session::tag_add(const std::string &name)
+{
+    if (session_user == nullptr || !user_op->user_is_authenticated())
+        return USER_NO_AUTH;
+
+    Tag tag(0, name);
+    return tag_op->tag_add(session_user, tag);
+}
+
+rst_code_e Session::tag_update(unsigned int tag_id, const std::string &new_name)
+{
+    if (session_user == nullptr || !user_op->user_is_authenticated())
+        return USER_NO_AUTH;
+
+    Tag tag(tag_id, new_name);
+    return tag_op->tag_update(session_user, tag);
+}
+
+rst_code_e Session::tag_remove(unsigned int tag_id)
+{
+    if (session_user == nullptr || !user_op->user_is_authenticated())
+        return USER_NO_AUTH;
+
+    return tag_op->tag_remove(session_user, tag_id);
+}
+
+rst_code_e Session::tag_get_by_id(unsigned int tag_id, std::shared_ptr<Tag> &tag)
+{
+    if (session_user == nullptr || !user_op->user_is_authenticated())
+        return USER_NO_AUTH;
+
+    return tag_op->tag_get_by_id(session_user, tag_id, tag);
+}
+
+rst_code_e Session::tag_get_by_name(const std::string &name, std::shared_ptr<Tag> &tag)
+{
+    if (session_user == nullptr || !user_op->user_is_authenticated())
+        return USER_NO_AUTH;
+
+    return tag_op->tag_get_by_name(session_user, name, tag);
+}
+
+rst_code_e Session::tag_get_by_user(std::vector<std::shared_ptr<Tag>> &tags)
+{
+    if (session_user == nullptr || !user_op->user_is_authenticated())
+        return USER_NO_AUTH;
+
+    return tag_op->tag_get_all_by_user(session_user, tags);
+}
+
+rst_code_e Session::subject_add_tag(unsigned int subject_id, unsigned int tag_id)
+{
+    if (session_user == nullptr || !user_op->user_is_authenticated())
+        return USER_NO_AUTH;
+
+    return tag_op->subject_add_tag(session_user, subject_id, tag_id);
+}
+
+rst_code_e Session::subject_remove_tag(unsigned int subject_id, unsigned int tag_id)
+{
+    if (session_user == nullptr || !user_op->user_is_authenticated())
+        return USER_NO_AUTH;
+
+    return tag_op->subject_remove_tag(session_user, subject_id, tag_id);
+}
+
+rst_code_e Session::subject_get_tags(unsigned int subject_id, std::vector<std::shared_ptr<Tag>> &tags)
+{
+    if (session_user == nullptr || !user_op->user_is_authenticated())
+        return USER_NO_AUTH;
+
+    return tag_op->subject_get_tags(session_user, subject_id, tags);
+}
+
+rst_code_e Session::subject_get_by_tag(unsigned int tag_id, std::vector<std::shared_ptr<Subject>> &subjects)
+{
+    if (session_user == nullptr || !user_op->user_is_authenticated())
+        return USER_NO_AUTH;
+
+    return tag_op->subject_get_all_by_tag(session_user, tag_id, subjects);
 }
 
 //-------------------------------------------------------------------------------------

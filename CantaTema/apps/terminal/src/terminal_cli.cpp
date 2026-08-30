@@ -23,6 +23,7 @@ static std::unique_ptr<TerminalSession> terminal_session;
 
 rst_code_e terminal_init_user(std::unique_ptr<cli::Menu> &rootMenu);
 rst_code_e terminal_init_category(std::unique_ptr<cli::Menu> &rootMenu);
+rst_code_e terminal_init_tag(std::unique_ptr<cli::Menu> &rootMenu);
 rst_code_e terminal_init_subject(std::unique_ptr<cli::Menu> &rootMenu);
 rst_code_e terminal_init_practice(std::unique_ptr<cli::Menu> &rootMenu);
 rst_code_e terminal_init_models(std::unique_ptr<cli::Menu> &rootMenu);
@@ -58,25 +59,9 @@ rst_code_e terminal_cli_start(void)
             },
             "Purge and populate database with test data");
 
-        // rootMenu->Insert(
-        //     "test_start",
-        //     [](std::ostream &out)
-        //     {
-        //         terminal_session->test_start(out);
-        //     },
-        //     "Execute default test commands to start with the real tests");
-
-        // rootMenu->Insert(
-        //     "test_populate",
-        //     [](std::ostream &out)
-        //     {
-        //         terminal_session->test_populate(out);
-        //     },
-        //     "Populate database with example data");
-
-
         terminal_init_user(rootMenu);
         terminal_init_category(rootMenu);
+        terminal_init_tag(rootMenu);
         terminal_init_subject(rootMenu);
         terminal_init_practice(rootMenu);
         terminal_init_models(rootMenu);
@@ -255,6 +240,91 @@ rst_code_e terminal_init_practice(std::unique_ptr<cli::Menu> &rootMenu)
     return CONSOLE_EXP;
 }
 
+rst_code_e terminal_init_tag(std::unique_ptr<cli::Menu> &rootMenu)
+{
+    try
+    {
+        auto tagMenu = std::make_unique<cli::Menu>("tag", "Tag commands (MENU)");
+
+        tagMenu->Insert(
+            "tag_add", {"name"},
+            [](std::ostream &out, const std::string &name)
+            {
+                terminal_session->tag_add(out, name);
+            },
+            "Add new tag for current user");
+
+        tagMenu->Insert(
+            "tag_update", {"id", "new_name"},
+            [](std::ostream &out, unsigned int id, const std::string &new_name)
+            {
+                terminal_session->tag_update(out, id, new_name);
+            },
+            "Update tag name");
+
+        tagMenu->Insert(
+            "tag_remove", {"id"},
+            [](std::ostream &out, unsigned int id)
+            {
+                terminal_session->tag_remove(out, id);
+            },
+            "Remove tag");
+
+        tagMenu->Insert(
+            "tag_get_by_user", {},
+            [](std::ostream &out)
+            {
+                terminal_session->tag_get_by_user(out);
+            },
+            "Get all tags for current user");
+
+        tagMenu->Insert(
+            "tag_assign", {"subject_id", "tag_id"},
+            [](std::ostream &out, unsigned int subject_id, unsigned int tag_id)
+            {
+                terminal_session->subject_add_tag(out, subject_id, tag_id);
+            },
+            "Assign tag to a subject");
+
+        tagMenu->Insert(
+            "tag_unassign", {"subject_id", "tag_id"},
+            [](std::ostream &out, unsigned int subject_id, unsigned int tag_id)
+            {
+                terminal_session->subject_remove_tag(out, subject_id, tag_id);
+            },
+            "Unassign tag from a subject");
+
+        tagMenu->Insert(
+            "tag_get_by_subject", {"subject_id"},
+            [](std::ostream &out, unsigned int subject_id)
+            {
+                terminal_session->subject_get_tags(out, subject_id);
+            },
+            "Get all tags assigned to a subject");
+
+        tagMenu->Insert(
+            "subject_get_by_tag", {"tag_id"},
+            [](std::ostream &out, unsigned int tag_id)
+            {
+                terminal_session->subject_get_by_tag(out, tag_id);
+            },
+            "Get all subjects labeled with a specific tag");
+
+        rootMenu->Insert(std::move(tagMenu));
+        return RST_OK;
+    }
+    catch (const std::exception &e)
+    {
+        logger->error("Exception caught in tag menu: {}", e.what());
+    }
+    catch (...)
+    {
+        logger->critical("Unknown exception caught in tag menu.");
+    }
+
+    return CONSOLE_EXP;
+}
+
 rst_code_e terminal_init_subject(std::unique_ptr<cli::Menu> &rootMenu)
 {
     try
@@ -300,6 +370,38 @@ rst_code_e terminal_init_subject(std::unique_ptr<cli::Menu> &rootMenu)
                 terminal_session->subject_get_by_user(out);
             },
             "Get all subjects for current user");
+
+        subjectMenu->Insert(
+            "subject_get_by_tag", {"tag_id"},
+            [](std::ostream &out, unsigned int tag_id)
+            {
+                terminal_session->subject_get_by_tag(out, tag_id);
+            },
+            "Get subjects by tag ID");
+
+        subjectMenu->Insert(
+            "subject_add_tag", {"subject_id", "tag_id"},
+            [](std::ostream &out, unsigned int subject_id, unsigned int tag_id)
+            {
+                terminal_session->subject_add_tag(out, subject_id, tag_id);
+            },
+            "Assign tag to subject");
+
+        subjectMenu->Insert(
+            "subject_remove_tag", {"subject_id", "tag_id"},
+            [](std::ostream &out, unsigned int subject_id, unsigned int tag_id)
+            {
+                terminal_session->subject_remove_tag(out, subject_id, tag_id);
+            },
+            "Remove tag from subject");
+
+        subjectMenu->Insert(
+            "subject_get_tags", {"subject_id"},
+            [](std::ostream &out, unsigned int subject_id)
+            {
+                terminal_session->subject_get_tags(out, subject_id);
+            },
+            "Get tags for subject");
 
         subjectMenu->Insert(
             "set_language", {"subject_id", "language"},

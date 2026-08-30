@@ -34,6 +34,17 @@ public:
 
     //-------------------------------------------------------------------------------------
 
+    void tag_add(std::ostream &out, const std::string &name);
+    void tag_update(std::ostream &out, const unsigned int tag_id, const std::string &new_name);
+    void tag_remove(std::ostream &out, const unsigned int tag_id);
+    void tag_get_by_user(std::ostream &out);
+    void subject_add_tag(std::ostream &out, unsigned int subject_id, unsigned int tag_id);
+    void subject_remove_tag(std::ostream &out, unsigned int subject_id, unsigned int tag_id);
+    void subject_get_tags(std::ostream &out, unsigned int subject_id);
+    void subject_get_by_tag(std::ostream &out, unsigned int tag_id);
+
+    //-------------------------------------------------------------------------------------
+
     void subject_add(std::ostream &out, unsigned int category_id, const std::string &name);
     void subject_add_from_path(std::ostream &out, unsigned int category_id, const std::string &name, const std::string &file_path);
     void subject_update(std::ostream &out, unsigned int id, const unsigned int new_category_id, const std::string &new_name);

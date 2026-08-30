@@ -32,6 +32,7 @@ create_infra_library(
     src/user_metrics.cpp
     src/subject.cpp
     src/category.cpp
+    src/tag.cpp
     src/practice_event.cpp
     src/user_configuration.cpp
     src/spanish_language_profile.cpp

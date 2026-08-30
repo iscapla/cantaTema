@@ -13,6 +13,7 @@ create_test_exec(
         t_language_profile.cxx
         t_domain_profile.cxx
         t_analysis_task.cxx
+        t_tag.cxx
     INC_PRIVATE
         CORE::PRIMITIVES
 )

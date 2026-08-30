@@ -28,3 +28,37 @@ void Subject::set_filepath(std::string new_filepath) { filepath = new_filepath; 
 
 std::string Subject::get_language(void) const { return language; }
 void Subject::set_language(std::string new_language) { language = new_language; }
+
+const std::vector<Tag>& Subject::get_tags(void) const { return tags; }
+void Subject::set_tags(const std::vector<Tag> &new_tags) { tags = new_tags; }
+
+void Subject::add_tag(const Tag &tag)
+{
+    for (const auto &existing : tags)
+    {
+        if (existing.get_id() == tag.get_id())
+        {
+            return;
+        }
+    }
+    tags.push_back(tag);
+}
+
+void Subject::remove_tag(unsigned int tag_id)
+{
+    std::erase_if(tags, [tag_id](const Tag &t) {
+        return t.get_id() == tag_id;
+    });
+}
+
+bool Subject::has_tag(unsigned int tag_id) const
+{
+    for (const auto &t : tags)
+    {
+        if (t.get_id() == tag_id)
+        {
+            return true;
+        }
+    }
+    return false;
+}

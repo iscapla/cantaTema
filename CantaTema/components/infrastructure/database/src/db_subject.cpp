@@ -218,6 +218,7 @@ rst_code_e DB_Subject::get_subject_by_id(unsigned int id, std::shared_ptr<Subjec
             subject->set_filepath(filepath);
             subject->set_category_id(category_id);
             subject->set_language(language);
+            load_tags_for_subject(db.get(), *subject);
             
             result = rst_code_e::RST_OK;
         }
@@ -251,6 +252,7 @@ rst_code_e DB_Subject::get_all_subjects_by_category(unsigned int category_id, st
             subject->set_filepath(filepath);
             subject->set_category_id(category_id);
             subject->set_language(language);
+            load_tags_for_subject(db.get(), *subject);
 
             subjects.push_back(subject);
         }
@@ -291,10 +293,43 @@ rst_code_e DB_Subject::get_all_subjects_by_user(unsigned int user_id, std::vecto
             subject->set_filepath(filepath);
             subject->set_category_id(category_id);
             subject->set_language(language);
+            load_tags_for_subject(db.get(), *subject);
 
             subjects.push_back(subject);
         }
     }
     sqlite3_finalize(stmt);
     return rst_code_e::RST_OK;
+}
+
+void DB_Subject::load_tags_for_subject(sqlite3 *db, Subject &subject) const
+{
+    if (db == nullptr)
+    {
+        return;
+    }
+
+    sqlite3_stmt *stmt = nullptr;
+    const char *sql = "SELECT t.tag_id, t.user_id, t.name FROM tags t "
+                      "INNER JOIN subject_tags st ON t.tag_id = st.tag_id "
+                      "WHERE st.subject_id = ?;";
+
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK)
+    {
+        sqlite3_bind_int(stmt, 1, static_cast<int>(subject.get_id()));
+        std::vector<Tag> tags;
+        while (sqlite3_step(stmt) == SQLITE_ROW)
+        {
+            unsigned int t_id = static_cast<unsigned int>(sqlite3_column_int(stmt, 0));
+            unsigned int u_id = static_cast<unsigned int>(sqlite3_column_int(stmt, 1));
+            const unsigned char *t_name_raw = sqlite3_column_text(stmt, 2);
+            std::string t_name = t_name_raw ? reinterpret_cast<const char *>(t_name_raw) : "";
+
+            Tag tag(t_id, t_name);
+            tag.set_user_id(u_id);
+            tags.push_back(tag);
+        }
+        subject.set_tags(tags);
+        sqlite3_finalize(stmt);
+    }
 }

@@ -8,6 +8,7 @@ create_infra_library(
     src/db_connection.cpp
     src/db_main.cpp
     src/db_subject.cpp
+    src/db_tag.cpp
     src/db_user.cpp
     src/db_user_metrics.cpp
     src/db_practice_event.cpp

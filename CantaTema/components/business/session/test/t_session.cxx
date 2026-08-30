@@ -591,4 +591,105 @@ TEST_F(SessionTest, SessionTaskSchedulerFlow) {
     EXPECT_EQ(session.analysis_task_get_max_parallel(), 4u);
 }
 
+TEST_F(SessionTest, TagOperationsFlow) {
+    Session session;
+
+    // 1. Unauthenticated checks
+    EXPECT_EQ(session.tag_add("penal"), USER_NO_AUTH);
+    EXPECT_EQ(session.tag_update(1, "penal"), USER_NO_AUTH);
+    EXPECT_EQ(session.tag_remove(1), USER_NO_AUTH);
+    std::shared_ptr<Tag> t;
+    EXPECT_EQ(session.tag_get_by_id(1, t), USER_NO_AUTH);
+    EXPECT_EQ(session.tag_get_by_name("penal", t), USER_NO_AUTH);
+    std::vector<std::shared_ptr<Tag>> tags;
+    EXPECT_EQ(session.tag_get_by_user(tags), USER_NO_AUTH);
+    EXPECT_EQ(session.subject_add_tag(1, 1), USER_NO_AUTH);
+    EXPECT_EQ(session.subject_remove_tag(1, 1), USER_NO_AUTH);
+    EXPECT_EQ(session.subject_get_tags(1, tags), USER_NO_AUTH);
+    std::vector<std::shared_ptr<Subject>> subjects;
+    EXPECT_EQ(session.subject_get_by_tag(1, subjects), USER_NO_AUTH);
+
+    // 2. Identify user
+    std::string username = "tag_session_user";
+    std::string password = "TestPassword123";
+    EXPECT_EQ(session.user_add(username, password), RST_OK);
+    EXPECT_EQ(session.user_identify(username, password), RST_OK);
+
+    // 3. Add tags
+    EXPECT_EQ(session.tag_add("penal"), RST_OK);
+    EXPECT_EQ(session.tag_add("penal"), TAG_DUPLICATED);
+    EXPECT_EQ(session.tag_add("constitucional"), RST_OK);
+
+    // 4. Get tags
+    EXPECT_EQ(session.tag_get_by_user(tags), RST_OK);
+    ASSERT_EQ(tags.size(), 2u);
+
+    unsigned int tag_penal_id = tags[0]->get_id();
+    EXPECT_EQ(session.tag_get_by_id(tag_penal_id, t), RST_OK);
+    ASSERT_NE(t, nullptr);
+    EXPECT_EQ(t->get_name(), "penal");
+
+    EXPECT_EQ(session.tag_get_by_name("penal", t), RST_OK);
+    ASSERT_NE(t, nullptr);
+    EXPECT_EQ(t->get_id(), tag_penal_id);
+
+    // 5. Update tag
+    EXPECT_EQ(session.tag_update(tag_penal_id, "derecho_penal"), RST_OK);
+    EXPECT_EQ(session.tag_get_by_id(tag_penal_id, t), RST_OK);
+    EXPECT_EQ(t->get_name(), "derecho_penal");
+
+    // 6. Add temporary file and subject to test tagging
+    std::filesystem::path temp_dir = std::filesystem::temp_directory_path() / "cantatema_tag_sess_test";
+    std::filesystem::create_directories(temp_dir);
+    std::filesystem::path sample_file = temp_dir / "sample_tema.txt";
+    {
+        std::ofstream ofs(sample_file);
+        ofs << "Sample reference content for tema testing.";
+    }
+
+    EXPECT_EQ(session.subject_add("Tema Penal 1", 0, sample_file.string()), RST_OK);
+    std::vector<std::shared_ptr<Subject>> user_subjects;
+    EXPECT_EQ(session.subject_get_by_user(user_subjects), RST_OK);
+    ASSERT_EQ(user_subjects.size(), 1u);
+    unsigned int subject_id = user_subjects[0]->get_id();
+
+    // 7. Attach and query tags
+    EXPECT_EQ(session.subject_add_tag(subject_id, tag_penal_id), RST_OK);
+
+    std::vector<std::shared_ptr<Tag>> attached_tags;
+    EXPECT_EQ(session.subject_get_tags(subject_id, attached_tags), RST_OK);
+    ASSERT_EQ(attached_tags.size(), 1u);
+    EXPECT_EQ(attached_tags[0]->get_id(), tag_penal_id);
+
+    // Verify subject_get_by_user returns subjects with populated tags
+    user_subjects.clear();
+    EXPECT_EQ(session.subject_get_by_user(user_subjects), RST_OK);
+    ASSERT_EQ(user_subjects.size(), 1u);
+    EXPECT_EQ(user_subjects[0]->get_tags().size(), 1u);
+    EXPECT_EQ(user_subjects[0]->get_tags()[0].get_name(), "derecho_penal");
+
+    // 8. Query subjects by tag
+    std::vector<std::shared_ptr<Subject>> tagged_subs;
+    EXPECT_EQ(session.subject_get_by_tag(tag_penal_id, tagged_subs), RST_OK);
+    ASSERT_EQ(tagged_subs.size(), 1u);
+    EXPECT_EQ(tagged_subs[0]->get_id(), subject_id);
+    EXPECT_EQ(tagged_subs[0]->get_tags().size(), 1u);
+
+    // 9. Remove tag from subject
+    EXPECT_EQ(session.subject_remove_tag(subject_id, tag_penal_id), RST_OK);
+    attached_tags.clear();
+    EXPECT_EQ(session.subject_get_tags(subject_id, attached_tags), RST_OK);
+    EXPECT_EQ(attached_tags.size(), 0u);
+
+    // 10. Remove tag entity
+    EXPECT_EQ(session.tag_remove(tag_penal_id), RST_OK);
+    tags.clear();
+    EXPECT_EQ(session.tag_get_by_user(tags), RST_OK);
+    EXPECT_EQ(tags.size(), 1u);
+
+    // Cleanup temp files
+    std::filesystem::remove_all(temp_dir);
+}
+
+
 
