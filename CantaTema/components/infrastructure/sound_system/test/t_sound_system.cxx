@@ -201,4 +201,46 @@ TEST_F(SoundSystemTest, MaxRecordingDurationLimitConfig) {
     EXPECT_GE(config.get_max_recording_duration_minutes(), 0u);
 }
 
+TEST_F(SoundSystemTest, ReadDecryptedAudioRange) {
+    if (!has_capture_devices()) {
+        SUCCEED() << "No capture devices available, skipping test.";
+        return;
+    }
+
+    std::string key = "StreamSecretKey";
+    ISoundSystem::SoundSystemConfig config;
+    config.encryptionKey = key;
+
+    // 1. Record encrypted file
+    {
+        SoundSystem ss(config);
+        SoundFileHandler handler(kEncryptedFile);
+        EXPECT_TRUE(ss.startRecording(handler));
+        std::this_thread::sleep_for(std::chrono::milliseconds(1100));
+        ss.stopRecording();
+    }
+    ASSERT_TRUE(std::filesystem::exists(kEncryptedFile));
+
+    // 2. Read decrypted chunks at offset 0
+    SoundSystem ss(config);
+    SoundFileHandler handler(kEncryptedFile);
+    std::vector<uint8_t> buffer;
+    bool is_eof = false;
+
+    // First 4 bytes of decrypted Ogg should be "OggS"
+    EXPECT_EQ(ss.read_decrypted_audio_range(handler, 0, 4, buffer, is_eof), RST_OK);
+    EXPECT_EQ(buffer.size(), 4u);
+    EXPECT_FALSE(is_eof);
+    EXPECT_EQ(std::string(buffer.begin(), buffer.end()), "OggS");
+
+    // Read next 100 bytes
+    EXPECT_EQ(ss.read_decrypted_audio_range(handler, 4, 100, buffer, is_eof), RST_OK);
+    EXPECT_EQ(buffer.size(), 100u);
+    EXPECT_FALSE(is_eof);
+
+    // Read with invalid file
+    SoundFileHandler invalid_handler("non_existent_audio_stream_123.opus");
+    EXPECT_EQ(ss.read_decrypted_audio_range(invalid_handler, 0, 10, buffer, is_eof), FILE_NOT_FOUND);
+}
+
 } // namespace

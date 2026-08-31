@@ -180,8 +180,8 @@ void TerminalSession::practice_event_play(std::ostream &out, unsigned int id)
     auto callback = [&](ISoundSystem::PlaybackEvent event, unsigned int timestamp) {
         if (event == ISoundSystem::PlaybackEvent::PLAY_TIMESTAMP) {
             unsigned long long s = timestamp / 1000;
-            int mm = s / 60;
-            int ss = s % 60;
+            int mm = static_cast<int>(s / 60);
+            int ss = static_cast<int>(s % 60);
             out << "\rTime: "
                 << std::setw(2) << std::setfill('0') << mm << ":"
                 << std::setw(2) << std::setfill('0') << ss
@@ -198,28 +198,36 @@ void TerminalSession::practice_event_play(std::ostream &out, unsigned int id)
         return;
     }
 
-    out << "Playing... Press 'q' to stop." << std::endl;
+    out << "Playing... Press 'q' + Enter to stop." << std::endl;
 
     // Run input in a separate thread so it doesn't block the UI updates or the exit condition
     std::thread input_thread([this, &running]() {
         char input;
         while (running) {
-            std::cin >> input;
-            if (input == 'q') {
-                op->audio_stop_playing();
-                running = false;
+            if (std::cin >> input) {
+                if (input == 'q' || input == 'Q') {
+                    op->audio_stop_playing();
+                    running = false;
+                    break;
+                }
+            } else {
                 break;
             }
         }
     });
 
-    while (running)
+    while (running && op->audio_is_playing())
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
+    running = false;
+    op->audio_stop_playing();
+
     // Detach because we can't easily cancel the blocking std::cin in the thread if playback ends naturally
-    input_thread.detach();
+    if (input_thread.joinable()) {
+        input_thread.detach();
+    }
 
     out << std::endl << "Playback finished." << std::endl;
 }

@@ -45,6 +45,23 @@ public:
      * @return std::filesystem::path Path object referencing the file.
      */
     virtual std::filesystem::path get_file_path() const = 0;
+
+    /**
+     * @brief Reads a specific byte range directly from the file into memory.
+     * @param offset Byte offset to start reading from.
+     * @param length Number of bytes to read.
+     * @param out_buffer Output vector receiving the bytes.
+     * @param out_is_eof Output flag set to true if end-of-file was reached.
+     * @return rst_code_e RST_OK on success, FILE_READ_ERROR or FILE_NOT_FOUND on failure.
+     */
+    virtual rst_code_e read_range(uint64_t offset, size_t length, std::vector<uint8_t>& out_buffer, bool& out_is_eof) const = 0;
+
+    /**
+     * @brief Reads the entire file in chunks and passes each chunk to the provided callback.
+     * @param chunkCallback A callback function that receives each data chunk.
+     * @return rst_code_e RST_OK on success, or appropriate error code.
+     */
+    virtual rst_code_e read_and_stream(std::function<rst_code_e(const std::vector<char>&)> chunkCallback) = 0;
 };
 
 #endif // I_FILE_HANDLER_HPP

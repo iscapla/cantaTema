@@ -88,6 +88,23 @@ public:
      */
     unsigned long long get_playing_timestamp() override;
 
+    /**
+     * @brief Reads a range of decrypted audio bytes from an audio file.
+     * @param fileHandler Sound file handler target.
+     * @param offset Byte offset in the file.
+     * @param length Number of bytes to read.
+     * @param out_buffer Output buffer to receive decrypted bytes.
+     * @param out_is_eof Set to true if the end of file was reached.
+     * @return rst_code_e RST_OK on success, or error code.
+     */
+    rst_code_e read_decrypted_audio_range(
+        const SoundFileHandler& fileHandler,
+        uint64_t offset,
+        size_t length,
+        std::vector<uint8_t>& out_buffer,
+        bool& out_is_eof
+    ) override;
+
 private:
     SoundSystemConfig m_config;
     bool m_sdlInitialized;

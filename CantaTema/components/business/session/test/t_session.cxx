@@ -40,6 +40,7 @@ public:
     MOCK_METHOD(void, stopPlaying, (), (override));
     MOCK_METHOD(bool, isPlaying, (), (const, override));
     MOCK_METHOD(unsigned long long, get_playing_timestamp, (), (override));
+    MOCK_METHOD(rst_code_e, read_decrypted_audio_range, (const SoundFileHandler& fileHandler, uint64_t offset, size_t length, std::vector<uint8_t>& out_buffer, bool& out_is_eof), (override));
 };
 
 class SessionTest : public ::testing::Test {
@@ -688,6 +689,54 @@ TEST_F(SessionTest, TagOperationsFlow) {
     EXPECT_EQ(tags.size(), 1u);
 
     // Cleanup temp files
+    std::filesystem::remove_all(temp_dir);
+}
+
+TEST_F(SessionTest, StreamingRangeEndpoints) {
+    Session session;
+    std::vector<uint8_t> buffer;
+    bool is_eof = false;
+
+    // 1. Unauthenticated calls fail
+    EXPECT_EQ(session.audio_stream_read_range(1, 0, 100, buffer, is_eof), USER_NO_AUTH);
+    EXPECT_EQ(session.document_stream_read_range(1, 0, 100, buffer, is_eof), USER_NO_AUTH);
+
+    // 2. Identify user
+    EXPECT_EQ(session.user_add("stream_user", "pass123"), RST_OK);
+    EXPECT_EQ(session.user_identify("stream_user", "pass123"), RST_OK);
+
+    // 3. Create a subject with a real text file
+    auto temp_dir = std::filesystem::temp_directory_path() / "session_stream_test";
+    std::filesystem::create_directories(temp_dir);
+    auto sample_doc = temp_dir / "sample_doc.txt";
+    {
+        std::ofstream ofs(sample_doc);
+        ofs << "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    }
+
+    EXPECT_EQ(session.subject_add("Streaming Subject", 0, sample_doc.string()), RST_OK);
+    std::vector<std::shared_ptr<Subject>> user_subjects;
+    EXPECT_EQ(session.subject_get_by_user(user_subjects), RST_OK);
+    ASSERT_EQ(user_subjects.size(), 1u);
+    unsigned int subject_id = user_subjects[0]->get_id();
+
+    // 4. Stream document range
+    EXPECT_EQ(session.document_stream_read_range(subject_id, 0, 10, buffer, is_eof), RST_OK);
+    EXPECT_EQ(buffer.size(), 10u);
+    EXPECT_FALSE(is_eof);
+    EXPECT_EQ(std::string(buffer.begin(), buffer.end()), "0123456789");
+
+    EXPECT_EQ(session.document_stream_read_range(subject_id, 10, 26, buffer, is_eof), RST_OK);
+    EXPECT_EQ(buffer.size(), 26u);
+    EXPECT_TRUE(is_eof);
+    EXPECT_EQ(std::string(buffer.begin(), buffer.end()), "ABCDEFGHIJKLMNOPQRSTUVWXYZ");
+
+    // Non-existent subject
+    EXPECT_EQ(session.document_stream_read_range(9999, 0, 10, buffer, is_eof), SUBJECT_NOT_FOUND);
+
+    // Non-existent practice
+    EXPECT_EQ(session.audio_stream_read_range(9999, 0, 10, buffer, is_eof), PRACTICE_EVENT_NOT_FOUND);
+
     std::filesystem::remove_all(temp_dir);
 }
 

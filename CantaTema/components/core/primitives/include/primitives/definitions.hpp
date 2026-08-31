@@ -18,6 +18,16 @@ typedef double _type_decimal;
 #define DATE_STRING_FORMAT_LONG  "%Y-%m-%d %H:%M:%S"
 
 /**
+ * @struct ByteStreamChunk
+ * @brief Chunk payload for streaming raw data with offset tracking.
+ */
+struct ByteStreamChunk {
+    std::vector<uint8_t> data;
+    uint64_t offset{0};
+    bool is_eof{false};
+};
+
+/**
  * @brief General return definition for the entire project
  *
  */

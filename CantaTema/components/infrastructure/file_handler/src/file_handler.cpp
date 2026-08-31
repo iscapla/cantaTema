@@ -136,6 +136,65 @@ rst_code_e FileHandler::read_and_stream(std::function<rst_code_e(const std::vect
     return RST_OK;
 }
 
+rst_code_e FileHandler::read_range(uint64_t offset, size_t length, std::vector<uint8_t>& out_buffer, bool& out_is_eof) const {
+    out_buffer.clear();
+    out_is_eof = false;
+
+    if (file_path.empty()) {
+        logger->error("File path is empty");
+        return FILE_NOT_FOUND;
+    }
+
+    if (!std::filesystem::is_regular_file(file_path)) {
+        logger->error("Error: {} is not a regular file.", file_path.string());
+        return FILE_NOT_FOUND;
+    }
+
+    std::error_code ec;
+    auto fileSize = std::filesystem::file_size(file_path, ec);
+    if (ec) {
+        logger->error("Error checking size for {}: {}", file_path.string(), ec.message());
+        return FILE_READ_ERROR;
+    }
+
+    if (offset >= fileSize) {
+        out_is_eof = true;
+        return RST_OK;
+    }
+
+    std::ifstream inFile(file_path, std::ios::binary);
+    if (!inFile.is_open()) {
+        logger->error("Error: Cannot open {} for reading.", file_path.string());
+        return FILE_READ_ERROR;
+    }
+
+    inFile.seekg(static_cast<std::streamoff>(offset));
+    if (!inFile) {
+        logger->error("Error seeking to offset {} in {}.", offset, file_path.string());
+        return FILE_READ_ERROR;
+    }
+
+    size_t bytesToRead = length;
+    if (offset + bytesToRead >= fileSize) {
+        bytesToRead = static_cast<size_t>(fileSize - offset);
+        out_is_eof = true;
+    }
+
+    if (bytesToRead == 0) {
+        return RST_OK;
+    }
+
+    out_buffer.resize(bytesToRead);
+    inFile.read(reinterpret_cast<char*>(out_buffer.data()), bytesToRead);
+    size_t bytesRead = static_cast<size_t>(inFile.gcount());
+    if (bytesRead < bytesToRead) {
+        out_buffer.resize(bytesRead);
+        out_is_eof = true;
+    }
+
+    return RST_OK;
+}
+
 rst_code_e FileHandler::save_chunk(const std::string& destPath, 
                             const std::vector<char>& data, 
                             bool isFirstChunk)

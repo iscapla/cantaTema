@@ -483,6 +483,40 @@ public:
      */
     unsigned long long audio_get_playing_timestamp(void);
 
+    /**
+     * @brief Streams decrypted audio byte range for a practice event with zero temporary files.
+     * @param practice_id Practice event ID.
+     * @param offset Byte offset in the file.
+     * @param length Number of bytes to read.
+     * @param out_buffer Output buffer to receive decrypted bytes.
+     * @param out_is_eof Set to true if the end of file was reached.
+     * @return rst_code_e RST_OK on success, or error code.
+     */
+    rst_code_e audio_stream_read_range(
+        unsigned int practice_id,
+        uint64_t offset,
+        size_t length,
+        std::vector<uint8_t>& out_buffer,
+        bool& out_is_eof
+    );
+
+    /**
+     * @brief Streams reference document byte range for a subject with zero temporary files.
+     * @param subject_id Subject ID.
+     * @param offset Byte offset in the file.
+     * @param length Number of bytes to read.
+     * @param out_buffer Output buffer to receive bytes.
+     * @param out_is_eof Set to true if the end of file was reached.
+     * @return rst_code_e RST_OK on success, or error code.
+     */
+    rst_code_e document_stream_read_range(
+        unsigned int subject_id,
+        uint64_t offset,
+        size_t length,
+        std::vector<uint8_t>& out_buffer,
+        bool& out_is_eof
+    );
+
     //-------------------------------------------------------------------------------------
     // AI Speech & Embedding Models Management (ManagerModels)
     //-------------------------------------------------------------------------------------

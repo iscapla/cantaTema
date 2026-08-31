@@ -17,6 +17,7 @@
 #include "operations/operation_analysis_scheduler.hpp"
 #include "database/db_coverage.hpp"
 #include "sound_system/sound_system.hpp"
+#include "file_handler/file_handler.hpp"
 #include "models/manager_models.hpp"
 #include "speech_recognition/gpu_detector.hpp"
 
@@ -691,6 +692,58 @@ unsigned long long Session::audio_get_playing_timestamp(void)
     if (!sound_op)
         return 0;
     return sound_op->get_playing_timestamp();
+}
+
+rst_code_e Session::audio_stream_read_range(
+    unsigned int practice_id,
+    uint64_t offset,
+    size_t length,
+    std::vector<uint8_t>& out_buffer,
+    bool& out_is_eof
+)
+{
+    if (!user_is_authenticated())
+        return USER_NO_AUTH;
+    if (!practice_event_op || !sound_op)
+        return UNKNOWN;
+
+    std::shared_ptr<PracticeEvent> practice;
+    rst_code_e rst = practice_event_op->practice_event_get_by_id(session_user, practice_id, practice);
+    if (rst != RST_OK || !practice)
+        return rst != RST_OK ? rst : PRACTICE_EVENT_NOT_FOUND;
+
+    std::string filepath = practice->get_filepath();
+    if (filepath.empty())
+        return FILE_NOT_FOUND;
+
+    SoundFileHandler sound_handler(filepath);
+    return sound_op->read_decrypted_audio_range(sound_handler, offset, length, out_buffer, out_is_eof);
+}
+
+rst_code_e Session::document_stream_read_range(
+    unsigned int subject_id,
+    uint64_t offset,
+    size_t length,
+    std::vector<uint8_t>& out_buffer,
+    bool& out_is_eof
+)
+{
+    if (!user_is_authenticated())
+        return USER_NO_AUTH;
+    if (!subject_op)
+        return UNKNOWN;
+
+    std::shared_ptr<Subject> subject;
+    rst_code_e rst = subject_op->subject_get_by_id(session_user, subject_id, subject);
+    if (rst != RST_OK || !subject)
+        return rst != RST_OK ? rst : SUBJECT_NOT_FOUND;
+
+    std::string filepath = subject->get_filepath();
+    if (filepath.empty())
+        return FILE_NOT_FOUND;
+
+    FileHandler file_handler(filepath, 0);
+    return file_handler.read_range(offset, length, out_buffer, out_is_eof);
 }
 
 //-------------------------------------------------------------------------------------

@@ -220,4 +220,44 @@ TEST_F(FileHandlerTest, FileHandlerPermissionsError) {
     fs::permissions(no_perm_path, fs::perms::owner_read | fs::perms::owner_write, ec);
 }
 
+TEST_F(FileHandlerTest, ReadRangeFunctionality) {
+    fs::path file_path = test_dir / "range_test.bin";
+    std::string test_data = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+    {
+        std::ofstream ofs(file_path, std::ios::binary);
+        ofs.write(test_data.data(), test_data.size());
+    }
+
+    TestableFileHandler range_handler(file_path.string(), 0);
+    std::vector<uint8_t> buffer;
+    bool is_eof = false;
+
+    // 1. Read first 10 bytes
+    EXPECT_EQ(range_handler.read_range(0, 10, buffer, is_eof), RST_OK);
+    EXPECT_EQ(buffer.size(), 10u);
+    EXPECT_FALSE(is_eof);
+    EXPECT_EQ(std::string(buffer.begin(), buffer.end()), "0123456789");
+
+    // 2. Read middle 26 bytes (uppercase letters)
+    EXPECT_EQ(range_handler.read_range(10, 26, buffer, is_eof), RST_OK);
+    EXPECT_EQ(buffer.size(), 26u);
+    EXPECT_FALSE(is_eof);
+    EXPECT_EQ(std::string(buffer.begin(), buffer.end()), "ABCDEFGHIJKLMNOPQRSTUVWXYZ");
+
+    // 3. Read up to end of file
+    EXPECT_EQ(range_handler.read_range(36, 100, buffer, is_eof), RST_OK);
+    EXPECT_EQ(buffer.size(), 26u); // remaining lowercase letters
+    EXPECT_TRUE(is_eof);
+    EXPECT_EQ(std::string(buffer.begin(), buffer.end()), "abcdefghijklmnopqrstuvwxyz");
+
+    // 4. Read beyond EOF
+    EXPECT_EQ(range_handler.read_range(100, 10, buffer, is_eof), RST_OK);
+    EXPECT_TRUE(buffer.empty());
+    EXPECT_TRUE(is_eof);
+
+    // 5. Read on empty / non-existent handler
+    TestableFileHandler empty_handler("", 0);
+    EXPECT_EQ(empty_handler.read_range(0, 10, buffer, is_eof), FILE_NOT_FOUND);
+}
+
 

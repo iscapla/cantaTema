@@ -69,7 +69,26 @@ public:
      * 
      * @return std::filesystem::path The file path.
      */
-    std::filesystem::path get_file_path(void) const;
+    std::filesystem::path get_file_path(void) const override;
+
+    /**
+     * @brief Reads a specific byte range directly from the file into memory.
+     * @param offset Byte offset to start reading from.
+     * @param length Number of bytes to read.
+     * @param out_buffer Output vector receiving the bytes.
+     * @param out_is_eof Output flag set to true if end-of-file was reached.
+     * @return rst_code_e RST_OK on success, FILE_READ_ERROR or FILE_NOT_FOUND on failure.
+     */
+    rst_code_e read_range(uint64_t offset, size_t length, std::vector<uint8_t>& out_buffer, bool& out_is_eof) const override;
+
+    /**
+     * @brief Reads a file in chunks and passes each chunk to the provided callback.
+     * Use this to "send" files to a network or an encryption engine without loading into disk.
+     * 
+     * @param chunkCallback A callback function that receives each data chunk.
+     * @return rst_code_e RST_OK if the operation completed successfully, error code otherwise.
+     */
+    rst_code_e read_and_stream(std::function<rst_code_e(const std::vector<char>&)> chunkCallback) override;
 
 private:
     // File that we want to manage
@@ -82,14 +101,6 @@ private:
     static constexpr size_t CHUNK_SIZE = 65536;
 
 protected:
-    /**
-     * Reads a file in chunks and passes each chunk to the provided callback.
-     * Use this to "send" files to a network or an encryption engine.
-     * 
-     * @param chunkCallback A callback function that receives each data chunk.
-     * @return bool True if the operation completed successfully, false otherwise.
-     */
-    virtual rst_code_e read_and_stream(std::function<rst_code_e(const std::vector<char>&)> chunkCallback);
 
     /**
      * Saves a single chunk of data to a file.

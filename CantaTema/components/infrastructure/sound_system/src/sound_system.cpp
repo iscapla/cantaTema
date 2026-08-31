@@ -557,3 +557,69 @@ std::uintmax_t SoundSystem::get_encrypted_file_duration(const std::string& fileP
     }
     return 0;
 }
+
+rst_code_e SoundSystem::read_decrypted_audio_range(
+    const SoundFileHandler& fileHandler,
+    uint64_t offset,
+    size_t length,
+    std::vector<uint8_t>& out_buffer,
+    bool& out_is_eof
+) {
+    out_buffer.clear();
+    out_is_eof = false;
+
+    std::string pathStr = fileHandler.get_file_path().string();
+    if (pathStr.empty()) {
+        logger->error("[SoundSystem] File path is empty");
+        return FILE_NOT_FOUND;
+    }
+
+    FILE* f = fopen(pathStr.c_str(), "rb");
+    if (!f) {
+        logger->error("[SoundSystem] Could not open file: {}", pathStr);
+        return FILE_NOT_FOUND;
+    }
+
+    fseek(f, 0, SEEK_END);
+    long fileSize = ftell(f);
+    if (fileSize < 0) {
+        fclose(f);
+        logger->error("[SoundSystem] Failed to determine file size for: {}", pathStr);
+        return FILE_READ_ERROR;
+    }
+
+    if (offset >= static_cast<uint64_t>(fileSize)) {
+        fclose(f);
+        out_is_eof = true;
+        return RST_OK;
+    }
+
+    if (fseek(f, static_cast<long>(offset), SEEK_SET) != 0) {
+        fclose(f);
+        logger->error("[SoundSystem] Failed to seek to offset {} in: {}", offset, pathStr);
+        return FILE_READ_ERROR;
+    }
+
+    size_t bytesToRead = length;
+    if (offset + bytesToRead >= static_cast<uint64_t>(fileSize)) {
+        bytesToRead = static_cast<size_t>(static_cast<uint64_t>(fileSize) - offset);
+        out_is_eof = true;
+    }
+
+    if (bytesToRead == 0) {
+        fclose(f);
+        return RST_OK;
+    }
+
+    out_buffer.resize(bytesToRead);
+    size_t readCount = secure_fread(out_buffer.data(), 1, bytesToRead, f);
+    fclose(f);
+
+    if (readCount < bytesToRead) {
+        out_buffer.resize(readCount);
+        out_is_eof = true;
+    }
+
+    return RST_OK;
+}
+
