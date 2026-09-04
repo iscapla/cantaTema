@@ -307,14 +307,14 @@ To run the interactive shell of the CantaTema project:
    ```
 6. **Temporary Scripts:** Create any test scripts or debug binaries inside a `scratch/` folder at the root directory of the workspace.
 7. **No Direct Modifications to `build/` Directory:** Never edit or modify files inside the `build/` directory or its subdirectories (e.g., `build/_deps/`). The `build/` directory is transient and completely wiped during clean builds or environment resets. Any build configuration patches, string replacements, or dependency modifications MUST be written cleanly into tracked repository files (such as root `CMakeLists.txt`, `cmake/*.cmake`, or component source code) so they automatically execute during CMake configuration.
-8. **Architecture & Schema Synchronization:** Whenever CMake target definitions, component libraries, abstract interfaces, or core features are added, removed, or modified, you MUST update [docs/dev.md](file:///c:/Users/iscap/Desktop/Projects/cantaTema/docs/dev.md) and its Mermaid architecture schema to accurately reflect the exact state of the project.
+8. **Architecture & Schema Synchronization:** Whenever CMake target definitions, component libraries, abstract interfaces, or core features are added, removed, or modified, you MUST update [docs/dev.md](docs/dev.md) and its Mermaid architecture schema to accurately reflect the exact state of the project.
 
 ## 📝 Documentation Guidelines
 - **Interface & Schema Changes:** If database schemas, configuration files, or core component interfaces change, update the documentation in the `docs` folder or add relevant annotations.
-- **Developer Guide:** Refer to [docs/dev.md](file:///c:/Users/iscap/Desktop/Projects/cantaTema/docs/dev.md) for detailed configuration, compilation, unit testing, coverage reporting, and CLI usage instructions.
-- **Roadmap & Subphases:** Refer to [docs/phases.md](file:///c:/Users/iscap/Desktop/Projects/cantaTema/docs/phases.md) for the complete implementation schedule, architectural layout, QA/testing thresholds, and design FAQs.
-- **Future Comparison Engine Architecture:** Refer to [docs/future_plans.md](file:///c:/Users/iscap/Desktop/Projects/cantaTema/docs/future_plans.md) for multi-language profile abstraction (`ILanguageProfile`), orthogonal subject domain profiles (`IDomainProfile` for Law, Economics, Science, History, General), configurable INI token weighting, weighted recall metrics, and lemmatization roadmap.
-- **Flutter Middleware C ABI Reference & Integration Specification:** A mandatory dedicated document [docs/c_api_reference.md](file:///c:/Users/iscap/Desktop/Projects/cantaTema/docs/c_api_reference.md) must be maintained to document every exported C ABI function, parameter types, return values, memory allocation/freeing rules (e.g. `canta_free_string`), status error codes, and JSON payload contracts. This document is explicitly used by the frontend agent developing the Flutter application.
+- **Developer Guide:** Refer to [docs/dev.md](docs/dev.md) for detailed configuration, compilation, unit testing, coverage reporting, and CLI usage instructions.
+- **Roadmap & Subphases:** Refer to [docs/phases.md](docs/phases.md) for the complete implementation schedule, architectural layout, QA/testing thresholds, and design FAQs.
+- **Future Comparison Engine Architecture:** Refer to [docs/future_plans.md](docs/future_plans.md) for multi-language profile abstraction (`ILanguageProfile`), orthogonal subject domain profiles (`IDomainProfile` for Law, Economics, Science, History, General), configurable INI token weighting, weighted recall metrics, and lemmatization roadmap.
+- **Flutter Middleware C ABI Reference & Integration Specification:** A mandatory dedicated document [docs/c_api_reference.md](docs/c_api_reference.md) must be maintained to document every exported C ABI function, parameter types, return values, memory allocation/freeing rules (e.g. `canta_free_string`), status error codes, and JSON payload contracts. This document is explicitly used by the frontend agent developing the Flutter application.
 
 ## 📱 Flutter Cross-Platform Architecture & Integration (Desktop, Mobile, Web)
 
@@ -386,7 +386,7 @@ apps/flutter_ui/
 
 ### 4. C ABI Middleware Exported Interface & Documentation Requirement
 The C ABI bridge layer (`CantaTema/components/c_api/` producing the shared library `cantatema_bridge`) is the official middleware connecting the C++ native core engine with the Flutter frontend application.
-- **Mandatory Documentation:** Every exported C ABI function must be thoroughly specified in [docs/c_api_reference.md](file:///c:/Users/iscap/Desktop/Projects/cantaTema/docs/c_api_reference.md). The documentation must detail:
+- **Mandatory Documentation:** Every exported C ABI function must be thoroughly specified in [docs/c_api_reference.md](docs/c_api_reference.md). The documentation must detail:
   1. Function name, signature, and calling convention (`extern "C"`, exported with `__declspec(dllexport)` on Windows or `__attribute__((visibility("default")))` on Unix/macOS).
   2. Concrete description of the operation performed.
   3. Parameters (name, type, nullability, valid ranges, JSON structure if string).
