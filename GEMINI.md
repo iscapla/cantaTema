@@ -95,6 +95,14 @@ The project follows a strict layered dependency model. Each layer may only depen
 
 > **Test Code Exception:** Unit tests and test mocks are exempt from these layering rules. Tests may directly instantiate any class and inject mock dependencies as needed.
 
+> **Session Invariant (Zero Direct Database Access):**
+> `Session` is a pure business facade and MUST NOT have direct access to the database or concrete infrastructure repositories (`IDatabase`, `DB_Main`, `DB_Coverage`, etc.). All data persistence and querying operations must be routed exclusively through business operations (`IOperationUser`, `IOperationCategory`, `IOperationSubject`, `IOperationPracticeEvent`, `IOperationCoverage`, `IOperationAnalysisScheduler`).
+> Furthermore, `purge_database` is strictly prohibited on `Session`; database purging is an infrastructure and test harness concern (managed directly via `IDatabase` / `DB_Main` in unit tests or CLI debug commands like `db_purge`), not a capability of the Session facade.
+
+> **Database Access Limitation (Operations Exclusivity):**
+> Only implementations located inside the `operations/` folder (`CantaTema/components/business/operations/`) are permitted to have access to the database (whether via `IDatabase` interfaces or concrete database repositories). No higher layers, presentation bridges, or other business facades—including `Session` and `cantatema_bridge`—may directly interact with or access the database.
+> **Exclusion:** The Terminal application (`apps/terminal/`) is excluded from this limitation to permit low-level testing, maintenance, and debug commands (e.g., `db_purge`, manual inspection). Unit tests and test mocks are also exempt.
+
 ### Interface-Driven Design (Constructor Injection)
 
 All infrastructure components must expose abstract interfaces. Upper layers (operations, session) depend exclusively on these interfaces, never on concrete implementations.
@@ -306,6 +314,7 @@ To run the interactive shell of the CantaTema project:
 - **Developer Guide:** Refer to [docs/dev.md](file:///c:/Users/iscap/Desktop/Projects/cantaTema/docs/dev.md) for detailed configuration, compilation, unit testing, coverage reporting, and CLI usage instructions.
 - **Roadmap & Subphases:** Refer to [docs/phases.md](file:///c:/Users/iscap/Desktop/Projects/cantaTema/docs/phases.md) for the complete implementation schedule, architectural layout, QA/testing thresholds, and design FAQs.
 - **Future Comparison Engine Architecture:** Refer to [docs/future_plans.md](file:///c:/Users/iscap/Desktop/Projects/cantaTema/docs/future_plans.md) for multi-language profile abstraction (`ILanguageProfile`), orthogonal subject domain profiles (`IDomainProfile` for Law, Economics, Science, History, General), configurable INI token weighting, weighted recall metrics, and lemmatization roadmap.
+- **Flutter Middleware C ABI Reference & Integration Specification:** A mandatory dedicated document [docs/c_api_reference.md](file:///c:/Users/iscap/Desktop/Projects/cantaTema/docs/c_api_reference.md) must be maintained to document every exported C ABI function, parameter types, return values, memory allocation/freeing rules (e.g. `canta_free_string`), status error codes, and JSON payload contracts. This document is explicitly used by the frontend agent developing the Flutter application.
 
 ## 📱 Flutter Cross-Platform Architecture & Integration (Desktop, Mobile, Web)
 
@@ -374,5 +383,17 @@ apps/flutter_ui/
 ├── ios/                  # iOS Runner (.xcframework)
 └── web/                  # Web Runner (SPA connecting to CantaTema server daemon)
 ```
+
+### 4. C ABI Middleware Exported Interface & Documentation Requirement
+The C ABI bridge layer (`CantaTema/components/c_api/` producing the shared library `cantatema_bridge`) is the official middleware connecting the C++ native core engine with the Flutter frontend application.
+- **Mandatory Documentation:** Every exported C ABI function must be thoroughly specified in [docs/c_api_reference.md](file:///c:/Users/iscap/Desktop/Projects/cantaTema/docs/c_api_reference.md). The documentation must detail:
+  1. Function name, signature, and calling convention (`extern "C"`, exported with `__declspec(dllexport)` on Windows or `__attribute__((visibility("default")))` on Unix/macOS).
+  2. Concrete description of the operation performed.
+  3. Parameters (name, type, nullability, valid ranges, JSON structure if string).
+  4. Return value (type, status codes: `0` for success, negative for error codes such as `CANTA_ERR_INVALID_ARG`, `CANTA_ERR_NOT_FOUND`, `CANTA_ERR_NOT_INITIALIZED`, `CANTA_ERR_AUDIO_BUSY`, etc., or JSON payload).
+  5. Memory management invariant: all heap-allocated string pointers returned by the engine across the ABI boundary must be deallocated by the caller via `canta_free_string(const char* ptr)`.
+  6. Exact JSON input/output schemas with examples (for categories, topics, study sessions, analysis reports, schedule tasks, calendar events, AI models, and user profiles).
+- **Target Audience:** This document serves as the implementation specification and communication contract for frontend development agents building the Flutter UI and Dart FFI bridge service layer.
+
 
 

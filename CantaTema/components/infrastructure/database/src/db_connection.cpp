@@ -1,6 +1,8 @@
 #include <iostream>
 #include <cstring>
 #include <filesystem>
+#include <thread>
+#include <chrono>
 
 #include "primitives/tool_paths.hpp"
 #include "primitives/utils_logger.hpp"
@@ -33,7 +35,7 @@ DB_Connection::DB_Connection() {
     if (rc != SQLITE_OK) {
         logger->error("Error setting encryption key: {}", sqlite3_errmsg(db));
         // Handle error, perhaps close the database and exit
-        sqlite3_close(db);
+        sqlite3_close_v2(db);
         db = nullptr;
         //TODO close app with an error
     }
@@ -76,10 +78,32 @@ void DB_Connection::reset_connection() {
         delete instance;
         instance = nullptr;
 
-        if (std::filesystem::exists(ToolPath::get_path_for_database())) {
-            std::filesystem::remove_all(ToolPath::get_path_for_database());
-            logger->info("Data folder deleted: {}", ToolPath::get_path_for_database().string());
-        }
+        std::filesystem::path db_dir = ToolPath::get_path_for_database();
+        std::filesystem::path db_file = db_dir / "data.db";
+        std::vector<std::filesystem::path> files_to_remove = {
+            db_file,
+            db_dir / "data.db-journal",
+            db_dir / "data.db-wal",
+            db_dir / "data.db-shm"
+        };
 
+        for (const auto& file : files_to_remove) {
+            if (std::filesystem::exists(file)) {
+                std::error_code ec;
+                for (int attempt = 0; attempt < 25; ++attempt) {
+                    ec.clear();
+                    std::filesystem::remove(file, ec);
+                    if (!ec || !std::filesystem::exists(file)) {
+                        break;
+                    }
+                    std::this_thread::sleep_for(std::chrono::milliseconds(25));
+                }
+                if (ec && std::filesystem::exists(file)) {
+                    logger->error("Failed to delete database file {}: {}", file.string(), ec.message());
+                    throw std::filesystem::filesystem_error("cannot remove database file", file, ec);
+                }
+            }
+        }
+        logger->info("Database reset completed for: {}", db_dir.string());
     }
 }

@@ -24,11 +24,17 @@ flowchart TD
     subgraph BINARIES["Executables / Binaries Layer"]
         CLI_EXE["Terminal_CLI\n(main_terminal.cpp)"]
         COMP_EXE["ComparisonExample\n(main_comparison_example.cpp)"]
-        TEST_EXES["CTest Unit Tests\n(test_primitives, test_database,\ntest_sound_system, test_speech_recognition, etc.)"]
+        TEST_EXES["CTest Unit Tests\n(test_primitives, test_database,\ntest_sound_system, test_speech_recognition, test_c_api, etc.)"]
+        BRIDGE_LIB["cantatema_bridge (.dll / .so / .dylib)\n(Shared Dynamic C ABI Library)"]
     end
 
-    subgraph APP_LAYER["Application Layer"]
+    subgraph APP_LAYER["Application & Client Layer"]
         APPS_TERM["APPS::TERMINAL\n(terminal_cli, terminal_session,\nterminal_practice_record, terminal_coverage)"]
+        FLUTTER_APP["Flutter UI Application\n(Desktop, Mobile, Web Client)"]
+    end
+
+    subgraph BRIDGE_LAYER["Bridge Layer (C ABI Export Boundary)"]
+        C_API_BRIDGE["cantatema_bridge\n(cantatema_c_api.h / cantatema_c_api.cpp)"]
     end
 
     subgraph BUSINESS_LAYER["Business Logic Layer"]
@@ -105,6 +111,11 @@ flowchart TD
     COMP_EXE --> CORE_LAYER
     TEST_EXES --> EXT_GTEST
 
+    FLUTTER_APP -.->|dart:ffi| C_API_BRIDGE
+    BRIDGE_LIB -.-> C_API_BRIDGE
+    C_API_BRIDGE --> SESS
+    C_API_BRIDGE --> CORE_LAYER
+
     APPS_TERM --> SESS
     APPS_TERM --> EXT_CLI
     APPS_TERM --> CORE_LAYER
@@ -155,6 +166,7 @@ flowchart TD
 |-------------------------|------|-----------------|---------------------------------|------------------|
 | `Terminal_CLI` | Binary (Exe) | `apps/main_terminal.cpp` | Main user-facing interactive terminal CLI executable | `APPS::TERMINAL`, `CORE::PRIMITIVES`, `CORE::CONFIGURATION` |
 | `ComparisonExample` | Binary (Exe) | `apps/comparison_example/` | Developer standalone CLI tool for testing audio-to-PDF comparison pipeline | `INFRASTRUCTURE::*`, `CORE::*`, `whisper`, `llama` |
+| `cantatema_bridge` | Shared Lib | `components/c_api/` | C ABI export layer (`cantatema_c_api.h`) for foreign language and Flutter Dart FFI bindings, managing lifecycle, user auth, topics/categories, audio metering, study sessions, calendar, and AI models | `BUSINESS::SESSION`, `CORE::PRIMITIVES`, `CORE::TOOL_PATHS` |
 | `APPS::TERMINAL` | Static Lib | `apps/terminal/` | Terminal command loops, menu structure, and prompt handlers | `cli`, `BUSINESS::SESSION`, `CORE::*` |
 | `BUSINESS::SESSION` | Static Lib | `components/business/session/` | Main session facade maintaining active user login context | `BUSINESS::OPERATIONS`, `CORE::PRIMITIVES` |
 | `BUSINESS::OPERATIONS` | Static Lib | `components/business/operations/` | Decoupled domain business logic coordination via injected interfaces | `INFRASTRUCTURE::*` (interfaces), `CORE::PRIMITIVES` |
@@ -421,4 +433,18 @@ flowchart TD
    NVIDIA's `nvcc.exe` compiler on Windows strictly requires Microsoft Visual C++ (`cl.exe`) as its host compiler backend. When building under MinGW GCC (`g++.exe` / MSYS2 UCRT64), `nvcc` fails at configuration time (`nvcc fatal: Cannot find compiler 'cl.exe' in PATH`).
 2. **NVIDIA Tensor Core Offloading:**
    The Vulkan backend (`ggml-vulkan`) compiles natively under MinGW GCC using `glslc` (SPIR-V shader compiler from `shaderc`) and standard Vulkan loader (`vulkan-1.dll`). On NVIDIA RTX GPUs (such as the RTX 3070 Ti / 4000 / 5000 series), Vulkan utilizes NVIDIA cooperative matrix extensions (`GL_NV_cooperative_matrix2`), offloading model tensor weights directly into VRAM and achieving GPU performance matching CUDA.
+
+---
+
+## 🌉 9. C ABI Middleware & Flutter Integration (`cantatema_bridge`)
+
+CantaTema exports a pure C ABI shared library (`libcantatema_bridge.dll` on Windows, `.dylib` on macOS, `.so` on Linux/Android) to allow external frontends—specifically the Flutter desktop and mobile client—to interact directly with the core engine via `dart:ffi`.
+
+### Key Characteristics
+- **Dynamic Shared Library:** Built from `CantaTema/components/c_api/` via target `cantatema_bridge`.
+- **Encapsulated Thread-Safe Session:** Adheres to the single active session design for in-process UI embedding, guarded by an internal mutex.
+- **Pure C ABI Boundary:** Declares all functions in `cantatema_c_api.h` using standard `extern "C"` with `CANTATEMA_API` export attributes.
+- **Contract Specification:** For the complete reference of all C ABI endpoints, error codes, memory allocation invariants (`canta_free_string`), JSON schemas, and Dart FFI binding examples, refer to the dedicated specification:
+  - **[C ABI Reference Specification](c_api_reference.md)** (`docs/c_api_reference.md`)
+
 

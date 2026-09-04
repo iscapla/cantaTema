@@ -111,7 +111,17 @@ std::string ToolPath::get_filesystem_path(const std::string &org_name, const std
     return "";
 }
 
+void ToolPath::set_base_path(const std::filesystem::path& path) {
+    s_custom_base_path = path;
+    if (!s_custom_base_path.empty()) {
+        ensure_directory_exists(s_custom_base_path);
+    }
+}
+
 std::filesystem::path ToolPath::get_base_path(void) {
+    if (!s_custom_base_path.empty()) {
+        return s_custom_base_path;
+    }
 #if defined(NDEBUG)
     std::filesystem::path base_path{ToolPath::get_filesystem_path(XSTR(MAIN_PROJECT_NAME), XSTR(MAIN_PROJECT_NAME))};
 #else

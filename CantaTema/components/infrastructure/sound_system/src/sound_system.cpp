@@ -1,6 +1,8 @@
 #include <iostream>
 #include <vector>
 #include <cstring>
+#include <cmath>
+#include <algorithm>
 
 #include "primitives/utils_logger.hpp"
 #include "sound_system/sound_system.hpp"
@@ -73,6 +75,17 @@ void SDLCALL SoundSystem::data_callback_record(void *userdata, SDL_AudioStream *
     std::vector<float> tempBuffer(total_amount / sizeof(float));
     int bytesRead = SDL_GetAudioStreamData(stream, tempBuffer.data(), total_amount);
     int samplesRead = bytesRead / sizeof(float);
+
+    if (samplesRead > 0) {
+        float sum_squares = 0.0f;
+        for (int i = 0; i < samplesRead; ++i) {
+            sum_squares += tempBuffer[i] * tempBuffer[i];
+        }
+        float rms = std::sqrt(sum_squares / static_cast<float>(samplesRead));
+        // Scale RMS to a responsive [0.0, 1.0] visualizer amplitude
+        float normalized = std::min(1.0f, rms * 3.0f);
+        pSystem->m_currentAmplitude.store(normalized, std::memory_order_relaxed);
+    }
 
     pSystem->m_recordBuffer.insert(pSystem->m_recordBuffer.end(), tempBuffer.begin(), tempBuffer.begin() + samplesRead);
     
@@ -226,6 +239,7 @@ void SoundSystem::stopRecording() {
             m_recordFile = nullptr;
         }
         m_isRecording = false;
+        m_currentAmplitude.store(0.0f, std::memory_order_relaxed);
     }
 }
 
@@ -236,6 +250,13 @@ bool SoundSystem::isRecording() const {
 unsigned long long SoundSystem::get_recording_timestamp() {
     if (!m_isRecording) return 0;
     return static_cast<unsigned long long>((m_recordedFrames * 1000) / m_config.sampleRate);
+}
+
+float SoundSystem::get_current_amplitude() {
+    if (!m_isRecording.load(std::memory_order_relaxed)) {
+        return 0.0f;
+    }
+    return m_currentAmplitude.load(std::memory_order_relaxed);
 }
 
 void SDLCALL SoundSystem::data_callback_play(void *userdata, SDL_AudioStream *stream, int additional_amount, int total_amount) {

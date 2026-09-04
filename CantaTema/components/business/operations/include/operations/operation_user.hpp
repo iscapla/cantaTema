@@ -78,6 +78,22 @@ public:
      */
     rst_code_e user_identify(const std::string &name, const std::string &password) override;
 
+    /**
+     * @brief Persists UserConfiguration for a specific user ID.
+     * @param user_id User identifier.
+     * @param config Configuration parameters struct.
+     * @return rst_code_e RST_OK on success, or error code.
+     */
+    rst_code_e save_user_configuration(unsigned int user_id, const UserConfiguration& config) override;
+
+    /**
+     * @brief Loads UserConfiguration for a specific user ID.
+     * @param user_id User identifier.
+     * @param out_config Output struct receiving configuration parameters.
+     * @return rst_code_e RST_OK on success, or error code.
+     */
+    rst_code_e get_user_configuration(unsigned int user_id, UserConfiguration& out_config) override;
+
 private:
     std::shared_ptr<IOperationUserMetrics> user_metrics_op{nullptr};
     std::shared_ptr<const User> local_user;

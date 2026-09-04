@@ -108,10 +108,12 @@ public:
     static std::filesystem::path get_path_for_practice_event(unsigned int user_id, unsigned int subject_id);
 
     static std::filesystem::path get_base_path(void);
+    static void set_base_path(const std::filesystem::path& path);
     static std::string get_filesystem_path(const std::string &org_name, const std::string &app_name);
 
 private:
     static void ensure_directory_exists(const std::filesystem::path& path);
+    inline static std::filesystem::path s_custom_base_path{};
 };
 
 

@@ -91,6 +91,12 @@ public:
     virtual unsigned long long get_recording_timestamp() = 0;
 
     /**
+     * @brief Gets the current audio capture amplitude level (normalized [0.0, 1.0]).
+     * @return float Current RMS audio amplitude in range 0.0 to 1.0.
+     */
+    virtual float get_current_amplitude() = 0;
+
+    /**
      * @brief Starts audio playback from the provided sound file handler.
      * @param fileHandler Source sound file handler to read audio from.
      * @param callback Optional progress callback for playback state notifications.

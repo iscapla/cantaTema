@@ -59,6 +59,13 @@ public:
      */
     unsigned long long get_recording_timestamp() override;
 
+    /**
+     * @brief Gets the current audio capture amplitude level (normalized [0.0, 1.0]).
+     * 
+     * @return float Current RMS audio amplitude in range 0.0 to 1.0.
+     */
+    float get_current_amplitude() override;
+
     // Playback
     /**
      * @brief Starts playing an audio file.
@@ -117,6 +124,7 @@ private:
     std::vector<float> m_recordBuffer;
     std::atomic<bool> m_isRecording;
     std::atomic<uint64_t> m_recordedFrames;
+    std::atomic<float> m_currentAmplitude{0.0f};
 
     // Playback State
     SDL_AudioStream* m_playbackStream;

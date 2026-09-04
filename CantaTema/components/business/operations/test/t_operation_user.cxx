@@ -142,4 +142,38 @@ TEST_F(OperationUserTest, AddUserMetricsFailureRollback) {
     OperationUser bad_op_user(std::move(bad_metrics));
     EXPECT_EQ(bad_op_user.user_add("rollback_user", "password"), USER_ERROR);
 }
+
+TEST_F(OperationUserTest, SaveAndGetUserConfiguration) {
+    std::string name = "cfg_user";
+    std::string pass = "123456";
+
+    // Clean up if left over
+    std::shared_ptr<const User> existing;
+    if (operation_user->user_get_by_name(name, existing) == RST_OK) {
+        operation_user->user_identify(name, pass);
+        operation_user->user_remove();
+    }
+
+    ASSERT_EQ(operation_user->user_add(name, pass), RST_OK);
+    ASSERT_EQ(operation_user->user_identify(name, pass), RST_OK);
+
+    std::shared_ptr<const User> auth_user;
+    ASSERT_EQ(operation_user->user_get(auth_user), RST_OK);
+    unsigned int user_id = auth_user->get_useraccountid();
+
+    UserConfiguration cfg_to_save;
+    cfg_to_save.whisper.model_name = "medium";
+    cfg_to_save.comparison.similarity_threshold = 0.82f;
+    cfg_to_save.reference_extraction.importance_weight_bold = 3.5f;
+
+    EXPECT_EQ(operation_user->save_user_configuration(user_id, cfg_to_save), RST_OK);
+
+    UserConfiguration cfg_loaded;
+    EXPECT_EQ(operation_user->get_user_configuration(user_id, cfg_loaded), RST_OK);
+    EXPECT_EQ(cfg_loaded.whisper.model_name, "medium");
+    EXPECT_FLOAT_EQ(cfg_loaded.comparison.similarity_threshold, 0.82f);
+    EXPECT_FLOAT_EQ(cfg_loaded.reference_extraction.importance_weight_bold, 3.5f);
+
+    EXPECT_EQ(operation_user->user_remove(), RST_OK);
+}
 

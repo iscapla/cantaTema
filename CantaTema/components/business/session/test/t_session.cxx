@@ -36,6 +36,7 @@ public:
     MOCK_METHOD(void, stopRecording, (), (override));
     MOCK_METHOD(bool, isRecording, (), (const, override));
     MOCK_METHOD(unsigned long long, get_recording_timestamp, (), (override));
+    MOCK_METHOD(float, get_current_amplitude, (), (override));
     MOCK_METHOD(bool, play, (const SoundFileHandler& fileHandler, PlaybackCallback callback), (override));
     MOCK_METHOD(void, stopPlaying, (), (override));
     MOCK_METHOD(bool, isPlaying, (), (const, override));
@@ -359,7 +360,6 @@ TEST_F(SessionTest, AudioOperationsWithMockSoundSystem) {
     auto mock_sub_op = std::make_shared<MockOperationSubject>();
     auto mock_practice_op = std::make_shared<MockOperationPracticeEvent>();
     auto mock_coverage_op = std::make_shared<MockOperationCoverage>();
-    auto mock_db_op = std::make_shared<MockDatabase>();
     auto mock_sound = std::make_shared<MockSoundSystem>();
     auto models_mgr = std::make_shared<ManagerModels>();
 
@@ -376,6 +376,8 @@ TEST_F(SessionTest, AudioOperationsWithMockSoundSystem) {
         .WillOnce(Return(true));
     EXPECT_CALL(*mock_sound, get_recording_timestamp())
         .WillOnce(Return(1234ULL));
+    EXPECT_CALL(*mock_sound, get_current_amplitude())
+        .WillOnce(Return(0.75f));
     EXPECT_CALL(*mock_sound, stopRecording())
         .Times(1);
 
@@ -395,7 +397,6 @@ TEST_F(SessionTest, AudioOperationsWithMockSoundSystem) {
         std::move(user_metrics_op),
         std::move(mock_practice_op),
         std::move(mock_coverage_op),
-        std::move(mock_db_op),
         std::move(mock_sound),
         std::move(models_mgr)
     );
@@ -408,6 +409,7 @@ TEST_F(SessionTest, AudioOperationsWithMockSoundSystem) {
     EXPECT_EQ(session.audio_start_recording("test.opus", 0), RST_OK);
     EXPECT_TRUE(session.audio_is_recording());
     EXPECT_EQ(session.audio_get_recording_timestamp(), 1234ULL);
+    EXPECT_FLOAT_EQ(session.audio_get_current_amplitude(), 0.75f);
     EXPECT_EQ(session.audio_stop_recording(), RST_OK);
 
     EXPECT_EQ(session.audio_play("test.opus"), RST_OK);
@@ -423,7 +425,6 @@ TEST_F(SessionTest, InjectedCoverageAndHistoryQueries) {
     auto mock_sub_op = std::make_shared<MockOperationSubject>();
     auto mock_practice_op = std::make_shared<MockOperationPracticeEvent>();
     auto mock_coverage_op = std::make_shared<MockOperationCoverage>();
-    auto mock_db_op = std::make_shared<MockDatabase>();
 
     // Test constructor with injected mocks and concrete operations
     Session session(
@@ -432,8 +433,7 @@ TEST_F(SessionTest, InjectedCoverageAndHistoryQueries) {
         std::move(mock_sub_op),
         std::move(user_metrics_op),
         std::move(mock_practice_op),
-        std::move(mock_coverage_op),
-        std::move(mock_db_op)
+        std::move(mock_coverage_op)
     );
     EXPECT_FALSE(session.user_is_authenticated());
 }
@@ -456,7 +456,6 @@ TEST_F(SessionTest, GetHardwareInfoInjectedMock) {
     auto mock_sub_op = std::make_shared<MockOperationSubject>();
     auto mock_practice_op = std::make_shared<MockOperationPracticeEvent>();
     auto mock_coverage_op = std::make_shared<MockOperationCoverage>();
-    auto mock_db_op = std::make_shared<MockDatabase>();
     auto mock_sound = std::make_shared<MockSoundSystem>();
     auto models_mgr = std::make_shared<ManagerModels>();
     auto mock_gpu_detector = std::make_shared<StrictMock<MockGpuDetector>>();
@@ -488,7 +487,6 @@ TEST_F(SessionTest, GetHardwareInfoInjectedMock) {
         std::move(user_metrics_op),
         std::move(mock_practice_op),
         std::move(mock_coverage_op),
-        std::move(mock_db_op),
         std::move(mock_sound),
         std::move(models_mgr),
         std::move(mock_gpu_detector)
@@ -510,7 +508,6 @@ TEST_F(SessionTest, SessionTaskSchedulerFlow) {
     auto mock_sub_op = std::make_shared<MockOperationSubject>();
     auto mock_practice_op = std::make_shared<MockOperationPracticeEvent>();
     auto mock_coverage_op = std::make_shared<MockOperationCoverage>();
-    auto mock_db_op = std::make_shared<MockDatabase>();
     auto mock_sound = std::make_shared<MockSoundSystem>();
     auto models_mgr = std::make_shared<ManagerModels>();
     auto mock_gpu_detector = std::make_shared<StrictMock<MockGpuDetector>>();
@@ -529,7 +526,6 @@ TEST_F(SessionTest, SessionTaskSchedulerFlow) {
         std::move(user_metrics_op),
         std::move(mock_practice_op),
         std::move(mock_coverage_op),
-        std::move(mock_db_op),
         std::move(mock_sound),
         std::move(models_mgr),
         std::move(mock_gpu_detector),

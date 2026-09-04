@@ -13,6 +13,7 @@
 #include "operations/operation_user.hpp"
 #include "database/db_coverage.hpp"
 #include "database/db_main.hpp"
+#include "operations/operation_coverage.hpp"
 #include "primitives/user.hpp"
 #include "primitives/practice_event.hpp"
 
@@ -24,6 +25,7 @@ using ::testing::SetArgReferee;
 class OperationAnalysisSchedulerTest : public ::testing::Test {
 protected:
     std::shared_ptr<DB_Coverage> real_db;
+    std::shared_ptr<OperationCoverage> real_coverage_op;
     std::shared_ptr<User> user1;
     std::shared_ptr<User> user2;
     std::shared_ptr<User> admin_user;
@@ -32,6 +34,7 @@ protected:
         DB_Main::getInstance()->purge();
         real_db = std::make_shared<DB_Coverage>();
         real_db->create_coverage_tables();
+        real_coverage_op = std::make_shared<OperationCoverage>();
 
         user1 = std::make_shared<User>("user_one");
         user1->set_useraccountid(101);
@@ -65,8 +68,7 @@ TEST_F(OperationAnalysisSchedulerTest, SpecificTest_DummyTasksEnforceMaxOneParal
 
     // Create scheduler with dummy task executor
     auto scheduler = std::make_unique<OperationAnalysisScheduler>(
-        real_db,
-        nullptr,
+        real_coverage_op,
         nullptr,
         nullptr,
         [&](const std::shared_ptr<const User>& u, AnalysisTask& task, std::shared_ptr<std::atomic<bool>> cancel_token, std::string& out_exec_id) -> rst_code_e {
@@ -153,8 +155,7 @@ TEST_F(OperationAnalysisSchedulerTest, TaskCancellationQueuedAndRunning) {
     std::atomic<bool> task1_started{false};
 
     auto scheduler = std::make_unique<OperationAnalysisScheduler>(
-        real_db,
-        nullptr,
+        real_coverage_op,
         nullptr,
         nullptr,
         [&](const std::shared_ptr<const User>& u, AnalysisTask& task, std::shared_ptr<std::atomic<bool>> cancel_token, std::string& out_exec_id) -> rst_code_e {
@@ -205,7 +206,7 @@ TEST_F(OperationAnalysisSchedulerTest, TaskCancellationQueuedAndRunning) {
 // 3. Multi-Tenancy & User Access Control Isolation
 //-----------------------------------------------------------------------------------------
 TEST_F(OperationAnalysisSchedulerTest, MultiTenancyUserIsolation) {
-    auto scheduler = std::make_unique<OperationAnalysisScheduler>(real_db);
+    auto scheduler = std::make_unique<OperationAnalysisScheduler>(real_coverage_op, nullptr, nullptr);
     std::string task1_id;
     UserConfiguration cfg;
 
@@ -240,7 +241,7 @@ TEST_F(OperationAnalysisSchedulerTest, MultiTenancyUserIsolation) {
 // 4. Duplicate Task Guard
 //-----------------------------------------------------------------------------------------
 TEST_F(OperationAnalysisSchedulerTest, DuplicateTaskGuardForSamePractice) {
-    auto scheduler = std::make_unique<OperationAnalysisScheduler>(real_db);
+    auto scheduler = std::make_unique<OperationAnalysisScheduler>(real_coverage_op, nullptr, nullptr);
     std::string task1_id, task2_id;
     UserConfiguration cfg;
 
@@ -263,8 +264,7 @@ TEST_F(OperationAnalysisSchedulerTest, CrashRecoveryResumesTasksUpToMaxRetries) 
 
     std::atomic<bool> recovered_task_executed{false};
     auto scheduler = std::make_unique<OperationAnalysisScheduler>(
-        real_db,
-        nullptr,
+        real_coverage_op,
         nullptr,
         nullptr,
         [&](const std::shared_ptr<const User>& u, AnalysisTask& task, std::shared_ptr<std::atomic<bool>> cancel_token, std::string& out_exec_id) -> rst_code_e {
@@ -295,7 +295,7 @@ TEST_F(OperationAnalysisSchedulerTest, CrashRecoveryResumesTasksUpToMaxRetries) 
 // 6. Error and Boundary Cases
 //-----------------------------------------------------------------------------------------
 TEST_F(OperationAnalysisSchedulerTest, ErrorAndBoundaryCases) {
-    auto scheduler = std::make_unique<OperationAnalysisScheduler>(real_db);
+    auto scheduler = std::make_unique<OperationAnalysisScheduler>(real_coverage_op, nullptr, nullptr);
     std::string task_id;
     UserConfiguration cfg;
 
@@ -314,8 +314,8 @@ TEST_F(OperationAnalysisSchedulerTest, ErrorAndBoundaryCases) {
     EXPECT_EQ(scheduler->get_task_status(user1, "non_existent", t), TASK_NOT_FOUND);
     EXPECT_EQ(scheduler->cancel_task(user1, "non_existent"), TASK_NOT_FOUND);
 
-    // Null database error
-    OperationAnalysisScheduler null_scheduler(nullptr);
+    // Null coverage_op error
+    OperationAnalysisScheduler null_scheduler(nullptr, nullptr, nullptr);
     EXPECT_EQ(null_scheduler.start_scheduler(), UNKNOWN);
     EXPECT_EQ(null_scheduler.submit_task(user1, 1, cfg, task_id), UNKNOWN);
 }

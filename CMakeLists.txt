@@ -220,6 +220,19 @@ target_link_libraries(cli INTERFACE asio)
 include(add_sqlite3_library)
 
 ################################
+# nlohmann_json
+################################
+
+FetchContent_Declare(
+  nlohmann_json
+  GIT_REPOSITORY https://github.com/nlohmann/json.git
+  GIT_TAG        v3.12.0
+)
+set(JSON_BuildTests OFF CACHE BOOL "" FORCE)
+set(JSON_Install OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(nlohmann_json)
+
+################################
 # opus
 ################################
 

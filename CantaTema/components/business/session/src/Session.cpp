@@ -15,7 +15,6 @@
 #include "operations/operation_practice_event.hpp"
 #include "operations/operation_coverage.hpp"
 #include "operations/operation_analysis_scheduler.hpp"
-#include "database/db_coverage.hpp"
 #include "sound_system/sound_system.hpp"
 #include "file_handler/file_handler.hpp"
 #include "models/manager_models.hpp"
@@ -28,7 +27,6 @@ Session::Session(
     std::shared_ptr<IOperationUserMetrics> &&_user_metrics_op,
     std::shared_ptr<IOperationPracticeEvent> &&_practice_event_op,
     std::shared_ptr<IOperationCoverage> &&_coverage_op,
-    std::shared_ptr<IDatabase> &&_db_op,
     std::shared_ptr<ISoundSystem> &&_sound_system_op,
     std::shared_ptr<ManagerModels> &&_models_manager_op,
     std::shared_ptr<cantatema::infra::IGpuDetector> &&_gpu_detector_op,
@@ -41,7 +39,6 @@ Session::Session(
     user_metrics_op(std::move(_user_metrics_op)),
     practice_event_op(std::move(_practice_event_op)),
     coverage_op(std::move(_coverage_op)),
-    db_coverage_op(std::move(_db_op)),
     sound_op(std::move(_sound_system_op)),
     models_manager_op(std::move(_models_manager_op)),
     gpu_detector_op(std::move(_gpu_detector_op)),
@@ -55,13 +52,9 @@ Session::Session(
     {
         tag_op = std::make_shared<OperationTag>();
     }
-    if (db_coverage_op == nullptr)
-    {
-        db_coverage_op = std::make_shared<DB_Coverage>();
-    }
     if (coverage_op == nullptr)
     {
-        coverage_op = std::make_shared<OperationCoverage>(db_coverage_op, subject_op, practice_event_op);
+        coverage_op = std::make_shared<OperationCoverage>(subject_op, practice_event_op);
     }
     if (sound_op == nullptr)
     {
@@ -77,7 +70,7 @@ Session::Session(
     }
     if (scheduler_op == nullptr)
     {
-        scheduler_op = std::make_shared<OperationAnalysisScheduler>(db_coverage_op, coverage_op, practice_event_op, user_op);
+        scheduler_op = std::make_shared<OperationAnalysisScheduler>(coverage_op, practice_event_op, user_op);
     }
     initialize();
 }
@@ -90,14 +83,13 @@ Session::Session(void)
     user_op = std::make_shared<OperationUser>(std::shared_ptr<IOperationUserMetrics>(user_metrics_op));
     subject_op = std::make_shared<OperationSubject>(std::shared_ptr<IOperationUserMetrics>(user_metrics_op), std::shared_ptr<IOperationCategory>(category_op));
     practice_event_op = std::make_shared<OperationPracticeEvent>(std::shared_ptr<IOperationUserMetrics>(user_metrics_op), std::shared_ptr<IOperationSubject>(subject_op));
-    db_coverage_op = std::make_shared<DB_Coverage>();
-    coverage_op = std::make_shared<OperationCoverage>(db_coverage_op, subject_op, practice_event_op);
+    coverage_op = std::make_shared<OperationCoverage>(subject_op, practice_event_op);
     sound_op = std::make_shared<SoundSystem>(ISoundSystem::SoundSystemConfig{});
     models_manager_op = std::make_shared<ManagerModels>();
     gpu_detector_op = std::make_shared<cantatema::infra::GpuDetector>();
-    scheduler_op = std::make_shared<OperationAnalysisScheduler>(db_coverage_op, coverage_op, practice_event_op, user_op);
+    scheduler_op = std::make_shared<OperationAnalysisScheduler>(coverage_op, practice_event_op, user_op);
 
-    if (user_op == nullptr || category_op == nullptr || tag_op == nullptr || subject_op == nullptr || user_metrics_op == nullptr || practice_event_op == nullptr || coverage_op == nullptr || db_coverage_op == nullptr || sound_op == nullptr || models_manager_op == nullptr || gpu_detector_op == nullptr || scheduler_op == nullptr)
+    if (user_op == nullptr || category_op == nullptr || tag_op == nullptr || subject_op == nullptr || user_metrics_op == nullptr || practice_event_op == nullptr || coverage_op == nullptr || sound_op == nullptr || models_manager_op == nullptr || gpu_detector_op == nullptr || scheduler_op == nullptr)
     {
         throw std::runtime_error("Operation session received wrong operation instances. (2)");
     }
@@ -156,7 +148,11 @@ rst_code_e Session::user_update(std::shared_ptr<const User> &user)
     if (session_user->get_name() != user->get_name())
         return USER_ERROR;
 
-    return user_op->user_update(user);
+    rst_code_e rst = user_op->user_update(user);
+    if (rst == RST_OK) {
+        session_user = std::const_pointer_cast<User>(user);
+    }
+    return rst;
 }
 
 rst_code_e Session::user_remove(void)
@@ -198,6 +194,20 @@ rst_code_e Session::user_identify(const std::string &name, const std::string &pa
 
     load_user_config();
     return RST_OK;
+}
+
+rst_code_e Session::save_user_configuration(unsigned int user_id, const UserConfiguration& config)
+{
+    if (!user_op)
+        return UNKNOWN;
+    return user_op->save_user_configuration(user_id, config);
+}
+
+rst_code_e Session::get_user_configuration(unsigned int user_id, UserConfiguration& out_config)
+{
+    if (!user_op)
+        return UNKNOWN;
+    return user_op->get_user_configuration(user_id, out_config);
 }
 
 rst_code_e Session::user_logout(void)
@@ -662,6 +672,13 @@ unsigned long long Session::audio_get_recording_timestamp(void)
     return sound_op->get_recording_timestamp();
 }
 
+float Session::audio_get_current_amplitude(void) const
+{
+    if (!sound_op)
+        return 0.0f;
+    return sound_op->get_current_amplitude();
+}
+
 rst_code_e Session::audio_play(const std::string &sound_file_path, ISoundSystem::PlaybackCallback callback)
 {
     if (!sound_op)
@@ -885,10 +902,10 @@ rst_code_e Session::get_analysis_executions_for_practice(int practice_id, std::s
     if (rst != RST_OK)
         return rst;
 
-    if (!db_coverage_op)
+    if (!coverage_op)
         return UNKNOWN;
 
-    return db_coverage_op->get_analysis_executions_for_practice(practice_id, executions_list_json);
+    return coverage_op->get_analysis_executions_for_practice(practice_id, executions_list_json);
 }
 
 rst_code_e Session::get_analysis_execution_details(const std::string &execution_id, std::string &report_json, std::string &config_json)
@@ -896,10 +913,10 @@ rst_code_e Session::get_analysis_execution_details(const std::string &execution_
     if (session_user == nullptr || !user_op->user_is_authenticated())
         return USER_NO_AUTH;
 
-    if (!db_coverage_op)
+    if (!coverage_op)
         return UNKNOWN;
 
-    return db_coverage_op->get_analysis_execution_details(execution_id, report_json, config_json);
+    return coverage_op->get_analysis_execution_details(execution_id, report_json, config_json);
 }
 
 rst_code_e Session::get_analysis_execution_details_by_practice(int practice_id, std::string &report_json, std::string &config_json)
@@ -949,12 +966,12 @@ rst_code_e Session::load_user_config(void)
         session_user_config.set_default_values();
         return USER_NO_AUTH;
     }
-    if (!db_coverage_op)
+    if (!user_op)
     {
         session_user_config.set_default_values();
         return RST_OK;
     }
-    rst_code_e res = db_coverage_op->get_user_configuration(session_user->get_useraccountid(), session_user_config);
+    rst_code_e res = user_op->get_user_configuration(session_user->get_useraccountid(), session_user_config);
     if (res != RST_OK)
     {
         session_user_config.set_default_values();
@@ -966,9 +983,9 @@ rst_code_e Session::save_user_config(void)
 {
     if (session_user == nullptr || !user_op->user_is_authenticated())
         return USER_NO_AUTH;
-    if (!db_coverage_op)
+    if (!user_op)
         return UNKNOWN;
-    return db_coverage_op->save_user_configuration(session_user->get_useraccountid(), session_user_config);
+    return user_op->save_user_configuration(session_user->get_useraccountid(), session_user_config);
 }
 
 rst_code_e Session::get_hardware_info(cantatema::HardwareInfo &info) const

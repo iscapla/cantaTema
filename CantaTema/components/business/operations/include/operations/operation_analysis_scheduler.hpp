@@ -21,7 +21,6 @@
 #include "operations/i_operation_coverage.hpp"
 #include "operations/i_operation_practice_event.hpp"
 #include "operations/i_operation_user.hpp"
-#include "database/i_database.hpp"
 
 /**
  * @class OperationAnalysisScheduler
@@ -43,15 +42,13 @@ public:
 
     /**
      * @brief Constructs OperationAnalysisScheduler with injected dependencies.
-     * @param db Injected database repository.
      * @param coverage_op Injected coverage operations pipeline.
      * @param practice_op Injected practice event operations.
      * @param user_op Injected user operations.
      * @param custom_executor Optional custom execution function (for tests with dummy tasks).
      */
     OperationAnalysisScheduler(
-        std::shared_ptr<IDatabase> db = nullptr,
-        std::shared_ptr<IOperationCoverage> coverage_op = nullptr,
+        std::shared_ptr<IOperationCoverage> coverage_op,
         std::shared_ptr<IOperationPracticeEvent> practice_op = nullptr,
         std::shared_ptr<IOperationUser> user_op = nullptr,
         TaskExecutorFn custom_executor = nullptr
@@ -101,7 +98,6 @@ public:
     void set_custom_executor(TaskExecutorFn executor);
 
 private:
-    std::shared_ptr<IDatabase> m_db;
     std::shared_ptr<IOperationCoverage> m_coverage_op;
     std::shared_ptr<IOperationPracticeEvent> m_practice_op;
     std::shared_ptr<IOperationUser> m_user_op;

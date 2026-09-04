@@ -14,6 +14,7 @@
 
 #include "primitives/definitions.hpp"
 #include "primitives/user.hpp"
+#include "primitives/user_configuration.hpp"
 
 /**
  * @class IOperationUser
@@ -76,6 +77,22 @@ public:
      * @return rst_code_e RST_OK on successful authentication, USER_NO_AUTH on bad credentials, or USER_NOT_FOUND.
      */
     virtual rst_code_e user_identify(const std::string &name, const std::string &password) = 0;
+
+    /**
+     * @brief Persists UserConfiguration for a specific user ID.
+     * @param user_id User identifier.
+     * @param config Configuration parameters struct.
+     * @return rst_code_e RST_OK on success, or error code.
+     */
+    virtual rst_code_e save_user_configuration(unsigned int user_id, const UserConfiguration& config) = 0;
+
+    /**
+     * @brief Loads UserConfiguration for a specific user ID.
+     * @param user_id User identifier.
+     * @param out_config Output struct receiving configuration parameters.
+     * @return rst_code_e RST_OK on success, or error code.
+     */
+    virtual rst_code_e get_user_configuration(unsigned int user_id, UserConfiguration& out_config) = 0;
 };
 
 #endif //__IOPERATION_USER_HPP

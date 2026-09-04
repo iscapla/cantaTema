@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "operations/operation_coverage.hpp"
+#include "t_operation_coverage_helper.hpp"
 #include "database/mocks/mock_database.hpp"
 #include "operations/mocks/mock_operation_subject.hpp"
 #include "operations/mocks/mock_operation_practice_event.hpp"
@@ -63,7 +64,7 @@ protected:
             created_fallback_audio = true;
         }
 
-        coverage_op = std::make_unique<OperationCoverage>(
+        coverage_op = make_test_coverage_op(
             mock_db,
             mock_subject_op,
             mock_practice_op,

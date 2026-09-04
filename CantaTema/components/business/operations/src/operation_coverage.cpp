@@ -1,4 +1,5 @@
 #include "operations/operation_coverage.hpp"
+#include "operation_coverage_pipeline.hpp"
 
 #include <chrono>
 #include <random>
@@ -27,22 +28,18 @@
 #include "operations/operation_user_metrics.hpp"
 #include "operations/operation_category.hpp"
 
-OperationCoverage::OperationCoverage(
-    std::shared_ptr<IDatabase> db,
-    std::shared_ptr<IOperationSubject> subject_op,
-    std::shared_ptr<IOperationPracticeEvent> practice_op,
-    std::shared_ptr<IFileHandler> file_handler,
-    std::shared_ptr<ISpeechRecognition> speech_recognition,
-    std::shared_ptr<IEmbeddingEngine> embedding_engine,
-    std::shared_ptr<ISimilaritySearch> similarity_search
-)
-    : m_db(std::move(db)),
-      m_subject_op(std::move(subject_op)),
-      m_practice_op(std::move(practice_op)),
-      m_file_handler(std::move(file_handler)),
-      m_speech_recognition(std::move(speech_recognition)),
-      m_embedding_engine(std::move(embedding_engine)),
-      m_similarity_search(std::move(similarity_search))
+//-----------------------------------------------------------------------------------------
+// OperationCoverage::Impl Implementation
+//-----------------------------------------------------------------------------------------
+
+OperationCoverage::Impl::Impl(CoveragePipelineDependencies deps)
+    : m_db(std::move(deps.db)),
+      m_subject_op(std::move(deps.subject_op)),
+      m_practice_op(std::move(deps.practice_op)),
+      m_file_handler(std::move(deps.file_handler)),
+      m_speech_recognition(std::move(deps.speech_recognition)),
+      m_embedding_engine(std::move(deps.embedding_engine)),
+      m_similarity_search(std::move(deps.similarity_search))
 {
     if (m_db && m_subject_op && m_practice_op) {
         if (!m_file_handler) m_file_handler = std::make_shared<FileHandler>();
@@ -52,7 +49,7 @@ OperationCoverage::OperationCoverage(
     }
 }
 
-std::string OperationCoverage::generate_execution_uuid() const
+std::string OperationCoverage::Impl::generate_execution_uuid() const
 {
     auto now = std::chrono::system_clock::now();
     auto timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
@@ -66,7 +63,7 @@ std::string OperationCoverage::generate_execution_uuid() const
     return ss.str();
 }
 
-rst_code_e OperationCoverage::analyze_practice_coverage(
+rst_code_e OperationCoverage::Impl::analyze_practice_coverage(
     const std::shared_ptr<const User>& user,
     int practice_id,
     const UserConfiguration& config,
@@ -367,7 +364,7 @@ rst_code_e OperationCoverage::analyze_practice_coverage(
     return res;
 }
 
-rst_code_e OperationCoverage::analyze_practice_coverage(
+rst_code_e OperationCoverage::Impl::analyze_practice_coverage(
     const std::shared_ptr<const User>& user,
     int practice_id,
     const std::string& whisper_model,
@@ -392,4 +389,225 @@ rst_code_e OperationCoverage::analyze_practice_coverage(
     }
 
     return analyze_practice_coverage(user, practice_id, config, out_analysis_execution_id);
+}
+
+rst_code_e OperationCoverage::Impl::get_analysis_executions_for_practice(int practice_id, std::string& out_executions_list_json)
+{
+    if (!m_db) {
+        return UNKNOWN;
+    }
+    return m_db->get_analysis_executions_for_practice(practice_id, out_executions_list_json);
+}
+
+rst_code_e OperationCoverage::Impl::get_analysis_execution_details(const std::string& execution_id, std::string& out_report_json, std::string& out_config_json)
+{
+    if (!m_db) {
+        return UNKNOWN;
+    }
+    return m_db->get_analysis_execution_details(execution_id, out_report_json, out_config_json);
+}
+
+rst_code_e OperationCoverage::Impl::save_analysis_task(const AnalysisTask& task)
+{
+    if (!m_db) {
+        return UNKNOWN;
+    }
+    return m_db->save_analysis_task(task);
+}
+
+rst_code_e OperationCoverage::Impl::update_analysis_task(const AnalysisTask& task)
+{
+    if (!m_db) {
+        return UNKNOWN;
+    }
+    return m_db->update_analysis_task(task);
+}
+
+rst_code_e OperationCoverage::Impl::get_analysis_task_by_id(const std::string& task_id, AnalysisTask& out_task)
+{
+    if (!m_db) {
+        return UNKNOWN;
+    }
+    return m_db->get_analysis_task_by_id(task_id, out_task);
+}
+
+rst_code_e OperationCoverage::Impl::get_analysis_tasks_by_user(unsigned int user_id, std::vector<AnalysisTask>& out_tasks)
+{
+    if (!m_db) {
+        return UNKNOWN;
+    }
+    return m_db->get_analysis_tasks_by_user(user_id, out_tasks);
+}
+
+rst_code_e OperationCoverage::Impl::get_all_analysis_tasks(std::vector<AnalysisTask>& out_tasks)
+{
+    if (!m_db) {
+        return UNKNOWN;
+    }
+    return m_db->get_all_analysis_tasks(out_tasks);
+}
+
+rst_code_e OperationCoverage::Impl::get_active_analysis_task_for_practice(int practice_id, AnalysisTask& out_task)
+{
+    if (!m_db) {
+        return UNKNOWN;
+    }
+    return m_db->get_active_analysis_task_for_practice(practice_id, out_task);
+}
+
+rst_code_e OperationCoverage::Impl::recover_interrupted_analysis_tasks(int max_retries, std::vector<AnalysisTask>& out_recovered_tasks)
+{
+    if (!m_db) {
+        return UNKNOWN;
+    }
+    return m_db->recover_interrupted_analysis_tasks(max_retries, out_recovered_tasks);
+}
+
+rst_code_e OperationCoverage::Impl::delete_analysis_task(const std::string& task_id)
+{
+    if (!m_db) {
+        return UNKNOWN;
+    }
+    return m_db->delete_analysis_task(task_id);
+}
+
+//-----------------------------------------------------------------------------------------
+// OperationCoverage Public Facade Implementation (Pimpl Pattern)
+//-----------------------------------------------------------------------------------------
+
+OperationCoverage::OperationCoverage(std::unique_ptr<Impl> impl)
+    : m_impl(std::move(impl))
+{
+}
+
+OperationCoverage::OperationCoverage(
+    std::shared_ptr<IOperationSubject> subject_op,
+    std::shared_ptr<IOperationPracticeEvent> practice_op
+)
+{
+    CoveragePipelineDependencies deps;
+    deps.db = std::make_shared<DB_Coverage>();
+    deps.subject_op = std::move(subject_op);
+    deps.practice_op = std::move(practice_op);
+    m_impl = std::make_unique<Impl>(std::move(deps));
+}
+
+std::unique_ptr<OperationCoverage> OperationCoverage::create_with_pipeline(CoveragePipelineDependencies deps)
+{
+    auto impl = std::make_unique<Impl>(std::move(deps));
+    return std::make_unique<OperationCoverage>(std::move(impl));
+}
+
+OperationCoverage::~OperationCoverage() = default;
+
+OperationCoverage::OperationCoverage(OperationCoverage&&) noexcept = default;
+OperationCoverage& OperationCoverage::operator=(OperationCoverage&&) noexcept = default;
+
+rst_code_e OperationCoverage::analyze_practice_coverage(
+    const std::shared_ptr<const User>& user,
+    int practice_id,
+    const UserConfiguration& config,
+    std::string& out_analysis_execution_id
+)
+{
+    if (!m_impl) {
+        return UNKNOWN;
+    }
+    return m_impl->analyze_practice_coverage(user, practice_id, config, out_analysis_execution_id);
+}
+
+rst_code_e OperationCoverage::analyze_practice_coverage(
+    const std::shared_ptr<const User>& user,
+    int practice_id,
+    const std::string& whisper_model,
+    const std::string& llama_model,
+    float similarity_threshold,
+    const std::string& language,
+    std::string& out_analysis_execution_id
+)
+{
+    if (!m_impl) {
+        return UNKNOWN;
+    }
+    return m_impl->analyze_practice_coverage(user, practice_id, whisper_model, llama_model, similarity_threshold, language, out_analysis_execution_id);
+}
+
+rst_code_e OperationCoverage::get_analysis_executions_for_practice(int practice_id, std::string& out_executions_list_json)
+{
+    if (!m_impl) {
+        return UNKNOWN;
+    }
+    return m_impl->get_analysis_executions_for_practice(practice_id, out_executions_list_json);
+}
+
+rst_code_e OperationCoverage::get_analysis_execution_details(const std::string& execution_id, std::string& out_report_json, std::string& out_config_json)
+{
+    if (!m_impl) {
+        return UNKNOWN;
+    }
+    return m_impl->get_analysis_execution_details(execution_id, out_report_json, out_config_json);
+}
+
+rst_code_e OperationCoverage::save_analysis_task(const AnalysisTask& task)
+{
+    if (!m_impl) {
+        return UNKNOWN;
+    }
+    return m_impl->save_analysis_task(task);
+}
+
+rst_code_e OperationCoverage::update_analysis_task(const AnalysisTask& task)
+{
+    if (!m_impl) {
+        return UNKNOWN;
+    }
+    return m_impl->update_analysis_task(task);
+}
+
+rst_code_e OperationCoverage::get_analysis_task_by_id(const std::string& task_id, AnalysisTask& out_task)
+{
+    if (!m_impl) {
+        return UNKNOWN;
+    }
+    return m_impl->get_analysis_task_by_id(task_id, out_task);
+}
+
+rst_code_e OperationCoverage::get_analysis_tasks_by_user(unsigned int user_id, std::vector<AnalysisTask>& out_tasks)
+{
+    if (!m_impl) {
+        return UNKNOWN;
+    }
+    return m_impl->get_analysis_tasks_by_user(user_id, out_tasks);
+}
+
+rst_code_e OperationCoverage::get_all_analysis_tasks(std::vector<AnalysisTask>& out_tasks)
+{
+    if (!m_impl) {
+        return UNKNOWN;
+    }
+    return m_impl->get_all_analysis_tasks(out_tasks);
+}
+
+rst_code_e OperationCoverage::get_active_analysis_task_for_practice(int practice_id, AnalysisTask& out_task)
+{
+    if (!m_impl) {
+        return UNKNOWN;
+    }
+    return m_impl->get_active_analysis_task_for_practice(practice_id, out_task);
+}
+
+rst_code_e OperationCoverage::recover_interrupted_analysis_tasks(int max_retries, std::vector<AnalysisTask>& out_recovered_tasks)
+{
+    if (!m_impl) {
+        return UNKNOWN;
+    }
+    return m_impl->recover_interrupted_analysis_tasks(max_retries, out_recovered_tasks);
+}
+
+rst_code_e OperationCoverage::delete_analysis_task(const std::string& task_id)
+{
+    if (!m_impl) {
+        return UNKNOWN;
+    }
+    return m_impl->delete_analysis_task(task_id);
 }

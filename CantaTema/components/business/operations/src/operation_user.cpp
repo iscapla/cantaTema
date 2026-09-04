@@ -6,6 +6,7 @@
 #include "database/db_user.hpp"
 #include "database/db_subject.hpp"
 #include "database/db_category.hpp"
+#include "database/db_coverage.hpp"
 #include "file_handler/file_handler.hpp"
 #include "primitives/tool_paths.hpp"
 
@@ -201,4 +202,16 @@ rst_code_e OperationUser::user_remove(void)
     }
 
     return USER_NO_AUTH;
+}
+
+rst_code_e OperationUser::save_user_configuration(unsigned int user_id, const UserConfiguration& config)
+{
+    DB_Coverage db_cov;
+    return db_cov.save_user_configuration(user_id, config);
+}
+
+rst_code_e OperationUser::get_user_configuration(unsigned int user_id, UserConfiguration& out_config)
+{
+    DB_Coverage db_cov;
+    return db_cov.get_user_configuration(user_id, out_config);
 }

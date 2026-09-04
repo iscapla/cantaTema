@@ -5,6 +5,7 @@
 #include <filesystem>
 
 #include "operations/operation_coverage.hpp"
+#include "t_operation_coverage_helper.hpp"
 #include "database/mocks/mock_database.hpp"
 #include "operations/mocks/mock_operation_subject.hpp"
 #include "operations/mocks/mock_operation_practice_event.hpp"
@@ -45,7 +46,7 @@ protected:
         ofs_audio << "dummy audio content";
         ofs_audio.close();
 
-        coverage_op = std::make_unique<OperationCoverage>(
+        coverage_op = make_test_coverage_op(
             mock_db,
             mock_subject_op,
             mock_practice_op,
@@ -87,9 +88,9 @@ TEST_F(OperationCoverageValidationTest, NullUserReturnsNoAuth) {
 }
 
 TEST_F(OperationCoverageValidationTest, NullDependenciesReturnsUnknown) {
-    OperationCoverage op_null(nullptr, mock_subject_op, mock_practice_op, mock_file_handler, mock_speech, mock_embedding, mock_similarity);
+    auto op_null = make_test_coverage_op(nullptr, mock_subject_op, mock_practice_op, mock_file_handler, mock_speech, mock_embedding, mock_similarity);
     std::string exec_id;
-    rst_code_e res = op_null.analyze_practice_coverage(user, 1, "", "", 0.0f, "", exec_id);
+    rst_code_e res = op_null->analyze_practice_coverage(user, 1, "", "", 0.0f, "", exec_id);
     EXPECT_EQ(res, UNKNOWN);
 }
 

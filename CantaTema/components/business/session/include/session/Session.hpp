@@ -20,7 +20,6 @@
 #include "operations/i_operation_analysis_scheduler.hpp"
 #include "models/manager_models.hpp"
 #include "sound_system/i_sound_system.hpp"
-#include "database/i_database.hpp"
 #include "primitives/user_configuration.hpp"
 #include "primitives/hardware_info.hpp"
 #include "primitives/analysis_task.hpp"
@@ -45,7 +44,6 @@ public:
      * @param _user_metrics_op Injected user metrics operations handler.
      * @param _practice_event_op Injected practice event operations handler.
      * @param _coverage_op Injected coverage operations handler (optional).
-     * @param _db_op Injected database handler for coverage persistence (optional).
      * @param _sound_system_op Injected sound system handler (optional).
      * @param _models_manager_op Injected model manager handler (optional).
      * @param _gpu_detector_op Injected hardware/GPU detector handler (optional).
@@ -58,7 +56,6 @@ public:
         std::shared_ptr<IOperationUserMetrics> &&_user_metrics_op,
         std::shared_ptr<IOperationPracticeEvent> &&_practice_event_op,
         std::shared_ptr<IOperationCoverage> &&_coverage_op = nullptr,
-        std::shared_ptr<IDatabase> &&_db_op = nullptr,
         std::shared_ptr<ISoundSystem> &&_sound_system_op = nullptr,
         std::shared_ptr<ManagerModels> &&_models_manager_op = nullptr,
         std::shared_ptr<cantatema::infra::IGpuDetector> &&_gpu_detector_op = nullptr,
@@ -135,6 +132,22 @@ public:
      * @return rst_code_e RST_OK on success, USER_NO_AUTH on bad password, or USER_NOT_FOUND.
      */
     rst_code_e user_identify(const std::string &name, const std::string &password) override;
+
+    /**
+     * @brief Persists UserConfiguration for a specific user ID.
+     * @param user_id User identifier.
+     * @param config Configuration parameters struct.
+     * @return rst_code_e RST_OK on success, or error code.
+     */
+    rst_code_e save_user_configuration(unsigned int user_id, const UserConfiguration& config) override;
+
+    /**
+     * @brief Loads UserConfiguration for a specific user ID.
+     * @param user_id User identifier.
+     * @param out_config Output struct receiving configuration parameters.
+     * @return rst_code_e RST_OK on success, or error code.
+     */
+    rst_code_e get_user_configuration(unsigned int user_id, UserConfiguration& out_config) override;
 
     /**
      * @brief Logs out the currently authenticated session user.
@@ -456,6 +469,12 @@ public:
      * @return unsigned long long Milliseconds recorded.
      */
     unsigned long long audio_get_recording_timestamp(void);
+
+    /**
+     * @brief Gets current audio capture amplitude level (normalized [0.0, 1.0]).
+     * @return float Current RMS amplitude in range 0.0 to 1.0.
+     */
+    float audio_get_current_amplitude(void) const;
 
     /**
      * @brief Starts playback of an audio file.
@@ -791,7 +810,6 @@ private:
     std::shared_ptr<IOperationUserMetrics> user_metrics_op{nullptr};
     std::shared_ptr<IOperationPracticeEvent> practice_event_op{nullptr};
     std::shared_ptr<IOperationCoverage> coverage_op{nullptr};
-    std::shared_ptr<IDatabase> db_coverage_op{nullptr};
     std::shared_ptr<ISoundSystem> sound_op{nullptr};
     std::shared_ptr<ManagerModels> models_manager_op{nullptr};
     std::shared_ptr<cantatema::infra::IGpuDetector> gpu_detector_op{nullptr};
